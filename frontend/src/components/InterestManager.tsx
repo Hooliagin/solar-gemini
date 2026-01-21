@@ -1,10 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Plus, X, Hash } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-
-const API_URL = import.meta.env.VITE_API_URL
-    ? (import.meta.env.VITE_API_URL as string).replace(/\/$/, '')
-    : 'https://daily-manager-backend.onrender.com';
+import { API_BASE_URL } from '../config';
 
 interface Interest {
     id: number;
@@ -23,7 +20,7 @@ export default function InterestManager() {
     const fetchInterests = async () => {
         try {
             const token = (await supabase.auth.getSession()).data.session?.access_token;
-            const res = await fetch(`${API_URL}/interests/`, {
+            const res = await fetch(`${API_BASE_URL}/interests/`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             if (res.ok) {
@@ -41,7 +38,7 @@ export default function InterestManager() {
         setLoading(true);
         try {
             const token = (await supabase.auth.getSession()).data.session?.access_token;
-            const res = await fetch(`${API_URL}/interests/`, {
+            const res = await fetch(`${API_BASE_URL}/interests/`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -64,7 +61,7 @@ export default function InterestManager() {
     const deleteInterest = async (id: number) => {
         try {
             const token = (await supabase.auth.getSession()).data.session?.access_token;
-            await fetch(`${API_URL}/interests/${id}`, {
+            await fetch(`${API_BASE_URL}/interests/${id}`, {
                 method: 'DELETE',
                 headers: { Authorization: `Bearer ${token}` }
             });
