@@ -11,8 +11,8 @@ import os
 
 logger = logging.getLogger(__name__)
 
-# Configure Gemini
-genai.configure(api_key=settings.GOOGLE_API_KEY)
+# Configure Gemini (moved inside function to handle missing key gracefully)
+# genai.configure(api_key=settings.GOOGLE_API_KEY)
 
 def generate_briefing_content():
     """
@@ -29,6 +29,9 @@ def generate_briefing_content():
     # Validation
     if not settings.GOOGLE_API_KEY:
         raise ValueError("Google Gemini API Key (GEMINI_API_KEY) is missing.")
+
+    # Configure Gemini
+    genai.configure(api_key=settings.GOOGLE_API_KEY)
 
     session = None
     try:
