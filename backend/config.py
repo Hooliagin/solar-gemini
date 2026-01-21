@@ -11,7 +11,14 @@ class Settings:
     # Paths
     BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     AUDIO_DIR = os.path.join(BASE_DIR, "data", "audio")
-    DB_PATH = "sqlite:///./backend.db"
+    AUDIO_DIR = os.path.join(BASE_DIR, "data", "audio")
+    
+    # Database
+    # Render provides postgres:// but SQLAlchemy needs postgresql://
+    _db_url = os.getenv("DATABASE_URL", "sqlite:///./backend.db")
+    if _db_url.startswith("postgres://"):
+        _db_url = _db_url.replace("postgres://", "postgresql://", 1)
+    DB_PATH = _db_url
 
     # Scheduling
     BRIEFING_TIME_HOUR = 5
