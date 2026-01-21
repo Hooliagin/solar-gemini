@@ -21,7 +21,7 @@ services:
         sync: false
       - key: ALLOWED_ORIGINS
         fromService:
-          type: static # Frontend is now static
+          type: web # Frontend is defined as type: web (runtime: static)
           name: daily-manager-frontend
           property: host
 
