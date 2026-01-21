@@ -26,13 +26,18 @@ def generate_briefing_content():
     """
     logger.info("Starting briefing generation...")
     
-    # 1. Fetch Calendar
-    calendar_text = get_calendar_events()
-    
-    # 2. Fetch User Interests & News
-    # Using a fresh session
-    session = next(get_session())
+    # Validation
+    if not settings.GOOGLE_API_KEY:
+        raise ValueError("Google Gemini API Key (GEMINI_API_KEY) is missing.")
+
+    session = None
     try:
+        # 1. Fetch Calendar
+        calendar_text = get_calendar_events()
+        
+        # 2. Fetch User Interests & News
+        session = next(get_session())
+        
         # Fetch interests
         from models import Interest
         interests = session.query(Interest).all()
@@ -42,8 +47,6 @@ def generate_briefing_content():
         news_text = fetch_ai_news_summary(topic_list)
         
         # 3. Fetch yesterday's diary (Last entry from DB)
-        # Get the latest entry
-        # Ideally we filter by date, but for now just take the last one
         last_entry = session.query(Entry).order_by(Entry.id.desc()).first()
         diary_transcript = last_entry.transcript if last_entry else "No diary entry for last night."
         
@@ -80,6 +83,9 @@ def generate_briefing_content():
         
         # 5. Generate Audio
         audio_filename = f"briefing_{datetime.now().strftime('%Y%m%d_%H%M%S')}.mp3"
+        
+        # Ensure audio directory exists
+        os.makedirs(settings.AUDIO_DIR, exist_ok=True)
         audio_path_abs = os.path.join(settings.AUDIO_DIR, audio_filename)
         
         generate_speech(script, audio_path_abs)
@@ -99,9 +105,12 @@ def generate_briefing_content():
         
     except Exception as e:
         logger.error(f"Error generating briefing: {e}")
-        session.rollback()
+        if session:
+            session.rollback()
+        raise e # Re-raise to let the router handle the error response
     finally:
-        session.close()
+        if session:
+            session.close()
 
 if __name__ == "__main__":
     # Test run
