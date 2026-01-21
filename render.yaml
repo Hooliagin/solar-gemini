@@ -40,3 +40,7 @@ services:
           type: web
           name: daily-manager-backend
           property: host
+      - key: VITE_SUPABASE_URL
+        sync: false
+      - key: VITE_SUPABASE_ANON_KEY
+        sync: false
