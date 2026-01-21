@@ -30,4 +30,8 @@ async def upload_entry(file: UploadFile = File(...), session: Session = Depends(
 
     except Exception as e:
         logger.error(f"Error processing upload: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        # Check if it's an OpenAI error or missing key
+        if "api_key" in str(e).lower() or "apikey" in str(e).lower():
+             raise HTTPException(status_code=500, detail="OpenAI API Key Invalid or Missing.")
+        
+        raise HTTPException(status_code=500, detail=f"Server Error: {str(e)}")
