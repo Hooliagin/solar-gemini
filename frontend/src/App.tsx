@@ -1,55 +1,56 @@
-import { useState } from 'react';
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import AuthPage from './pages/Auth';
+import Onboarding from './pages/Onboarding';
 import Recorder from './components/Recorder';
 import Player from './components/Player';
 
-function App() {
-  // Simple state for Current Mode: 'evening' (record) or 'morning' (listen)
-  // Default to evening logic if it's PM? Manual toggle for now.
-  const [mode, setMode] = useState<'evening' | 'morning'>('evening');
+// Protected Route Component
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+  const { session, loading } = useAuth();
+  if (loading) return <div className="min-h-screen bg-black flex items-center justify-center text-white">Loading...</div>;
+  if (!session) return <Navigate to="/login" replace />;
+  return <>{children}</>;
+};
 
+// Main Layout for authenticated users
+const Dashboard = () => {
   return (
-    <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center p-4">
-      <header className="w-full max-w-xl flex justify-between items-center py-6">
-        <h1 className="text-xl font-bold tracking-wider text-gray-100">AUDIO<span className="text-blue-500">MANAGER</span></h1>
-
-        <div className="bg-gray-800 rounded-full p-1 flex">
-          <button
-            onClick={() => setMode('evening')}
-            className={`px-4 py-1 rounded-full text-sm font-medium transition-all ${mode === 'evening' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-400 hover:text-white'}`}
-          >
-            Evening
-          </button>
-          <button
-            onClick={() => setMode('morning')}
-            className={`px-4 py-1 rounded-full text-sm font-medium transition-all ${mode === 'morning' ? 'bg-orange-500 text-white shadow-lg' : 'text-gray-400 hover:text-white'}`}
-          >
-            Morning
-          </button>
+    <div className="min-h-screen bg-black text-white p-6 pb-24">
+      <header className="flex justify-between items-center mb-8">
+        <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-blue-400">Daily Manager</h1>
+        <div className="w-10 h-10 rounded-full bg-gray-800 border border-gray-700 flex items-center justify-center text-sm font-bold bg-gradient-to-br from-purple-500 to-blue-500">
+          ME
         </div>
       </header>
 
-      <main className="flex-1 w-full max-w-xl flex flex-col items-center justify-center mt-8 mb-20">
+      <main className="space-y-12">
+        <section>
+          <h2 className="text-xl font-semibold mb-4 text-gray-300">Morning Briefing</h2>
+          <Player />
+        </section>
 
-        {mode === 'evening' ? (
-          <div className="text-center space-y-8 animate-fade-in">
-            <h2 className="text-4xl font-extralight mb-2">How was your day?</h2>
-            <p className="text-gray-400 max-w-xs mx-auto">Record your thoughts, tasks, and plans for tomorrow.</p>
-            <Recorder onUploadComplete={() => alert('Saved! Have a good night.')} />
-          </div>
-        ) : (
-          <div className="text-center space-y-8 w-full animate-fade-in">
-            <h2 className="text-4xl font-extralight mb-2 text-orange-200">Good Morning</h2>
-            <p className="text-gray-400 max-w-xs mx-auto">Here is your briefing.</p>
-            <Player />
-          </div>
-        )}
-
+        <section>
+          <h2 className="text-xl font-semibold mb-4 text-gray-300">Evening Log</h2>
+          <Recorder onUploadComplete={() => window.location.reload()} />
+        </section>
       </main>
-
-      <footer className="text-xs text-gray-600">
-        Powered by Gemini & OpenAI
-      </footer>
     </div>
+  );
+};
+
+function App() {
+  return (
+    <AuthProvider>
+      <Router>
+        <Routes>
+          <Route path="/login" element={<AuthPage />} />
+          <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
+          <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+        </Routes>
+      </Router>
+    </AuthProvider>
   );
 }
 
