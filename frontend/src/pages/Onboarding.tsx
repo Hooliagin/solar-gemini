@@ -8,7 +8,6 @@ export default function Onboarding() {
     const { user } = useAuth();
     const navigate = useNavigate();
     const [loading, setLoading] = useState(false);
-    const [step, setStep] = useState(1);
 
     const [formData, setFormData] = useState({
         full_name: '',

@@ -18,6 +18,14 @@ class Settings:
     _db_url = os.getenv("DATABASE_URL", "sqlite:///./backend.db")
     if _db_url.startswith("postgres://"):
         _db_url = _db_url.replace("postgres://", "postgresql://", 1)
+    
+    # Debug: Print DB Host to verify connectivity (without password)
+    try:
+        if "@" in _db_url:
+            print(f"Connecting to DB Host: {_db_url.split('@')[1].split(':')[0]}")
+    except:
+        pass
+
     DB_PATH = _db_url
 
     # Scheduling
