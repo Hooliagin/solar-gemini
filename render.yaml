@@ -9,7 +9,7 @@ services:
       pip install -r requirements.txt
     startCommand: |
       cd backend
-      gunicorn main:app -k uvicorn.workers.UvicornWorker -w 4 -b 0.0.0.0:10000
+      gunicorn main:app -k uvicorn.workers.UvicornWorker -w 4 -b 0.0.0.0:10000 --timeout 120
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.0
