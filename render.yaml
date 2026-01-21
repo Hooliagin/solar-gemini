@@ -1,0 +1,43 @@
+services:
+  # Backend Service
+  - type: web
+    name: daily-manager-backend
+    runtime: python
+    buildCommand: |
+      cd backend
+      pip install -r requirements.txt
+    startCommand: |
+      cd backend
+      gunicorn main:app -k uvicorn.workers.UvicornWorker -w 4 -b 0.0.0.0:10000
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: DATABASE_URL
+        sync: false # Set this in Render dashboard
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: ALLOWED_ORIGINS
+        fromService:
+          type: web
+          name: daily-manager-frontend
+          property: url
+
+  # Frontend Service
+  - type: web
+    name: daily-manager-frontend
+    runtime: node
+    buildCommand: |
+      cd frontend
+      npm install
+      npm run build
+    startCommand: |
+      cd frontend
+      npm run preview -- --host --port $PORT
+    envVars:
+      - key: VITE_API_URL
+        fromService:
+          type: web
+          name: daily-manager-backend
+          property: url
