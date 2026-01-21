@@ -38,14 +38,4 @@ services:
         fromService:
           type: web
           name: daily-manager-backend
-          property: url # Static sites need the full URL for build-time embedding usually, but let's stick to host if that's what worked, wait. Vite needs VITE_API_URL. My code handles host.
-          # Actually, for static site building, we might as well give it the full URL if possible? 
-          # Render 'url' property provides https://name.onrender.com.
-          # My code handles host or url. Let's use 'url' here to be safe as static sites don't have runtime env vars, it's build time.
-          # Wait, I previously changed 'url' to 'host' because of a validation error. 
-          # Was the validation error because of the SERVICE type or the PROPERTY?
-          # "invalid service property: url" for a WEB service.
-          # Does a WEB service expose 'url'? Apparently not in blueprint? That's weird.
-          # But 'host' is safer. My code handles 'host' -> 'https://host'.
-          # So I will use 'host' here too.
           property: host
