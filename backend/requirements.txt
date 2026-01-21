@@ -3,9 +3,8 @@ uvicorn==0.27.0
 python-multipart
 sqlmodel==0.0.14
 apscheduler==3.10.4
-openai==1.12.0
-httpx==0.26.0
-google-generativeai==0.3.2
+openai>=1.50.0
+google-generativeai==0.8.3
 python-dotenv
 requests
 gunicorn==21.2.0

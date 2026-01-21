@@ -24,37 +24,50 @@ def generate_briefing_content():
     5. Generate Audio (OpenAI TTS).
     6. Save Briefing record.
     """
+    import sys
+    print("DEBUG: Starting briefing generation...", flush=True)
     logger.info("Starting briefing generation...")
     
     # Validation
     if not settings.GOOGLE_API_KEY:
+        print("DEBUG: Missing Google API Key", flush=True)
         raise ValueError("Google Gemini API Key (GEMINI_API_KEY) is missing.")
 
     # Configure Gemini
+    print("DEBUG: Configuring Gemini...", flush=True)
     genai.configure(api_key=settings.GOOGLE_API_KEY)
 
     session = None
     try:
         # 1. Fetch Calendar
+        print("DEBUG: Fetching Calendar...", flush=True)
         calendar_text = get_calendar_events()
+        print(f"DEBUG: Calendar Fetched ({len(calendar_text)} chars).", flush=True)
         
         # 2. Fetch User Interests & News
+        print("DEBUG: Getting DB Session...", flush=True)
         session = next(get_session())
         
         # Fetch interests
+        print("DEBUG: Querying Interests...", flush=True)
         from models import Interest
         interests = session.query(Interest).all()
         topic_list = [i.topic for i in interests]
+        print(f"DEBUG: Found topics: {topic_list}", flush=True)
         
         # Fetch News based on interests
+        print("DEBUG: Fetching News...", flush=True)
         news_text = fetch_ai_news_summary(topic_list)
+        print(f"DEBUG: News Fetched ({len(news_text)} chars).", flush=True)
         
         # 3. Fetch yesterday's diary (Last entry from DB)
+        print("DEBUG: Fetching last diary entry...", flush=True)
         last_entry = session.query(Entry).order_by(Entry.id.desc()).first()
         diary_transcript = last_entry.transcript if last_entry else "No diary entry for last night."
         
         # 4. Generate Script using Gemini
-        model = genai.GenerativeModel('gemini-pro')
+        print("DEBUG: Initializing Gemini Model...", flush=True)
+        model = genai.GenerativeModel('gemini-1.5-flash')
         
         prompt = f"""
         You are a friendly, professional personal assistant. It is morning.
@@ -81,10 +94,13 @@ def generate_briefing_content():
         Do not use markdown formatting like **bold** in the script, as it will be read by TTS. Write it as plain spoken text.
         """
         
+        print("DEBUG: Generating Content with Gemini...", flush=True)
         response = model.generate_content(prompt)
+        print("DEBUG: Gemini Response Received.", flush=True)
         script = response.text
         
         # 5. Generate Audio
+        print("DEBUG: Generating Audio (TTS)...", flush=True)
         audio_filename = f"briefing_{datetime.now().strftime('%Y%m%d_%H%M%S')}.mp3"
         
         # Ensure audio directory exists
@@ -92,6 +108,7 @@ def generate_briefing_content():
         audio_path_abs = os.path.join(settings.AUDIO_DIR, audio_filename)
         
         generate_speech(script, audio_path_abs)
+        print(f"DEBUG: Audio saved to {audio_path_abs}", flush=True)
         
         # 6. Save Briefing to DB
         briefing = Briefing(
@@ -104,6 +121,7 @@ def generate_briefing_content():
         session.commit()
         
         logger.info(f"Briefing generated successfully: {audio_path_abs}")
+        print("DEBUG: Briefing saved to DB. Done.", flush=True)
         return briefing
         
     except Exception as e:
