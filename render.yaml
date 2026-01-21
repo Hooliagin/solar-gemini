@@ -40,4 +40,4 @@ services:
         fromService:
           type: web
           name: daily-manager-backend
-          property: url
+          property: host
