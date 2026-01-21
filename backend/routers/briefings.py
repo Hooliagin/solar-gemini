@@ -32,4 +32,20 @@ async def get_briefing_audio(briefing_id: int, session: Session = Depends(get_se
     if not os.path.exists(briefing.audio_path):
         raise HTTPException(status_code=404, detail="Audio file missing")
         
+    if not os.path.exists(briefing.audio_path):
+        raise HTTPException(status_code=404, detail="Audio file missing")
+        
     return FileResponse(briefing.audio_path, media_type="audio/mpeg")
+
+@router.post("/generate")
+async def trigger_briefing_generation(session: Session = Depends(get_session)):
+    """
+    Manually triggers the generation of a morning briefing.
+    Useful for testing or on-demand updates.
+    """
+    from services.content_generator import generate_briefing_content
+    try:
+        generate_briefing_content()
+        return {"status": "success", "message": "Briefing generation started"}
+    except Exception as e:
+         raise HTTPException(status_code=500, detail=str(e))
