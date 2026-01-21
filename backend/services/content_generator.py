@@ -29,13 +29,19 @@ def generate_briefing_content():
     # 1. Fetch Calendar
     calendar_text = get_calendar_events()
     
-    # 2. Fetch News
-    news_text = fetch_ai_news_summary()
-    
-    # 3. Fetch yesterday's diary (Last entry from DB)
+    # 2. Fetch User Interests & News
     # Using a fresh session
     session = next(get_session())
     try:
+        # Fetch interests
+        from models import Interest
+        interests = session.query(Interest).all()
+        topic_list = [i.topic for i in interests]
+        
+        # Fetch News based on interests
+        news_text = fetch_ai_news_summary(topic_list)
+        
+        # 3. Fetch yesterday's diary (Last entry from DB)
         # Get the latest entry
         # Ideally we filter by date, but for now just take the last one
         last_entry = session.query(Entry).order_by(Entry.id.desc()).first()

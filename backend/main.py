@@ -28,6 +28,8 @@ from routers import briefings
 
 app.include_router(entries.router)
 app.include_router(briefings.router)
+from routers import interests
+app.include_router(interests.router)
 
 # Parse origins and ensure they have a scheme (https://) if provided by Render
 origins_raw = os.getenv("ALLOWED_ORIGINS", "*").split(",")

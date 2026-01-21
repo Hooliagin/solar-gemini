@@ -16,3 +16,8 @@ class Briefing(SQLModel, table=True):
     script_content: str
     audio_path: str
     status: str = Field(default="pending") # pending, generated, played
+
+class Interest(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    topic: str
+    created_at: datetime = Field(default_factory=datetime.utcnow)

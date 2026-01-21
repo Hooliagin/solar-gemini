@@ -7,30 +7,52 @@ logger = logging.getLogger(__name__)
 # Configure Gemini
 genai.configure(api_key=settings.GOOGLE_API_KEY)
 
-def fetch_ai_news_summary():
+def fetch_ai_news_summary(topics: list[str] = None):
     """
-    Uses Gemini to generate a summary of recent AI news or general relevant topics.
-    Since we don't have a direct 'Google Search' tool enabled in the library without configuration,
-    we rely on the model's knowledge or grounding if available. 
-    A better approach if grounding isn't available is to use a specific news API, 
-    but for this prototype we'll ask Gemini what it knows or to simulate a briefing style.
+    Uses Gemini with Google Search Grounding to generate a summary of news.
+    If topics are provided, it focuses on those. Otherwise, defaults to AI/Tech.
     """
     try:
-        model = genai.GenerativeModel('gemini-pro')
+        # Use a model that supports search grounding (Gemini 1.5 usually recommended)
+        # We try to use the 'tools' for google search if the API key supports it.
+        model = genai.GenerativeModel('models/gemini-1.5-flash')
         
-        # We can prompt it to act as a news aggregator if it has access to fresh info (Gemini often does).
-        # Or we use it to structure "What is generally important right now".
-        # Note: Standard Gemini API might not have real-time web access enabled by default without "Tools".
-        # For now, we simulate a "Tech Briefing" style generation.
-        
+        search_query = "AI and Tech"
+        if topics and len(topics) > 0:
+            search_query = ", ".join(topics)
+            
         prompt = (
-            "You are a news assistant. Provide a short, bulleted summary of 3 key hypothetical or real trends "
-            "in Artificial Intelligence and Tech that a developer should know about today. "
-            "Keep it brief and interesting."
+            f"You are a news assistant. Search for the latest news and updates regarding: {search_query}. "
+            "Provide a short, distinct, spoken-word style summary of 3 key stories found. "
+            "Focus on what's new today/yesterday. "
+            "Keep it brief (3-4 sentences per story) and interesting for a morning briefing."
         )
         
-        response = model.generate_content(prompt)
-        return response.text
+        # Enable Google Search tool
+        tools = [{'google_search_retrieval': {
+            'dynamic_retrieval_config': {
+                'mode': 'dynamic',
+                'dynamic_threshold': 0.3,
+            }
+        }}]
+        
+        try:
+            response = model.generate_content(prompt, tools=tools)
+            # Check if we got a valid text response
+            if response.text:
+                return response.text
+        except Exception as tool_error:
+            logger.warning(f"Gemini with Search Tool failed ({tool_error}), falling back to standard generation.")
+            # Fallback to standard generation without specific tools if search fails (e.g. API tier)
+            model_fallback = genai.GenerativeModel('gemini-pro')
+            fallback_prompt = (
+               f"You are a news assistant. Provide a short, bulleted summary of 3 key trends or concepts "
+               f"related to: {search_query}. "
+               "Since you might not have real-time web access, focus on general knowledge or recent major context you know."
+            )
+            response = model_fallback.generate_content(fallback_prompt)
+            return response.text
+
     except Exception as e:
         logger.error(f"Gemini News Error: {e}")
-        return "Could not fetch news updates at this time."
+        return "Could not fetch specific news updates at this time, but I hope you have a great day!"
