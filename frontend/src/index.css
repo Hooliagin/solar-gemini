@@ -14,15 +14,13 @@
     background: #000;
   }
 
-  body {
-    margin: 0;
-    display: flex;
-    place-items: center;
-    min-width: 320px;
-    min-height: 100vh;
-    background: radial-gradient(ellipse at top, var(--tw-gradient-stops));
-    @apply from-gray-900 via-[#0a0a0a] to-black text-gray-100;
-  }
+  display: flex;
+  place-items: center;
+  min-width: 320px;
+  min-height: 100vh;
+  background: radial-gradient(ellipse at top, #111827, #0a0a0a, #000000);
+  color: #f3f4f6;
+}
 }
 
 @layer components {
