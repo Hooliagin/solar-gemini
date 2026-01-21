@@ -22,7 +22,7 @@ services:
         fromService:
           type: web
           name: daily-manager-frontend
-          property: url
+          property: host
 
   # Frontend Service
   - type: web
