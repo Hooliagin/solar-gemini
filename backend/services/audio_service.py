@@ -16,10 +16,19 @@ def save_audio_file(file: UploadFile) -> str:
     # Extract extension or default to .webm or .wav
     ext = file.filename.split(".")[-1] if "." in file.filename else "webm"
     filename = f"{file_id}.{ext}"
-    file_path = os.path.join(settings.AUDIO_DIR, filename)
     
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+    # Ensure directory exists (defensive programming for Render)
+    os.makedirs(settings.AUDIO_DIR, exist_ok=True)
+    
+    file_path = os.path.join(settings.AUDIO_DIR, filename)
+    print(f"DEBUG: Saving audio to {file_path}") # Log the path
+    
+    try:
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+    except Exception as e:
+        print(f"CRITICAL: Failed to write file to {file_path}: {e}")
+        raise e
         
     return file_path
 
