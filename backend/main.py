@@ -38,10 +38,28 @@ for origin in origins_raw:
     origin = origin.strip()
     if origin == "*":
         origins.append("*")
-    elif not origin.startswith("http"):
-        origins.append(f"https://{origin}")
+        continue
+    
+    if not origin.startswith("http"):
+        # Add https prefix
+        base_origin = f"https://{origin}"
+        origins.append(base_origin)
+        
+        # If it looks like an internal render hostname (no dots), add .onrender.com variant
+        if "." not in origin:
+            origins.append(f"https://{origin}.onrender.com")
     else:
         origins.append(origin)
+
+# Add local development origins for safety
+origins.extend([
+    "http://localhost:5173", 
+    "http://localhost:3000",
+    "http://127.0.0.1:5173", 
+    "http://127.0.0.1:3000"
+])
+
+print(f"Allowed CORS Origins: {origins}")
 
 # CORS
 app.add_middleware(
