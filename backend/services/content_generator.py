@@ -35,9 +35,8 @@ def generate_briefing_content():
         print("DEBUG: Missing Google API Key", flush=True)
         raise ValueError("Google Gemini API Key (GEMINI_API_KEY) is missing.")
 
-    # Configure Gemini
-    print("DEBUG: Configuring Gemini...", flush=True)
-    genai.configure(api_key=settings.GOOGLE_API_KEY)
+    # Gemini client will be initialized later when needed
+    print("DEBUG: API Key validated.", flush=True)
 
     session = None
     try:
