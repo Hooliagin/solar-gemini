@@ -390,6 +390,45 @@ async def login_command(update: Update, context):
         parse_mode='Markdown'
     )
 
+async def handle_voice_message(update: Update, context):
+    """Handle voice messages - transcribe and save as diary entry."""
+    await update.message.reply_text("🎙️ Verarbeite Sprachnachricht...")
+    
+    try:
+        # Download voice file
+        voice = update.message.voice
+        file = await voice.get_file()
+        
+        # Save temporarily
+        os.makedirs(settings.AUDIO_DIR, exist_ok=True)
+        temp_path = os.path.join(settings.AUDIO_DIR, f"telegram_{voice.file_id}.ogg")
+        await file.download_to_drive(temp_path)
+        
+        # Transcribe
+        transcription_result = audio_service.transcribe_audio(temp_path)
+        transcript = transcription_result.get("text", "") if isinstance(transcription_result, dict) else transcription_result
+        language = transcription_result.get("language", "de") if isinstance(transcription_result, dict) else "de"
+        
+        # Save as entry
+        session = next(get_session())
+        entry = Entry(
+            audio_path=temp_path,
+            transcript=transcript,
+            language=language
+        )
+        session.add(entry)
+        session.commit()
+        session.close()
+        
+        await update.message.reply_text(
+            f"✅ Tagebuch-Eintrag gespeichert!\n\n"
+            f"📝 \"{transcript[:100]}{'...' if len(transcript) > 100 else ''}\""
+        )
+        
+    except Exception as e:
+        logger.error(f"Error processing voice message: {e}")
+        await update.message.reply_text("❌ Fehler beim Verarbeiten der Sprachnachricht.")
+
 # --- End Onboarding ---
 
 @router.post("/webhook")
