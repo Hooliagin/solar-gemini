@@ -32,9 +32,10 @@ def save_audio_file(file: UploadFile) -> str:
         
     return file_path
 
-def transcribe_audio(file_path: str) -> str:
+def transcribe_audio(file_path: str) -> dict:
     """
     Transcribes the audio file using OpenAI Whisper.
+    Returns dict with 'text' and 'language'.
     """
     # Verify file exists
     if not os.path.exists(file_path):
@@ -43,6 +44,11 @@ def transcribe_audio(file_path: str) -> str:
     with open(file_path, "rb") as audio_file:
         transcription = client.audio.transcriptions.create(
             model="whisper-1",
-            file=audio_file
+            file=audio_file,
+            response_format="verbose_json"  # Get language info
         )
-    return transcription.text
+    
+    return {
+        "text": transcription.text,
+        "language": getattr(transcription, 'language', 'en')  # Default to 'en' if not detected
+    }

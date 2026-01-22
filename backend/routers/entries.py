@@ -17,16 +17,18 @@ async def upload_entry(file: UploadFile = File(...), session: Session = Depends(
         # 1. Save File
         file_path = save_audio_file(file)
         
-        # 2. Transcribe
-        transcript = transcribe_audio(file_path)
+        # 2. Transcribe (now returns dict with text and language)
+        result = transcribe_audio(file_path)
+        transcript = result["text"]
+        language = result.get("language", "en")
         
         # 3. Save to DB
-        entry = Entry(audio_path=file_path, transcript=transcript)
+        entry = Entry(audio_path=file_path, transcript=transcript, language=language)
         session.add(entry)
         session.commit()
         session.refresh(entry)
         
-        return {"status": "success", "entry_id": entry.id, "transcript": transcript}
+        return {"status": "success", "entry_id": entry.id, "transcript": transcript, "language": language}
 
     except Exception as e:
         logger.error(f"Error processing upload: {e}")

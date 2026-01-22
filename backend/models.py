@@ -7,6 +7,7 @@ class Entry(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
     audio_path: str
     transcript: Optional[str] = None
+    language: Optional[str] = Field(default=None)  # Detected language (e.g., "de", "en")
     summary: Optional[str] = None
 
 class Briefing(SQLModel, table=True):

@@ -65,6 +65,8 @@ def generate_briefing_content():
         print("DEBUG: Fetching last diary entry...", flush=True)
         last_entry = session.query(Entry).order_by(Entry.id.desc()).first()
         diary_transcript = last_entry.transcript if last_entry else "No diary entry for last night."
+        detected_language = last_entry.language if last_entry and last_entry.language else "de"  # Default to German
+        print(f"DEBUG: Detected language: {detected_language}", flush=True)
         
         # 4. Fetch Weather (if enabled)
         print("DEBUG: Checking Weather Settings...", flush=True)
@@ -86,9 +88,16 @@ def generate_briefing_content():
         print("DEBUG: Initializing Gemini Model...", flush=True)
         model = genai.GenerativeModel('gemini-2.0-flash')
         
+        # Determine language instruction for Gemini
+        language_instruction = "Respond in German (Deutsch)." if detected_language == "de" else f"Respond in English."
+        if detected_language not in ["de", "en"]:
+            language_instruction = f"Respond in the same language as the diary entry (detected: {detected_language})."
+        
         prompt = f"""
         You are a friendly, professional personal assistant. It is morning.
         Create a morning briefing script for me.
+        
+        **IMPORTANT: {language_instruction}**
         
         Here is the context:
         
@@ -128,8 +137,8 @@ def generate_briefing_content():
         os.makedirs(settings.AUDIO_DIR, exist_ok=True)
         audio_path_abs = os.path.join(settings.AUDIO_DIR, audio_filename)
         
-        generate_speech(script, audio_path_abs)
-        print(f"DEBUG: Audio saved to {audio_path_abs}", flush=True)
+        generate_speech(script, audio_path_abs, language=detected_language)
+        print(f\"DEBUG: Audio saved to {audio_path_abs} (lang: {detected_language})\", flush=True)
         
         # 6. Save Briefing to DB
         briefing = Briefing(
