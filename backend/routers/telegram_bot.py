@@ -63,22 +63,7 @@ async def start_command(update: Update, context):
         logger.error(f"Error in /start command: {e}")
         await update.message.reply_text("❌ Fehler beim Verbinden. Bitte später erneut versuchen.")
 
-async def generate_command(update: Update, context):
-    """Handle /generate command - triggers immediate briefing generation."""
-    await update.message.reply_text("⏳ Briefing wird generiert... Das kann bis zu 60 Sekunden dauern.")
-    
-    try:
-        from services.content_generator import generate_briefing_content
-        
-        # Trigger briefing generation (this will also send via Telegram if enabled)
-        await asyncio.to_thread(generate_briefing_content)
-        
-        await update.message.reply_text("✅ Briefing wurde erstellt!")
-        
-    except Exception as e:
-        logger.error(f"Error generating briefing: {e}")
-        error_msg = str(e)[:200] if len(str(e)) > 200 else str(e)
-        await update.message.reply_text(f"❌ Fehler: {error_msg}")
+
 
 async def handle_voice_message(update: Update, context):
     """Handle voice messages - transcribe and save as diary entry."""
@@ -119,8 +104,22 @@ async def handle_voice_message(update: Update, context):
         logger.error(f"Error processing voice message: {e}")
         await update.message.reply_text("❌ Fehler beim Verarbeiten der Sprachnachricht.")
 
+from fastapi import BackgroundTasks
+
+async def run_generation_task(chat_id: str, bot):
+    """Background task for briefing generation."""
+    try:
+        from services.content_generator import generate_briefing_content
+        # This function generates content AND sends it to Telegram
+        await asyncio.to_thread(generate_briefing_content)
+        await bot.send_message(chat_id=chat_id, text="✅ Briefing wurde erstellt!")
+    except Exception as e:
+        logger.error(f"Error in background generation: {e}")
+        error_msg = str(e)[:200] if len(str(e)) > 200 else str(e)
+        await bot.send_message(chat_id=chat_id, text=f"❌ Fehler: {error_msg}")
+
 @router.post("/webhook")
-async def telegram_webhook(request: Request):
+async def telegram_webhook(request: Request, background_tasks: BackgroundTasks):
     """
     Telegram webhook endpoint.
     Receives updates from Telegram and processes them.
@@ -132,9 +131,15 @@ async def telegram_webhook(request: Request):
         # Build fresh application for each request
         app = Application.builder().token(settings.TELEGRAM_BOT_TOKEN).build()
         
+        # Define handlers wrapper to access background_tasks
+        async def generate_wrapper(update: Update, context):
+            await update.message.reply_text("⏳ Briefing wird generiert... Ich sende es dir, sobald es fertig ist.")
+            # Add to background tasks - returns immediately to Telegram
+            background_tasks.add_task(run_generation_task, update.effective_chat.id, context.bot)
+
         # Register handlers
         app.add_handler(CommandHandler("start", start_command))
-        app.add_handler(CommandHandler("generate", generate_command))
+        app.add_handler(CommandHandler("generate", generate_wrapper))
         app.add_handler(MessageHandler(filters.VOICE, handle_voice_message))
         
         # Initialize the application

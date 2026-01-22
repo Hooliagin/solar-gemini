@@ -38,25 +38,17 @@ def should_run_scheduler():
 async def lifespan(app: FastAPI):
     # Startup
     create_db_and_tables()
-    global scheduler
     
-    if should_run_scheduler():
-        scheduler = start_scheduler()
-        print("Scheduler started (this worker).")
-    else:
-        print("Scheduler skipped (another worker handles it).")
+    # NOTE: Scheduler disabled for now - use /generate command in Telegram
+    # or set up Render Cron Jobs for automatic daily briefings
+    # global scheduler
+    # scheduler = start_scheduler()
+    print("App started. Use /generate in Telegram for briefings.")
     
     yield
     
     # Shutdown
-    if scheduler:
-        scheduler.shutdown()
-        # Clean up lock file
-        try:
-            os.remove("/tmp/scheduler_lock")
-        except Exception:
-            pass
-    print("Scheduler shutdown.")
+    print("App shutdown.")
 
 app = FastAPI(lifespan=lifespan, title="Audio Daily Manager")
 
