@@ -214,23 +214,37 @@ export default function SettingsPanel() {
                         <span className="text-gray-300">News Kategorien</span>
                     </div>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 ml-8">
-                        {NEWS_CATEGORIES.map((cat) => (
-                            <button
-                                key={cat.key}
-                                onClick={() => toggleNewsCategory(cat.key)}
-                                className={`p-3 rounded-lg border-2 text-left transition-all ${newsCategories[cat.key as keyof typeof newsCategories]
-                                        ? 'border-orange-500 bg-orange-500/20'
-                                        : 'border-white/10 hover:border-white/30 bg-white/5'
-                                    }`}
-                            >
-                                <div className="flex items-center gap-2">
-                                    <span className="text-lg">{cat.icon}</span>
-                                    <span className={`text-sm font-medium ${newsCategories[cat.key as keyof typeof newsCategories] ? 'text-orange-300' : 'text-gray-300'
-                                        }`}>{cat.name}</span>
-                                </div>
-                                <div className="text-xs text-gray-500 mt-1">{cat.description}</div>
-                            </button>
-                        ))}
+                        {NEWS_CATEGORIES.map((cat) => {
+                            const isSelected = newsCategories[cat.key as keyof typeof newsCategories];
+                            return (
+                                <button
+                                    key={cat.key}
+                                    onClick={() => toggleNewsCategory(cat.key)}
+                                    className={`p-3 rounded-lg border-2 text-left transition-all relative ${isSelected
+                                            ? 'border-orange-500 bg-orange-500/30 ring-2 ring-orange-500/50 shadow-lg shadow-orange-500/20'
+                                            : 'border-white/10 hover:border-white/30 bg-white/5 opacity-60 hover:opacity-100'
+                                        }`}
+                                >
+                                    {/* Checkmark badge */}
+                                    {isSelected && (
+                                        <div className="absolute -top-2 -right-2 w-6 h-6 bg-orange-500 rounded-full flex items-center justify-center shadow-lg">
+                                            <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                            </svg>
+                                        </div>
+                                    )}
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-lg">{cat.icon}</span>
+                                        <span className={`text-sm font-medium ${isSelected ? 'text-orange-300' : 'text-gray-400'}`}>
+                                            {cat.name}
+                                        </span>
+                                    </div>
+                                    <div className={`text-xs mt-1 ${isSelected ? 'text-orange-200/70' : 'text-gray-500'}`}>
+                                        {cat.description}
+                                    </div>
+                                </button>
+                            );
+                        })}
                     </div>
                     <p className="text-xs text-gray-500 ml-8">
                         💡 Lokale News verwenden deine Wetter-Stadt: <strong>{city || 'nicht gesetzt'}</strong>
