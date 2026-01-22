@@ -15,6 +15,7 @@ class UserSettingsUpdate(BaseModel):
     weather_city: Optional[str] = None
     voice_id: Optional[str] = None
     language: Optional[str] = None
+    briefing_time: Optional[str] = None
     news_politics: Optional[bool] = None
     news_local: Optional[bool] = None
     news_economy: Optional[bool] = None

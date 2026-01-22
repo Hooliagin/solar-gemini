@@ -39,6 +39,8 @@ class UserSettings(SQLModel, table=True):
     voice_id: str = Field(default="alloy")  # OpenAI TTS voice
     # Language preference
     language: str = Field(default="de")
+    # Briefing schedule
+    briefing_time: str = Field(default="07:00")  # Time for daily briefing (HH:MM format)
     # Google Calendar OAuth tokens
     google_access_token: Optional[str] = Field(default=None)
     google_refresh_token: Optional[str] = Field(default=None)

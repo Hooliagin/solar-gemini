@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Cloud, MapPin, Save, Settings as SettingsIcon, Volume2, Calendar, Link, Unlink, Newspaper } from 'lucide-react';
+import { Cloud, MapPin, Save, Settings as SettingsIcon, Volume2, Calendar, Link, Unlink, Newspaper, Clock } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { API_BASE_URL } from '../config';
 
@@ -28,6 +28,7 @@ export default function SettingsPanel() {
     const [city, setCity] = useState('');
     const [weatherEnabled, setWeatherEnabled] = useState(true);
     const [voiceId, setVoiceId] = useState('alloy');
+    const [briefingTime, setBriefingTime] = useState('07:00');
     const [calendarConnected, setCalendarConnected] = useState(false);
     // News category toggles
     const [newsCategories, setNewsCategories] = useState({
@@ -66,6 +67,7 @@ export default function SettingsPanel() {
                 setCity(data.weather_city);
                 setWeatherEnabled(data.weather_enabled);
                 setVoiceId(data.voice_id || 'alloy');
+                setBriefingTime(data.briefing_time || '07:00');
                 setTelegramConnected(data.telegram_enabled || false);
 
                 // Load news category settings
@@ -165,6 +167,7 @@ export default function SettingsPanel() {
                     weather_enabled: weatherEnabled,
                     weather_city: city,
                     voice_id: voiceId,
+                    briefing_time: briefingTime,
                     ...newsCategories
                 })
             });
@@ -301,6 +304,25 @@ export default function SettingsPanel() {
                             <input type="text" value={city} onChange={(e) => setCity(e.target.value)} placeholder="City (e.g. Berlin)" className="input-field flex-1 text-sm" />
                         </div>
                     )}
+                </div>
+
+                {/* Briefing Time */}
+                <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <Clock className="w-5 h-5 text-amber-400" />
+                            <span className="text-gray-300">Briefing Uhrzeit</span>
+                        </div>
+                        <input
+                            type="time"
+                            value={briefingTime}
+                            onChange={(e) => setBriefingTime(e.target.value)}
+                            className="input-field text-sm w-28 text-center"
+                        />
+                    </div>
+                    <p className="text-xs text-gray-500 ml-8">
+                        Dein tägliches Briefing wird um <strong>{briefingTime} Uhr</strong> generiert.
+                    </p>
                 </div>
 
                 {/* News Categories */}
