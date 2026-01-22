@@ -122,16 +122,14 @@ def generate_briefing_content():
         
         [YOUR TOPICS - NEWS]
         {topic_news}
-        
-        {f"[GENERAL NEWS BRIEFING]\n{general_news}" if general_news else ""}
+        """ + (f"\n[GENERAL NEWS BRIEFING]\n{general_news}" if general_news else "") + """
         
         Structure the briefing as follows:
         1. Good morning & quick reflection on yesterday's thoughts.
         2. Overview of today's schedule.
         3. Weather update with clothing recommendation.
         4. News updates on your topics (briefly summarize each).
-        {5 if general_news else 5}. {f"General news overview." if general_news else ""}
-        {6 if general_news else 5}. Motivational closing.
+        """ + ("5. General news overview.\n        6. Motivational closing." if general_news else "5. Motivational closing.") + """
         
         Keep it conversational, warm, and concise (under 3 minutes spoken).
         Do not use markdown formatting like **bold** in the script, as it will be read by TTS. Write it as plain spoken text.
