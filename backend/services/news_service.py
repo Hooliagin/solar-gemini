@@ -31,11 +31,9 @@ def fetch_detailed_news_per_topic(topics: list[str]) -> str:
                 f"Falls nichts Relevantes gefunden wurde, sage: 'Keine bedeutenden Updates zu {topic}.'"
             )
             
-            # Use google_search tool (correct syntax for gemini-2.0-flash)
-            response = model.generate_content(
-                prompt,
-                tools='google_search'
-            )
+            # Use google_search tool (dict format for google.generativeai SDK)
+            tools = [{'google_search': {}}]
+            response = model.generate_content(prompt, tools=tools)
             
             if response.text:
                 results.append(f"**{topic}:**\n{response.text.strip()}\n")
@@ -66,11 +64,9 @@ def fetch_general_news_briefing() -> str:
             "Fokus: Ereignisse der letzten 24 Stunden."
         )
         
-        # Use google_search tool (correct syntax for gemini-2.0-flash)
-        response = model.generate_content(
-            prompt,
-            tools='google_search'
-        )
+        # Use google_search tool (dict format for google.generativeai SDK)
+        tools = [{'google_search': {}}]
+        response = model.generate_content(prompt, tools=tools)
         
         if response.text:
             return response.text.strip()
