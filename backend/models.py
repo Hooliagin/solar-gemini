@@ -29,6 +29,9 @@ class Interest(SQLModel, table=True):
 class UserSettings(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     user_id: str = Field(unique=True, index=True)  # Supabase Auth User ID
+    # User profile
+    name: Optional[str] = Field(default=None)
+    age: Optional[int] = Field(default=None)
     # Weather settings
     weather_enabled: bool = Field(default=True)
     weather_city: str = Field(default="Berlin")

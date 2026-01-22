@@ -124,7 +124,7 @@ from telegram.ext import ConversationHandler, CallbackQueryHandler
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
 # States
-CITY, VOICE, NEWS, INTERESTS, CALENDAR = range(5)
+NAME, AGE, CITY, VOICE, NEWS, INTERESTS = range(6)
 
 async def start_onboarding(update: Update, context):
     """Entry point for the conversation."""
@@ -151,8 +151,59 @@ async def start_onboarding(update: Update, context):
     await update.message.reply_text(
         "👋 **Willkommen beim Daily Voice Manager!** ☀️\n\n"
         "Ich bin dein persönlicher KI-Assistent. Lass uns kurz alles einrichten, damit dein Morgen-Briefing perfekt wird.\n\n"
-        "1️⃣ **Wo wohnst du?** (Für Wetter & lokale News)\n"
-        "Bitte gib deine Stadt ein (z.B. *Berlin*):",
+        "1️⃣ **Wie heißt du?**\n"
+        "Bitte gib deinen Namen ein:",
+        parse_mode='Markdown'
+    )
+    return NAME
+
+async def name_state(update: Update, context):
+    """Save name and ask for age."""
+    name = update.message.text
+    chat_id = str(update.effective_chat.id)
+    
+    session = next(get_session())
+    stmt = select(UserSettings).where(UserSettings.telegram_chat_id == chat_id)
+    user = session.exec(stmt).first()
+    if user:
+        user.name = name
+        session.add(user)
+        session.commit()
+    session.close()
+    
+    await update.message.reply_text(
+        f"✅ Hallo **{name}**!\n\n"
+        "2️⃣ **Wie alt bist du?**\n"
+        "Bitte gib dein Alter ein:",
+        parse_mode='Markdown'
+    )
+    return AGE
+
+async def age_state(update: Update, context):
+    """Save age and ask for city."""
+    try:
+        age = int(update.message.text)
+        if age < 1 or age > 120:
+            raise ValueError()
+    except ValueError:
+        await update.message.reply_text("❌ Bitte gib eine gültige Zahl zwischen 1 und 120 ein:")
+        return AGE
+    
+    chat_id = str(update.effective_chat.id)
+    
+    session = next(get_session())
+    stmt = select(UserSettings).where(UserSettings.telegram_chat_id == chat_id)
+    user = session.exec(stmt).first()
+    if user:
+        user.age = age
+        session.add(user)
+        session.commit()
+    session.close()
+    
+    await update.message.reply_text(
+        f"✅ Dankeschön!\n\n"
+        "3️⃣ **Wo wohnst du?** (Für Wetter & lokale News)\n"
+        "Bitte gib deine Stadt ein (z.B. *Hamburg*):",
         parse_mode='Markdown'
     )
     return CITY
@@ -183,7 +234,7 @@ async def city_state(update: Update, context):
     
     await update.message.reply_text(
         f"✅ Stadt **{city}** gespeichert.\n\n"
-        "2️⃣ **Welche Stimme soll ich nutzen?**",
+        "4️⃣ **Welche Stimme soll ich nutzen?**",
         reply_markup=reply_markup,
         parse_mode='Markdown'
     )
@@ -234,7 +285,7 @@ async def show_news_keyboard(message, selection):
     reply_markup = InlineKeyboardMarkup(keyboard)
     
     text = (
-        "3️⃣ **Welche News interessieren dich?**\n"
+        "5️⃣ **Welche News interessieren dich?**\n"
         "Klicke zum An/Abwählen. Wenn fertig, klicke 'Weiter'."
     )
     
@@ -272,7 +323,7 @@ async def news_state(update: Update, context):
         session.close()
         
         await query.message.reply_text(
-            "4️⃣ **Hast du spezielle Interessen?**\n\n"
+            "6️⃣ **Hast du spezielle Interessen?**\n\n"
             "Schreibe mir Themen, die dich interessieren, getrennt durch Kommas.\n"
             "Beispiel: _Künstliche Intelligenz, FC Bayern, Vegan Kochen_\n\n"
             "(Schreibe 'keine', um zu überspringen)",
@@ -451,6 +502,8 @@ async def telegram_webhook(request: Request, background_tasks: BackgroundTasks):
                 CommandHandler("setup", start_onboarding)
             ],
             states={
+                NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, name_state)],
+                AGE: [MessageHandler(filters.TEXT & ~filters.COMMAND, age_state)],
                 CITY: [MessageHandler(filters.TEXT & ~filters.COMMAND, city_state)],
                 VOICE: [CallbackQueryHandler(voice_state, pattern='^voice_')],
                 NEWS: [CallbackQueryHandler(news_state, pattern='^(toggle_|news_done)')],
