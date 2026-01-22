@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Cloud, MapPin, Save, Settings as SettingsIcon } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { API_BASE_URL } from '../config';
@@ -12,7 +12,6 @@ interface UserSettings {
 }
 
 export default function SettingsPanel() {
-    const [settings, setSettings] = useState<UserSettings | null>(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [city, setCity] = useState('');
