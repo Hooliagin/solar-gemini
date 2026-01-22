@@ -1,5 +1,6 @@
 """
 News service using the NEW google-genai SDK with Google Search Grounding.
+Supports predefined categories + custom user interests.
 """
 from google import genai
 from google.genai import types
@@ -11,17 +12,83 @@ logger = logging.getLogger(__name__)
 # Initialize client with API key
 client = genai.Client(api_key=settings.GOOGLE_API_KEY)
 
+# Predefined news categories
+PREDEFINED_CATEGORIES = {
+    'news_politics': {
+        'name': 'Politik',
+        'prompt': 'aktuelle politische Nachrichten aus Deutschland und international'
+    },
+    'news_local': {
+        'name': 'Lokale News',
+        'prompt': 'lokale Nachrichten und Ereignisse aus {city}'  # city will be replaced
+    },
+    'news_economy': {
+        'name': 'Wirtschaft',
+        'prompt': 'Wirtschaftsnachrichten, DAX, Aktienmärkte und Unternehmensnews'
+    },
+    'news_tech': {
+        'name': 'Technologie',
+        'prompt': 'Technologie-News, KI, Startups und digitale Innovationen'
+    },
+    'news_sports': {
+        'name': 'Sport',
+        'prompt': 'Sportnachrichten, Fußball Bundesliga, internationale Wettkämpfe'
+    }
+}
+
+
+def fetch_category_news(category_key: str, city: str = None) -> str:
+    """
+    Fetches news for a predefined category.
+    """
+    if category_key not in PREDEFINED_CATEGORIES:
+        return ""
+    
+    category = PREDEFINED_CATEGORIES[category_key]
+    topic = category['prompt']
+    
+    # Replace city placeholder for local news
+    if category_key == 'news_local' and city:
+        topic = topic.format(city=city)
+    elif category_key == 'news_local':
+        topic = topic.format(city="Deutschland")
+    
+    try:
+        grounding_tool = types.Tool(google_search=types.GoogleSearch())
+        config = types.GenerateContentConfig(tools=[grounding_tool])
+        
+        prompt = (
+            f"Suche nach den neuesten Entwicklungen zu: {topic}\n\n"
+            f"Fokus auf die letzten 24 Stunden.\n"
+            f"Erstelle eine Zusammenfassung mit 3-4 Sätzen im Briefing-Stil. "
+            f"Nenne konkrete Ereignisse, Namen und Fakten."
+        )
+        
+        response = client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=prompt,
+            config=config
+        )
+        
+        if response.text:
+            return f"**{category['name']}:**\n{response.text.strip()}\n"
+        else:
+            return f"**{category['name']}:**\nKeine Updates verfügbar.\n"
+            
+    except Exception as e:
+        logger.error(f"Category news fetch failed for '{category_key}': {e}")
+        return f"**{category['name']}:**\nFehler beim Abrufen.\n"
+
+
 def fetch_detailed_news_per_topic(topics: list[str]) -> str:
     """
-    Performs separate news searches for EACH topic using Google Search Grounding.
-    Uses the new google-genai SDK for live web search.
+    Performs separate news searches for EACH custom user topic using Google Search Grounding.
     """
     if not topics or len(topics) == 0:
-        return "Keine News-Topics konfiguriert."
+        return ""
     
     results = []
     
-    # Google Search grounding tool
     grounding_tool = types.Tool(google_search=types.GoogleSearch())
     config = types.GenerateContentConfig(tools=[grounding_tool])
     
@@ -29,10 +96,8 @@ def fetch_detailed_news_per_topic(topics: list[str]) -> str:
         try:
             prompt = (
                 f"Suche nach den neuesten Entwicklungen und News zu '{topic}' der letzten 24 Stunden. "
-                f"Fokus auf:\n"
-                f"- Was ist NEU passiert seit gestern?\n"
-                f"- Wichtige Ereignisse, Ankündigungen oder Durchbrüche\n\n"
-                f"Erstelle eine kompakte Zusammenfassung (2-3 Sätze) im Briefing-Stil."
+                f"Was ist NEU passiert? Wichtige Ereignisse oder Durchbrüche?\n\n"
+                f"Erstelle eine Zusammenfassung mit 3-4 Sätzen im Briefing-Stil."
             )
             
             response = client.models.generate_content(
@@ -53,41 +118,38 @@ def fetch_detailed_news_per_topic(topics: list[str]) -> str:
     return "\n".join(results)
 
 
-def fetch_general_news_briefing() -> str:
+def fetch_all_news(user_settings, custom_topics: list[str] = None) -> str:
     """
-    Generates a general news briefing using Google Search Grounding.
+    Fetches all enabled news categories + custom topics.
+    Returns combined news string.
     """
-    try:
-        grounding_tool = types.Tool(google_search=types.GoogleSearch())
-        config = types.GenerateContentConfig(tools=[grounding_tool])
-        
-        prompt = (
-            "Erstelle ein 3-Minuten-News-Briefing für heute mit folgenden Bereichen:\n\n"
-            "1. **Politik** (Deutschland/International): Top 2 wichtigste Entwicklungen seit gestern\n"
-            "2. **Wirtschaft**: DAX-Entwicklung + 1 relevante Wirtschaftsnachricht\n"
-            "3. **Technologie/Wissenschaft**: 1 interessanter Durchbruch oder Trend\n\n"
-            "Stil: Kompakt, sachlich, für gebildete Hörer. Keine Sensationen, nur Relevantes.\n"
-            "Fokus: Ereignisse der letzten 24 Stunden."
-        )
-        
-        response = client.models.generate_content(
-            model="gemini-2.0-flash",
-            contents=prompt,
-            config=config
-        )
-        
-        if response.text:
-            return response.text.strip()
-        else:
-            return "Allgemeine News konnten nicht abgerufen werden."
-            
-    except Exception as e:
-        logger.error(f"General news fetch failed: {e}")
-        return "Fehler beim Abrufen allgemeiner News."
+    all_news = []
+    city = user_settings.weather_city if user_settings else None
+    
+    # Fetch predefined categories if enabled
+    if user_settings:
+        if user_settings.news_politics:
+            all_news.append(fetch_category_news('news_politics'))
+        if user_settings.news_local:
+            all_news.append(fetch_category_news('news_local', city))
+        if user_settings.news_economy:
+            all_news.append(fetch_category_news('news_economy'))
+        if user_settings.news_tech:
+            all_news.append(fetch_category_news('news_tech'))
+        if user_settings.news_sports:
+            all_news.append(fetch_category_news('news_sports'))
+    
+    # Fetch custom user interests
+    if custom_topics:
+        custom_news = fetch_detailed_news_per_topic(custom_topics)
+        if custom_news:
+            all_news.append(custom_news)
+    
+    return "\n".join(filter(None, all_news)) or "Keine News-Kategorien aktiviert."
 
 
 # Legacy function for backward compatibility
 def fetch_ai_news_summary(topics: list[str] = None):
-    """DEPRECATED: Use fetch_detailed_news_per_topic instead."""
-    logger.warning("fetch_ai_news_summary is deprecated, use fetch_detailed_news_per_topic")
+    """DEPRECATED: Use fetch_all_news instead."""
+    logger.warning("fetch_ai_news_summary is deprecated")
     return fetch_detailed_news_per_topic(topics if topics else ["AI", "Tech"])

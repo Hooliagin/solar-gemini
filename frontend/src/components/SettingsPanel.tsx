@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Cloud, MapPin, Save, Settings as SettingsIcon, Volume2, Calendar, Link, Unlink } from 'lucide-react';
+import { Cloud, MapPin, Save, Settings as SettingsIcon, Volume2, Calendar, Link, Unlink, Newspaper } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { API_BASE_URL } from '../config';
 
@@ -13,6 +13,15 @@ const VOICES = [
     { id: 'shimmer', name: 'Shimmer', description: 'Clear, professional' },
 ];
 
+// Predefined news categories
+const NEWS_CATEGORIES = [
+    { key: 'news_politics', name: 'Politik', icon: '🏛️', description: 'Deutsche & internationale Politik' },
+    { key: 'news_local', name: 'Lokal', icon: '📍', description: 'News aus deiner Stadt' },
+    { key: 'news_economy', name: 'Wirtschaft', icon: '📈', description: 'DAX, Märkte, Unternehmen' },
+    { key: 'news_tech', name: 'Technologie', icon: '💻', description: 'Tech, KI, Startups' },
+    { key: 'news_sports', name: 'Sport', icon: '⚽', description: 'Bundesliga, Wettkämpfe' },
+];
+
 export default function SettingsPanel() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -20,6 +29,14 @@ export default function SettingsPanel() {
     const [weatherEnabled, setWeatherEnabled] = useState(true);
     const [voiceId, setVoiceId] = useState('alloy');
     const [calendarConnected, setCalendarConnected] = useState(false);
+    // News category toggles
+    const [newsCategories, setNewsCategories] = useState({
+        news_politics: true,
+        news_local: true,
+        news_economy: false,
+        news_tech: false,
+        news_sports: false,
+    });
 
     useEffect(() => {
         fetchSettings();
@@ -43,6 +60,14 @@ export default function SettingsPanel() {
                 setCity(data.weather_city);
                 setWeatherEnabled(data.weather_enabled);
                 setVoiceId(data.voice_id || 'alloy');
+                // Load news category settings
+                setNewsCategories({
+                    news_politics: data.news_politics ?? true,
+                    news_local: data.news_local ?? true,
+                    news_economy: data.news_economy ?? false,
+                    news_tech: data.news_tech ?? false,
+                    news_sports: data.news_sports ?? false,
+                });
             }
         } catch (error) {
             console.error('Failed to fetch settings', error);
@@ -76,6 +101,13 @@ export default function SettingsPanel() {
         }
     };
 
+    const toggleNewsCategory = (key: string) => {
+        setNewsCategories(prev => ({
+            ...prev,
+            [key]: !prev[key as keyof typeof prev]
+        }));
+    };
+
     const saveSettings = async () => {
         setSaving(true);
         try {
@@ -89,7 +121,8 @@ export default function SettingsPanel() {
                 body: JSON.stringify({
                     weather_enabled: weatherEnabled,
                     weather_city: city,
-                    voice_id: voiceId
+                    voice_id: voiceId,
+                    ...newsCategories
                 })
             });
             if (res.ok) {
@@ -172,6 +205,36 @@ export default function SettingsPanel() {
                             <input type="text" value={city} onChange={(e) => setCity(e.target.value)} placeholder="City (e.g. Berlin)" className="input-field flex-1 text-sm" />
                         </div>
                     )}
+                </div>
+
+                {/* News Categories */}
+                <div className="space-y-3">
+                    <div className="flex items-center gap-3">
+                        <Newspaper className="w-5 h-5 text-orange-400" />
+                        <span className="text-gray-300">News Kategorien</span>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 ml-8">
+                        {NEWS_CATEGORIES.map((cat) => (
+                            <button
+                                key={cat.key}
+                                onClick={() => toggleNewsCategory(cat.key)}
+                                className={`p-3 rounded-lg border-2 text-left transition-all ${newsCategories[cat.key as keyof typeof newsCategories]
+                                        ? 'border-orange-500 bg-orange-500/20'
+                                        : 'border-white/10 hover:border-white/30 bg-white/5'
+                                    }`}
+                            >
+                                <div className="flex items-center gap-2">
+                                    <span className="text-lg">{cat.icon}</span>
+                                    <span className={`text-sm font-medium ${newsCategories[cat.key as keyof typeof newsCategories] ? 'text-orange-300' : 'text-gray-300'
+                                        }`}>{cat.name}</span>
+                                </div>
+                                <div className="text-xs text-gray-500 mt-1">{cat.description}</div>
+                            </button>
+                        ))}
+                    </div>
+                    <p className="text-xs text-gray-500 ml-8">
+                        💡 Lokale News verwenden deine Wetter-Stadt: <strong>{city || 'nicht gesetzt'}</strong>
+                    </p>
                 </div>
 
                 {/* Voice Selection */}

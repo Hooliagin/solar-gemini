@@ -49,27 +49,22 @@ def generate_briefing_content():
         print("DEBUG: Getting DB Session...", flush=True)
         session = next(get_session())
         
-        # Fetch interests
+        # Get user settings first (needed for news categories)
+        user_settings = session.query(UserSettings).first()
+        
+        # Fetch custom interests
         print("DEBUG: Querying Interests...", flush=True)
         from models import Interest
         interests = session.query(Interest).all()
         topic_list = [i.topic for i in interests]
-        print(f"DEBUG: Found topics: {topic_list}", flush=True)
+        print(f"DEBUG: Found custom topics: {topic_list}", flush=True)
         
-        # Fetch News - NEW: Separate search for each topic
-        print("DEBUG: Fetching News (per-topic)...", flush=True)
-        from services.news_service import fetch_detailed_news_per_topic, fetch_general_news_briefing
+        # Fetch ALL news (predefined categories + custom topics)
+        print("DEBUG: Fetching News (categories + custom)...", flush=True)
+        from services.news_service import fetch_all_news
         
-        topic_news = fetch_detailed_news_per_topic(topic_list) if topic_list else "Keine Topics konfiguriert."
-        print(f"DEBUG: Topic News Fetched ({len(topic_news)} chars).", flush=True)
-        
-        # Optional: General news if enabled
-        general_news = ""
-        user_settings = session.query(UserSettings).first()
-        if user_settings and user_settings.general_news_enabled:
-            print("DEBUG: Fetching General News...", flush=True)
-            general_news = fetch_general_news_briefing()
-            print(f"DEBUG: General News Fetched ({len(general_news)} chars).", flush=True)
+        all_news = fetch_all_news(user_settings, topic_list)
+        print(f"DEBUG: All News Fetched ({len(all_news)} chars).", flush=True)
         
         # 3. Fetch yesterday's diary (Last entry from DB)
         print("DEBUG: Fetching last diary entry...", flush=True)
@@ -105,7 +100,7 @@ def generate_briefing_content():
         
         prompt = f"""
         You are a friendly, professional personal assistant. It is morning.
-        Create a morning briefing script for me.
+        Create a DETAILED morning briefing script for me.
         
         **IMPORTANT: {language_instruction}**
         
@@ -120,19 +115,26 @@ def generate_briefing_content():
         [WEATHER]
         {weather_text if weather_text else "Weather data not available."}
         
-        [YOUR TOPICS - NEWS]
-        {topic_news}
-        """ + (f"\n[GENERAL NEWS BRIEFING]\n{general_news}" if general_news else "") + """
+        [NEWS & TOPICS]
+        {all_news}
         
         Structure the briefing as follows:
-        1. Good morning & quick reflection on yesterday's thoughts.
-        2. Overview of today's schedule.
-        3. Weather update with clothing recommendation.
-        4. News updates on your topics (briefly summarize each).
-        """ + ("5. General news overview.\n        6. Motivational closing." if general_news else "5. Motivational closing.") + """
+        1. Warm, personal good morning greeting.
+        2. Thoughtful reflection on yesterday's diary entry - pick up on emotions or plans mentioned, give supportive advice.
+        3. Detailed overview of today's schedule - mention each event with times and any preparation tips.
+        4. Weather update with specific clothing and planning recommendations.
+        5. NEWS SECTION (THIS IS IMPORTANT - spend time on this):
+           - Go through EACH news topic in detail
+           - For each topic, provide 2-3 sentences of context and analysis
+           - Make it informative and engaging
+        6. Motivational closing with a positive thought for the day.
         
-        Keep it conversational, warm, and concise (under 3 minutes spoken).
-        Do not use markdown formatting like **bold** in the script, as it will be read by TTS. Write it as plain spoken text.
+        IMPORTANT:
+        - Make the briefing DETAILED and SUBSTANTIAL (aim for 5-7 minutes spoken)
+        - The news section should be the longest part
+        - Be conversational and warm, like a personal assistant who knows me
+        - Do not use markdown formatting like **bold**, as it will be read by TTS
+        - Write it as natural spoken text
         """
         
         print("DEBUG: Generating Content with Gemini...", flush=True)

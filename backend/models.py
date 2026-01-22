@@ -36,8 +36,12 @@ class UserSettings(SQLModel, table=True):
     google_access_token: Optional[str] = Field(default=None)
     google_refresh_token: Optional[str] = Field(default=None)
     google_token_expiry: Optional[datetime] = Field(default=None)
-    # News settings
-    general_news_enabled: bool = Field(default=False)
+    # News category toggles (predefined)
+    news_politics: bool = Field(default=True)
+    news_local: bool = Field(default=True)  # Uses weather_city for location
+    news_economy: bool = Field(default=False)
+    news_tech: bool = Field(default=False)
+    news_sports: bool = Field(default=False)
     # Telegram settings
     telegram_chat_id: Optional[str] = Field(default=None)
     telegram_enabled: bool = Field(default=False)
