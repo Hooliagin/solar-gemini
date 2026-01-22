@@ -3,14 +3,6 @@ import { Cloud, MapPin, Save, Settings as SettingsIcon } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { API_BASE_URL } from '../config';
 
-interface UserSettings {
-    id: number;
-    weather_enabled: boolean;
-    weather_city: string;
-    voice_id: string;
-    language: string;
-}
-
 export default function SettingsPanel() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -29,7 +21,6 @@ export default function SettingsPanel() {
             });
             if (res.ok) {
                 const data = await res.json();
-                setSettings(data);
                 setCity(data.weather_city);
                 setWeatherEnabled(data.weather_enabled);
             }
@@ -56,8 +47,7 @@ export default function SettingsPanel() {
                 })
             });
             if (res.ok) {
-                const data = await res.json();
-                setSettings(data);
+                // Settings saved successfully
             }
         } catch (error) {
             console.error('Failed to save settings', error);
