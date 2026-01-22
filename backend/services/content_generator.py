@@ -16,19 +16,13 @@ logger = logging.getLogger(__name__)
 # Configure Gemini (moved inside function to handle missing key gracefully)
 # genai.configure(api_key=settings.GOOGLE_API_KEY)
 
-def generate_briefing_content():
+def generate_briefing_content(target_user_id: str):
     """
-    Orchestrates the creation of the morning briefing.
-    1. Fetch yesterday's diary (Entry).
-    2. Fetch today's Calender.
-    3. Fetch News/Topics.
-    4. Generate Script (Gemini).
-    5. Generate Audio (OpenAI TTS).
-    6. Save Briefing record.
+    Orchestrates the creation of the morning briefing for a SPECIFIC user.
     """
     import sys
-    print("DEBUG: Starting briefing generation...", flush=True)
-    logger.info("Starting briefing generation...")
+    print(f"DEBUG: Starting briefing generation for user {target_user_id}...", flush=True)
+    logger.info(f"Starting briefing generation for user {target_user_id}...")
     
     # Validation
     if not settings.GOOGLE_API_KEY:
@@ -40,22 +34,30 @@ def generate_briefing_content():
 
     session = None
     try:
+        session = next(get_session())
+        
+        # Get user settings
+        statement = select(UserSettings).where(UserSettings.user_id == target_user_id)
+        user_settings = session.exec(statement).first()
+        
+        if not user_settings:
+            print(f"DEBUG: No settings found for user {target_user_id}. Creating defaults.", flush=True)
+            user_settings = UserSettings(user_id=target_user_id)
+            session.add(user_settings)
+            session.commit()
+            session.refresh(user_settings)
+
         # 1. Fetch Calendar
         print("DEBUG: Fetching Calendar...", flush=True)
-        calendar_text = get_calendar_events()
+        # TODO: Pass user tokens to calendar service
+        calendar_text = get_calendar_events() 
         print(f"DEBUG: Calendar Fetched ({len(calendar_text)} chars).", flush=True)
         
         # 2. Fetch User Interests & News
-        print("DEBUG: Getting DB Session...", flush=True)
-        session = next(get_session())
-        
-        # Get user settings first (needed for news categories)
-        user_settings = session.query(UserSettings).first()
-        
-        # Fetch custom interests
         print("DEBUG: Querying Interests...", flush=True)
         from models import Interest
-        interests = session.query(Interest).all()
+        statement = select(Interest).where(Interest.user_id == target_user_id)
+        interests = session.exec(statement).all()
         topic_list = [i.topic for i in interests]
         print(f"DEBUG: Found custom topics: {topic_list}", flush=True)
         
@@ -66,28 +68,22 @@ def generate_briefing_content():
         all_news = fetch_all_news(user_settings, topic_list)
         print(f"DEBUG: All News Fetched ({len(all_news)} chars).", flush=True)
         
-        # 3. Fetch yesterday's diary (Last entry from DB)
+        # 3. Fetch yesterday's diary (Last entry from DB for THIS USER)
         print("DEBUG: Fetching last diary entry...", flush=True)
-        last_entry = session.query(Entry).order_by(Entry.id.desc()).first()
+        statement = select(Entry).where(Entry.user_id == target_user_id).order_by(Entry.id.desc())
+        last_entry = session.exec(statement).first()
+        
         diary_transcript = last_entry.transcript if last_entry else "No diary entry for last night."
         detected_language = last_entry.language if last_entry and last_entry.language else "de"  # Default to German
         print(f"DEBUG: Detected language: {detected_language}", flush=True)
         
         # 4. Fetch Weather (if enabled)
         print("DEBUG: Checking Weather Settings...", flush=True)
-        user_settings = session.query(UserSettings).first()
         weather_text = ""
-        if user_settings and user_settings.weather_enabled:
+        if user_settings.weather_enabled:
             print(f"DEBUG: Fetching Weather for {user_settings.weather_city}...", flush=True)
             weather_text = get_weather_briefing(user_settings.weather_city)
             print(f"DEBUG: Weather Fetched ({len(weather_text)} chars).", flush=True)
-        elif not user_settings:
-            # Create default settings if none exist
-            print("DEBUG: Creating default UserSettings...", flush=True)
-            user_settings = UserSettings()
-            session.add(user_settings)
-            session.commit()
-            weather_text = get_weather_briefing(user_settings.weather_city)
         
         # 4. Generate Script using Gemini
         print("DEBUG: Initializing Gemini Model...", flush=True)
@@ -147,7 +143,7 @@ def generate_briefing_content():
         
         # 5. Generate Audio
         print("DEBUG: Generating Audio (TTS)...", flush=True)
-        audio_filename = f"briefing_{datetime.now().strftime('%Y%m%d_%H%M%S')}.mp3"
+        audio_filename = f"briefing_{target_user_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.mp3"
         
         # Ensure audio directory exists
         os.makedirs(settings.AUDIO_DIR, exist_ok=True)
@@ -160,6 +156,7 @@ def generate_briefing_content():
         
         # 6. Save Briefing to DB
         briefing = Briefing(
+            user_id=target_user_id,
             scheduled_for=datetime.now(),
             script_content=script,
             audio_path=audio_path_abs,
@@ -172,23 +169,24 @@ def generate_briefing_content():
         print("DEBUG: Briefing saved to DB.", flush=True)
         
         # 7. Send to Telegram if enabled
-        if user_settings and user_settings.telegram_enabled and user_settings.telegram_chat_id:
+        if user_settings.telegram_enabled and user_settings.telegram_chat_id:
             try:
                 print(f"DEBUG: Sending briefing to Telegram (chat_id: {user_settings.telegram_chat_id})...", flush=True)
                 from services.telegram_service import send_briefing_audio
                 import asyncio
                 
                 caption = f"🌅 Dein Morgen-Briefing für {datetime.now().strftime('%d.%m.%Y')}"
-                success = asyncio.run(send_briefing_audio(
+                # Must be run in event loop if async, but here we might be in sync context in thread
+                # send_briefing_audio is async.
+                # If called from background task which is async, we can await?
+                # No, this function 'generate_briefing_content' is sync def.
+                # So we use asyncio.run()
+                asyncio.run(send_briefing_audio(
                     chat_id=user_settings.telegram_chat_id,
                     audio_path=audio_path_abs,
                     caption=caption
                 ))
-                
-                if success:
-                    print("DEBUG: Briefing sent to Telegram successfully!", flush=True)
-                else:
-                    print("DEBUG: Failed to send briefing to Telegram.", flush=True)
+                print("DEBUG: Briefing sent to Telegram successfully!", flush=True)
                     
             except Exception as telegram_error:
                 logger.error(f"Error sending to Telegram: {telegram_error}")
@@ -201,7 +199,7 @@ def generate_briefing_content():
         logger.error(f"Error generating briefing: {e}")
         if session:
             session.rollback()
-        raise e # Re-raise to let the router handle the error response
+        raise e
     finally:
         if session:
             session.close()

@@ -12,7 +12,28 @@ def generate_morning_briefing_job():
     """
     logger.info("Starting morning briefing generation job...")
     from services.content_generator import generate_briefing_content
-    generate_briefing_content()
+    from database import get_session
+    from models import UserSettings
+    from sqlmodel import select
+    
+    session = next(get_session())
+    try:
+        # Get all users with enabled settings (or just all users)
+        # For now, let's just get all users who successfully set up the app.
+        users = session.exec(select(UserSettings)).all()
+        
+        logger.info(f"Found {len(users)} users for briefing generation.")
+        
+        for user in users:
+            try:
+                generate_briefing_content(user.user_id)
+            except Exception as e:
+                logger.error(f"Failed to generate briefing for user {user.user_id}: {e}")
+                
+    except Exception as e:
+        logger.error(f"Scheduler job failed: {e}")
+    finally:
+        session.close()
 
 def start_scheduler():
     scheduler = BackgroundScheduler()

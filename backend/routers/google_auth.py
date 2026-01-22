@@ -34,36 +34,45 @@ def get_flow():
     flow.redirect_uri = REDIRECT_URI
     return flow
 
+from auth import get_current_user_id
+from sqlmodel import select
+
 @router.get("/google")
-def google_auth():
+def google_auth(user_id: str = Depends(get_current_user_id)):
     """Initiate Google OAuth flow - redirects user to Google login."""
     flow = get_flow()
+    # Pass user_id as state to identify user in callback
     authorization_url, state = flow.authorization_url(
         access_type='offline',
         include_granted_scopes='true',
-        prompt='consent'  # Force consent to get refresh token
+        prompt='consent',  # Force consent to get refresh token
+        state=user_id 
     )
     return RedirectResponse(authorization_url)
 
 @router.get("/google/callback")
-def google_callback(code: str = None, error: str = None, session: Session = Depends(get_session)):
+def google_callback(state: str, code: str = None, error: str = None, session: Session = Depends(get_session)):
     """Handle OAuth callback from Google."""
+    # state contains the user_id we passed in /google
     if error:
-        # Redirect to frontend with error
         return RedirectResponse(f"https://daily-manager-frontend.onrender.com/?calendar_error={error}")
     
     if not code:
         return RedirectResponse("https://daily-manager-frontend.onrender.com/?calendar_error=no_code")
+    
+    user_id = state
     
     try:
         flow = get_flow()
         flow.fetch_token(code=code)
         credentials = flow.credentials
         
-        # Get or create user settings
-        user_settings = session.query(UserSettings).first()
+        # Get or create user settings for this SPECIFIC user
+        statement = select(UserSettings).where(UserSettings.user_id == user_id)
+        user_settings = session.exec(statement).first()
+        
         if not user_settings:
-            user_settings = UserSettings()
+            user_settings = UserSettings(user_id=user_id)
             session.add(user_settings)
         
         # Store tokens
@@ -72,6 +81,7 @@ def google_callback(code: str = None, error: str = None, session: Session = Depe
         user_settings.google_token_expiry = credentials.expiry
         user_settings.updated_at = datetime.utcnow()
         
+        session.add(user_settings)
         session.commit()
         
         # Redirect to frontend with success
@@ -82,9 +92,11 @@ def google_callback(code: str = None, error: str = None, session: Session = Depe
         return RedirectResponse(f"https://daily-manager-frontend.onrender.com/?calendar_error=auth_failed")
 
 @router.get("/google/status")
-def google_status(session: Session = Depends(get_session)):
+def google_status(session: Session = Depends(get_session), user_id: str = Depends(get_current_user_id)):
     """Check if Google Calendar is connected."""
-    user_settings = session.query(UserSettings).first()
+    statement = select(UserSettings).where(UserSettings.user_id == user_id)
+    user_settings = session.exec(statement).first()
+    
     if not user_settings or not user_settings.google_access_token:
         return {"connected": False}
     
@@ -96,12 +108,15 @@ def google_status(session: Session = Depends(get_session)):
     return {"connected": True, "expired": False}
 
 @router.post("/google/disconnect")
-def google_disconnect(session: Session = Depends(get_session)):
+def google_disconnect(session: Session = Depends(get_session), user_id: str = Depends(get_current_user_id)):
     """Disconnect Google Calendar."""
-    user_settings = session.query(UserSettings).first()
+    statement = select(UserSettings).where(UserSettings.user_id == user_id)
+    user_settings = session.exec(statement).first()
+    
     if user_settings:
         user_settings.google_access_token = None
         user_settings.google_refresh_token = None
         user_settings.google_token_expiry = None
+        session.add(user_settings)
         session.commit()
     return {"status": "disconnected"}

@@ -1,9 +1,12 @@
-from fastapi import APIRouter, Depends
-from sqlmodel import Session
+from fastapi import APIRouter, Depends, HTTPException
+from sqlmodel import Session, select
 from database import get_session
 from models import UserSettings
 from pydantic import BaseModel
 from typing import Optional
+from auth import get_current_user_id
+import random
+import string
 
 router = APIRouter(prefix="/settings", tags=["settings"])
 
@@ -12,35 +15,62 @@ class UserSettingsUpdate(BaseModel):
     weather_city: Optional[str] = None
     voice_id: Optional[str] = None
     language: Optional[str] = None
+    news_politics: Optional[bool] = None
+    news_local: Optional[bool] = None
+    news_economy: Optional[bool] = None
+    news_tech: Optional[bool] = None
+    news_sports: Optional[bool] = None
 
 @router.get("/")
-def get_settings(session: Session = Depends(get_session)):
-    """Get current user settings (or create defaults)."""
-    settings = session.query(UserSettings).first()
+def get_settings(session: Session = Depends(get_session), user_id: str = Depends(get_current_user_id)):
+    """Get settings for the current user."""
+    statement = select(UserSettings).where(UserSettings.user_id == user_id)
+    settings = session.exec(statement).first()
+    
     if not settings:
-        settings = UserSettings()
+        # Create default settings for new user
+        settings = UserSettings(user_id=user_id)
         session.add(settings)
         session.commit()
         session.refresh(settings)
+    
     return settings
 
 @router.put("/")
-def update_settings(updates: UserSettingsUpdate, session: Session = Depends(get_session)):
+def update_settings(updates: UserSettingsUpdate, session: Session = Depends(get_session), user_id: str = Depends(get_current_user_id)):
     """Update user settings."""
-    settings = session.query(UserSettings).first()
+    statement = select(UserSettings).where(UserSettings.user_id == user_id)
+    settings = session.exec(statement).first()
+    
     if not settings:
-        settings = UserSettings()
+        settings = UserSettings(user_id=user_id)
         session.add(settings)
     
-    if updates.weather_enabled is not None:
-        settings.weather_enabled = updates.weather_enabled
-    if updates.weather_city is not None:
-        settings.weather_city = updates.weather_city
-    if updates.voice_id is not None:
-        settings.voice_id = updates.voice_id
-    if updates.language is not None:
-        settings.language = updates.language
-    
+    # Update fields dynamically
+    updates_dict = updates.model_dump(exclude_unset=True)
+    for key, value in updates_dict.items():
+        if hasattr(settings, key):
+            setattr(settings, key, value)
+            
+    session.add(settings)
     session.commit()
     session.refresh(settings)
     return settings
+
+@router.post("/telegram/link-code")
+def generate_telegram_link_code(session: Session = Depends(get_session), user_id: str = Depends(get_current_user_id)):
+    """Generate a short code to link Telegram account."""
+    statement = select(UserSettings).where(UserSettings.user_id == user_id)
+    settings = session.exec(statement).first()
+    
+    if not settings:
+        settings = UserSettings(user_id=user_id)
+        session.add(settings)
+    
+    # Generate 6-digit code
+    code = ''.join(random.choices(string.digits, k=6))
+    settings.telegram_link_token = code
+    session.add(settings)
+    session.commit()
+    
+    return {"code": code}

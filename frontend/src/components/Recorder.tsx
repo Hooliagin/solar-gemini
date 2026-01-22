@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { API_BASE_URL } from '../config';
+import { supabase } from '../lib/supabase';
 
 interface RecorderProps {
     onUploadComplete: () => void;
@@ -48,8 +49,12 @@ const Recorder: React.FC<RecorderProps> = ({ onUploadComplete }) => {
         formData.append('file', blob, 'recording.webm');
 
         try {
+            const token = (await supabase.auth.getSession()).data.session?.access_token;
+            if (!token) throw new Error("No session");
+
             const response = await fetch(`${API_BASE_URL}/entries/upload`, {
                 method: 'POST',
+                headers: { Authorization: `Bearer ${token}` },
                 body: formData,
             });
 

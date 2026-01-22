@@ -33,27 +33,50 @@ def get_application():
     
     return application
 
+
+from sqlalchemy import or_
+
 async def start_command(update: Update, context):
-    """Handle /start command - saves user's chat_id to database."""
+    """
+    Handle /start command.
+    Usage: /start <link_code>
+    Links Telegram chat_id to the user who generated the code.
+    """
+    args = context.args
     chat_id = str(update.effective_chat.id)
     
+    if not args:
+        await update.message.reply_text(
+            "👋 Hallo! Um diesen Bot zu nutzen, musst du ihn mit deinem Account verknüpfen.\n\n"
+            "Gehe in der Web-App auf 'Einstellungen' -> 'Telegram verbinden' und sende mir den Code:\n"
+            "Beispiel: `/start 123456`"
+        )
+        return
+
+    link_code = args[0]
+    
     try:
-        # Get or create user settings
         session = next(get_session())
-        user_settings = session.query(UserSettings).first()
+        # Find user settings with this link token
+        statement = select(UserSettings).where(UserSettings.telegram_link_token == link_code)
+        user_settings = session.exec(statement).first()
         
         if not user_settings:
-            user_settings = UserSettings()
-            session.add(user_settings)
-        
+            await update.message.reply_text("❌ Ungültiger oder abgelaufener Code. Bitte generiere einen neuen.")
+            session.close()
+            return
+            
+        # Link accounts
         user_settings.telegram_chat_id = chat_id
         user_settings.telegram_enabled = True
+        user_settings.telegram_link_token = None # Invalidate token after use
         user_settings.updated_at = datetime.utcnow()
+        session.add(user_settings)
         session.commit()
         session.close()
         
         await update.message.reply_text(
-            "✅ Verbunden! Du bekommst ab jetzt dein Morgen-Briefing hier.\n\n"
+            "✅ Erfolgreich verbunden! Du bekommst ab jetzt dein Morgen-Briefing hier.\n\n"
             "Befehle:\n"
             "/generate - Briefing sofort erstellen\n"
             "Sprachnachricht senden - Als Tagebuch-Eintrag speichern"
@@ -61,7 +84,7 @@ async def start_command(update: Update, context):
         
     except Exception as e:
         logger.error(f"Error in /start command: {e}")
-        await update.message.reply_text("❌ Fehler beim Verbinden. Bitte später erneut versuchen.")
+        await update.message.reply_text("❌ Fehler beim Verbinden.")
 
 
 
@@ -107,19 +130,32 @@ async def handle_voice_message(update: Update, context):
 from fastapi import BackgroundTasks
 from telegram import Bot
 
+from sqlmodel import select, Session
+
 async def run_generation_task(chat_id: str):
     """Background task for briefing generation."""
     try:
-        # Initialize a fresh bot instance for the background task
-        # We cannot use the bot from the request context as it will be closed
+        # Initialize a fresh bot instance
         bot = Bot(token=settings.TELEGRAM_BOT_TOKEN)
         
-        from services.content_generator import generate_briefing_content
-        # This function generates content AND sends it to Telegram via services/telegram_service.py
-        # which creates its own bot instance, so we don't need to pass the bot there.
-        # But we do need a bot here for the status messages.
+        # 1. Resolve user_id from chat_id
+        session = next(get_session())
+        statement = select(UserSettings).where(UserSettings.telegram_chat_id == str(chat_id))
+        user_settings = session.exec(statement).first()
         
-        await asyncio.to_thread(generate_briefing_content)
+        if not user_settings:
+            await bot.send_message(chat_id=chat_id, text="❌ Dein Account ist nicht verknüpft. Bitte nutze /start <code_aus_web_app>.")
+            session.close()
+            return
+            
+        user_id = user_settings.user_id
+        session.close()
+        
+        from services.content_generator import generate_briefing_content
+        
+        # 2. Generate content for this specific user
+        await asyncio.to_thread(generate_briefing_content, user_id)
+        
         await bot.send_message(chat_id=chat_id, text="✅ Briefing wurde erstellt!")
         
     except Exception as e:

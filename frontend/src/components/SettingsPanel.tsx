@@ -38,6 +38,10 @@ export default function SettingsPanel() {
         news_sports: false,
     });
 
+    // Telegram linking state
+    const [telegramConnected, setTelegramConnected] = useState(false);
+    const [linkCode, setLinkCode] = useState<string | null>(null);
+
     useEffect(() => {
         fetchSettings();
         checkCalendarStatus();
@@ -52,6 +56,8 @@ export default function SettingsPanel() {
     const fetchSettings = async () => {
         try {
             const token = (await supabase.auth.getSession()).data.session?.access_token;
+            if (!token) return;
+
             const res = await fetch(`${API_BASE_URL}/settings/`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
@@ -60,6 +66,8 @@ export default function SettingsPanel() {
                 setCity(data.weather_city);
                 setWeatherEnabled(data.weather_enabled);
                 setVoiceId(data.voice_id || 'alloy');
+                setTelegramConnected(data.telegram_enabled || false);
+
                 // Load news category settings
                 setNewsCategories({
                     news_politics: data.news_politics ?? true,
@@ -76,6 +84,25 @@ export default function SettingsPanel() {
         }
     };
 
+    const generateLinkCode = async () => {
+        try {
+            const token = (await supabase.auth.getSession()).data.session?.access_token;
+            if (!token) return;
+
+            const res = await fetch(`${API_BASE_URL}/settings/telegram/link-code`, {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setLinkCode(data.code);
+            }
+        } catch (error) {
+            console.error('Failed to generate link code', error);
+        }
+    };
+
+    // ... (rest of calendar/news functions unchanged) ...
     const checkCalendarStatus = async () => {
         try {
             const res = await fetch(`${API_BASE_URL}/auth/google/status`);
@@ -157,6 +184,59 @@ export default function SettingsPanel() {
             </h2>
 
             <div className="space-y-6">
+                {/* Telegram Connection - NEW */}
+                <div className="space-y-3 p-4 bg-blue-500/10 rounded-xl border border-blue-500/20">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-blue-500/20 rounded-lg text-blue-400">
+                                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .24z" /></svg>
+                            </div>
+                            <div>
+                                <h3 className="text-white font-medium">Telegram Bot</h3>
+                                <p className="text-xs text-gray-400">Erhalte dein Briefing direkt im Chat</p>
+                            </div>
+                        </div>
+                        {telegramConnected ? (
+                            <span className="text-xs px-2 py-1 bg-green-500/20 text-green-400 rounded-full flex items-center gap-1">
+                                <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" /> Connected
+                            </span>
+                        ) : (
+                            <span className="text-xs px-2 py-1 bg-white/10 text-gray-400 rounded-full">Not connected</span>
+                        )}
+                    </div>
+
+                    {!telegramConnected && (
+                        <div className="ml-11">
+                            {!linkCode ? (
+                                <button
+                                    onClick={generateLinkCode}
+                                    className="text-sm px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors flex items-center gap-2"
+                                >
+                                    <Link className="w-4 h-4" /> Code generieren
+                                </button>
+                            ) : (
+                                <div className="space-y-2 animate-in fade-in slide-in-from-top-2">
+                                    <p className="text-sm text-gray-300">Sende diesen Code an den Bot:</p>
+                                    <div className="flex items-center gap-3">
+                                        <code className="text-xl font-mono font-bold bg-black/30 px-4 py-2 rounded-lg tracking-wider text-blue-400 select-all">
+                                            /start {linkCode}
+                                        </code>
+                                        <a
+                                            href="https://t.me/SolarGeminiBot"
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="text-xs text-blue-400 hover:text-blue-300 underline"
+                                        >
+                                            Bot öffnen @SolarGeminiBot
+                                        </a>
+                                    </div>
+                                    <p className="text-xs text-yellow-500/80">Code ist nur kurzzeitig gültig.</p>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+
                 {/* Google Calendar */}
                 <div className="space-y-3">
                     <div className="flex items-center justify-between">
@@ -221,8 +301,8 @@ export default function SettingsPanel() {
                                     key={cat.key}
                                     onClick={() => toggleNewsCategory(cat.key)}
                                     className={`p-3 rounded-lg border-2 text-left transition-all relative ${isSelected
-                                            ? 'border-orange-500 bg-orange-500/30 ring-2 ring-orange-500/50 shadow-lg shadow-orange-500/20'
-                                            : 'border-white/10 hover:border-white/30 bg-white/5 opacity-60 hover:opacity-100'
+                                        ? 'border-orange-500 bg-orange-500/30 ring-2 ring-orange-500/50 shadow-lg shadow-orange-500/20'
+                                        : 'border-white/10 hover:border-white/30 bg-white/5 opacity-60 hover:opacity-100'
                                         }`}
                                 >
                                     {/* Checkmark badge */}

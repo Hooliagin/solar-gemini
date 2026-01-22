@@ -4,6 +4,7 @@ from sqlmodel import Field, SQLModel
 
 class Entry(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: str = Field(index=True)  # Supabase Auth User ID
     created_at: datetime = Field(default_factory=datetime.utcnow)
     audio_path: str
     transcript: Optional[str] = None
@@ -12,6 +13,7 @@ class Entry(SQLModel, table=True):
 
 class Briefing(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: str = Field(index=True)  # Supabase Auth User ID
     created_at: datetime = Field(default_factory=datetime.utcnow)
     scheduled_for: datetime
     script_content: str
@@ -20,11 +22,13 @@ class Briefing(SQLModel, table=True):
 
 class Interest(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: str = Field(index=True)  # Supabase Auth User ID
     topic: str
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 class UserSettings(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: str = Field(unique=True, index=True)  # Supabase Auth User ID
     # Weather settings
     weather_enabled: bool = Field(default=True)
     weather_city: str = Field(default="Berlin")
@@ -45,4 +49,5 @@ class UserSettings(SQLModel, table=True):
     # Telegram settings
     telegram_chat_id: Optional[str] = Field(default=None)
     telegram_enabled: bool = Field(default=False)
+    telegram_link_token: Optional[str] = Field(default=None, index=True) # Code to link via /start <code>
     updated_at: datetime = Field(default_factory=datetime.utcnow)
