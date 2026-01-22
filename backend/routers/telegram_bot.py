@@ -2,7 +2,7 @@
 Telegram Bot router - handles webhook and commands.
 """
 from fastapi import APIRouter, Request, HTTPException, Depends, BackgroundTasks
-from sqlmodel import Session
+from sqlmodel import Session, select
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters
 from database import get_session
