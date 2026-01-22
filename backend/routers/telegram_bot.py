@@ -77,7 +77,8 @@ async def generate_command(update: Update, context):
         
     except Exception as e:
         logger.error(f"Error generating briefing: {e}")
-        await update.message.reply_text(f"❌ Fehler: {str(e)}")
+        error_msg = str(e)[:200] if len(str(e)) > 200 else str(e)
+        await update.message.reply_text(f"❌ Fehler: {error_msg}")
 
 async def handle_voice_message(update: Update, context):
     """Handle voice messages - transcribe and save as diary entry."""
