@@ -1,39 +1,45 @@
-import google.generativeai as genai
+"""
+News service using the NEW google-genai SDK with Google Search Grounding.
+"""
+from google import genai
+from google.genai import types
 from config import settings
 import logging
-from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
 
-# Configure Gemini
-genai.configure(api_key=settings.GOOGLE_API_KEY)
+# Initialize client with API key
+client = genai.Client(api_key=settings.GOOGLE_API_KEY)
 
 def fetch_detailed_news_per_topic(topics: list[str]) -> str:
     """
-    Performs separate news searches for EACH topic with focus on last 24 hours.
-    Returns a structured summary with one section per topic.
+    Performs separate news searches for EACH topic using Google Search Grounding.
+    Uses the new google-genai SDK for live web search.
     """
     if not topics or len(topics) == 0:
         return "Keine News-Topics konfiguriert."
     
     results = []
-    model = genai.GenerativeModel('gemini-2.0-flash')
+    
+    # Google Search grounding tool
+    grounding_tool = types.Tool(google_search=types.GoogleSearch())
+    config = types.GenerateContentConfig(tools=[grounding_tool])
     
     for topic in topics:
         try:
             prompt = (
-                f"Suche nach den neuesten Entwicklungen zu '{topic}' der letzten 24 Stunden. "
+                f"Suche nach den neuesten Entwicklungen und News zu '{topic}' der letzten 24 Stunden. "
                 f"Fokus auf:\n"
                 f"- Was ist NEU passiert seit gestern?\n"
-                f"- Wichtige Ereignisse, Ankündigungen oder Durchbrüche\n"
-                f"- Qualitätsquellen bevorzugen (keine Clickbait)\n\n"
-                f"Erstelle eine kompakte Zusammenfassung (2-3 Sätze) im Briefing-Stil. "
-                f"Falls nichts Relevantes gefunden wurde, sage: 'Keine bedeutenden Updates zu {topic}.'"
+                f"- Wichtige Ereignisse, Ankündigungen oder Durchbrüche\n\n"
+                f"Erstelle eine kompakte Zusammenfassung (2-3 Sätze) im Briefing-Stil."
             )
             
-            # Use google_search tool (dict format for google.generativeai SDK)
-            tools = [{'google_search': {}}]
-            response = model.generate_content(prompt, tools=tools)
+            response = client.models.generate_content(
+                model="gemini-2.0-flash",
+                contents=prompt,
+                config=config
+            )
             
             if response.text:
                 results.append(f"**{topic}:**\n{response.text.strip()}\n")
@@ -49,11 +55,11 @@ def fetch_detailed_news_per_topic(topics: list[str]) -> str:
 
 def fetch_general_news_briefing() -> str:
     """
-    Optional: Generates a general news briefing covering politics, economy, and tech.
-    Called only if user has general_news_enabled = True.
+    Generates a general news briefing using Google Search Grounding.
     """
     try:
-        model = genai.GenerativeModel('gemini-2.0-flash')
+        grounding_tool = types.Tool(google_search=types.GoogleSearch())
+        config = types.GenerateContentConfig(tools=[grounding_tool])
         
         prompt = (
             "Erstelle ein 3-Minuten-News-Briefing für heute mit folgenden Bereichen:\n\n"
@@ -64,9 +70,11 @@ def fetch_general_news_briefing() -> str:
             "Fokus: Ereignisse der letzten 24 Stunden."
         )
         
-        # Use google_search tool (dict format for google.generativeai SDK)
-        tools = [{'google_search': {}}]
-        response = model.generate_content(prompt, tools=tools)
+        response = client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=prompt,
+            config=config
+        )
         
         if response.text:
             return response.text.strip()
@@ -80,9 +88,6 @@ def fetch_general_news_briefing() -> str:
 
 # Legacy function for backward compatibility
 def fetch_ai_news_summary(topics: list[str] = None):
-    """
-    DEPRECATED: Use fetch_detailed_news_per_topic instead.
-    Kept for compatibility during migration.
-    """
+    """DEPRECATED: Use fetch_detailed_news_per_topic instead."""
     logger.warning("fetch_ai_news_summary is deprecated, use fetch_detailed_news_per_topic")
     return fetch_detailed_news_per_topic(topics if topics else ["AI", "Tech"])

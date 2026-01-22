@@ -4,7 +4,7 @@ python-multipart
 sqlmodel==0.0.14
 apscheduler==3.10.4
 openai>=1.50.0
-google-generativeai==0.8.3
+google-genai>=1.0.0
 python-dotenv
 requests
 gunicorn==21.2.0

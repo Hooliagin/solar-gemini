@@ -1,4 +1,5 @@
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 from config import settings
 from services.calendar_service import get_calendar_events
 from services.news_service import fetch_ai_news_summary
@@ -96,7 +97,7 @@ def generate_briefing_content():
         
         # 4. Generate Script using Gemini
         print("DEBUG: Initializing Gemini Model...", flush=True)
-        model = genai.GenerativeModel('gemini-2.0-flash')
+        client = genai.Client(api_key=settings.GOOGLE_API_KEY)
         
         # Determine language instruction for Gemini
         language_instruction = "Respond in German (Deutsch)." if detected_language == "de" else f"Respond in English."
@@ -136,7 +137,10 @@ def generate_briefing_content():
         """
         
         print("DEBUG: Generating Content with Gemini...", flush=True)
-        response = model.generate_content(prompt)
+        response = client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=prompt
+        )
         print("DEBUG: Gemini Response Received.", flush=True)
         script = response.text
         
