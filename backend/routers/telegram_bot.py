@@ -45,11 +45,41 @@ async def start_command(update: Update, context):
     args = context.args
     chat_id = str(update.effective_chat.id)
     
+    import uuid
+    
     if not args:
+        # Check if user already exists
+        session = next(get_session())
+        statement = select(UserSettings).where(UserSettings.telegram_chat_id == chat_id)
+        existing_user = session.exec(statement).first()
+        
+        if existing_user:
+             await update.message.reply_text(
+                "✅ Du bist bereits verbunden!\n"
+                "Sende mir eine Sprachnachricht für dein Tagebuch oder nutze /generate."
+            )
+             session.close()
+             return
+
+        # New User Signup (Telegram Only)
+        new_user_id = str(uuid.uuid4())
+        new_user = UserSettings(
+            user_id=new_user_id,
+            telegram_chat_id=chat_id,
+            telegram_enabled=True,
+            updated_at=datetime.utcnow()
+        )
+        session.add(new_user)
+        session.commit()
+        session.close()
+        
         await update.message.reply_text(
-            "👋 Hallo! Um diesen Bot zu nutzen, musst du ihn mit deinem Account verknüpfen.\n\n"
-            "Gehe in der Web-App auf 'Einstellungen' -> 'Telegram verbinden' und sende mir den Code:\n"
-            "Beispiel: `/start 123456`"
+            "🎉 **Willkommen!**\n\n"
+            "Ich habe dir einen neuen Account erstellt. Du kannst diesen Bot jetzt sofort nutzen, ohne Web-Login.\n\n"
+            "**Befehle:**\n"
+            "🎤 Sende eine Sprachnachricht -> Tagebuch-Eintrag\n"
+            "🌅 /generate -> Morgen-Briefing erstellen\n"
+            "⚙️ (Bald) Einstellungen hier ändern"
         )
         return
 
@@ -189,6 +219,12 @@ async def telegram_webhook(request: Request, background_tasks: BackgroundTasks):
         # Register handlers
         app.add_handler(CommandHandler("start", start_command))
         app.add_handler(CommandHandler("generate", generate_wrapper))
+        # Settings
+        app.add_handler(CommandHandler("settings", settings_command))
+        app.add_handler(CommandHandler("set_city", set_city_command))
+        app.add_handler(CommandHandler("set_voice", set_voice_command))
+        app.add_handler(CommandHandler("toggle_news", toggle_news_command))
+        
         app.add_handler(MessageHandler(filters.VOICE, handle_voice_message))
         
         # Initialize the application
@@ -222,3 +258,102 @@ def telegram_status(session: Session = Depends(get_session)):
         "connected": user_settings.telegram_enabled,
         "chat_id": user_settings.telegram_chat_id
     }
+
+# --- Settings Commands ---
+
+async def settings_command(update: Update, context):
+    """Show current settings."""
+    chat_id = str(update.effective_chat.id)
+    session = next(get_session())
+    stmt = select(UserSettings).where(UserSettings.telegram_chat_id == chat_id)
+    user = session.exec(stmt).first()
+    session.close()
+
+    if not user:
+        await update.message.reply_text("❌ Kein Account gefunden. Nutze /start.")
+        return
+
+    text = (
+        "⚙️ **Deine Einstellungen:**\n\n"
+        f"🏙️ **Stadt:** {user.weather_city or 'Nicht gesetzt'} (`/set_city Berlin`)\n"
+        f"🗣️ **Stimme:** {user.voice_id} (`/set_voice alloy`)\n"
+        f"⛅ **Wetter:** {'✅' if user.weather_enabled else '❌'}\n"
+        "\n📰 **News Kategorien:** (`/toggle_news <kat>`)\n"
+        f"- Politik: {'✅' if user.news_politics else '❌'} (politics)\n"
+        f"- Lokal: {'✅' if user.news_local else '❌'} (local)\n"
+        f"- Wirtschaft: {'✅' if user.news_economy else '❌'} (economy)\n"
+        f"- Tech: {'✅' if user.news_tech else '❌'} (tech)\n"
+        f"- Sport: {'✅' if user.news_sports else '❌'} (sports)\n"
+    )
+    await update.message.reply_text(text, parse_mode='Markdown')
+
+async def set_city_command(update: Update, context):
+    """Set weather city."""
+    if not context.args:
+        await update.message.reply_text("❌ Bitte Stadt angeben: `/set_city Berlin`")
+        return
+    
+    city = " ".join(context.args)
+    chat_id = str(update.effective_chat.id)
+    
+    session = next(get_session())
+    stmt = select(UserSettings).where(UserSettings.telegram_chat_id == chat_id)
+    user = session.exec(stmt).first()
+    
+    if user:
+        user.weather_city = city
+        user.weather_enabled = True
+        session.add(user)
+        session.commit()
+        await update.message.reply_text(f"✅ Stadt auf **{city}** gesetzt (Wetter aktiviert).")
+    session.close()
+
+async def set_voice_command(update: Update, context):
+    """Set TTS voice."""
+    valid_voices = ["alloy", "echo", "fable", "onyx", "nova", "shimmer"]
+    if not context.args or context.args[0] not in valid_voices:
+        await update.message.reply_text(f"❌ Ungültig. Verfügbar: {', '.join(valid_voices)}\nBsp: `/set_voice alloy`")
+        return
+    
+    voice = context.args[0]
+    chat_id = str(update.effective_chat.id)
+    
+    session = next(get_session())
+    stmt = select(UserSettings).where(UserSettings.telegram_chat_id == chat_id)
+    user = session.exec(stmt).first()
+    
+    if user:
+        user.voice_id = voice
+        session.add(user)
+        session.commit()
+        await update.message.reply_text(f"✅ Stimme auf **{voice}** geändert.")
+    session.close()
+
+async def toggle_news_command(update: Update, context):
+    """Toggle news category."""
+    map_cat = {
+        "politics": "news_politics",
+        "local": "news_local",
+        "economy": "news_economy",
+        "tech": "news_tech",
+        "sports": "news_sports"
+    }
+    
+    if not context.args or context.args[0] not in map_cat:
+        await update.message.reply_text(f"❌ Ungültig. Verfügbar: {', '.join(map_cat.keys())}\nBsp: `/toggle_news tech`")
+        return
+        
+    cat_key = map_cat[context.args[0]]
+    chat_id = str(update.effective_chat.id)
+    
+    session = next(get_session())
+    stmt = select(UserSettings).where(UserSettings.telegram_chat_id == chat_id)
+    user = session.exec(stmt).first()
+    
+    if user:
+        current = getattr(user, cat_key, False)
+        setattr(user, cat_key, not current)
+        session.add(user)
+        session.commit()
+        await update.message.reply_text(f"✅ {context.args[0]} {'aktiviert' if not current else 'deaktiviert'}.")
+    session.close()

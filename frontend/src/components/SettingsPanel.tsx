@@ -222,12 +222,12 @@ export default function SettingsPanel() {
                                             /start {linkCode}
                                         </code>
                                         <a
-                                            href="https://t.me/SolarGeminiBot"
+                                            href="https://t.me/DailyvoiceManagerbot"
                                             target="_blank"
                                             rel="noreferrer"
                                             className="text-xs text-blue-400 hover:text-blue-300 underline"
                                         >
-                                            Bot öffnen @SolarGeminiBot
+                                            Bot öffnen @DailyvoiceManagerbot
                                         </a>
                                     </div>
                                     <p className="text-xs text-yellow-500/80">Code ist nur kurzzeitig gültig.</p>
