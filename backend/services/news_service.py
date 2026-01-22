@@ -19,14 +19,6 @@ def fetch_detailed_news_per_topic(topics: list[str]) -> str:
     results = []
     model = genai.GenerativeModel('gemini-2.0-flash')
     
-    # Enable Google Search tool
-    tools = [{'google_search_retrieval': {
-        'dynamic_retrieval_config': {
-            'mode': 'dynamic',
-            'dynamic_threshold': 0.3,
-        }
-    }}]
-    
     for topic in topics:
         try:
             prompt = (
@@ -39,7 +31,11 @@ def fetch_detailed_news_per_topic(topics: list[str]) -> str:
                 f"Falls nichts Relevantes gefunden wurde, sage: 'Keine bedeutenden Updates zu {topic}.'"
             )
             
-            response = model.generate_content(prompt, tools=tools)
+            # Use google_search tool (new syntax for gemini-2.0-flash)
+            response = model.generate_content(
+                prompt,
+                tools='google_search_retrieval'
+            )
             
             if response.text:
                 results.append(f"**{topic}:**\n{response.text.strip()}\n")
@@ -61,13 +57,6 @@ def fetch_general_news_briefing() -> str:
     try:
         model = genai.GenerativeModel('gemini-2.0-flash')
         
-        tools = [{'google_search_retrieval': {
-            'dynamic_retrieval_config': {
-                'mode': 'dynamic',
-                'dynamic_threshold': 0.3,
-            }
-        }}]
-        
         prompt = (
             "Erstelle ein 3-Minuten-News-Briefing für heute mit folgenden Bereichen:\n\n"
             "1. **Politik** (Deutschland/International): Top 2 wichtigste Entwicklungen seit gestern\n"
@@ -77,7 +66,11 @@ def fetch_general_news_briefing() -> str:
             "Fokus: Ereignisse der letzten 24 Stunden."
         )
         
-        response = model.generate_content(prompt, tools=tools)
+        # Use google_search tool (new syntax for gemini-2.0-flash)
+        response = model.generate_content(
+            prompt,
+            tools='google_search_retrieval'
+        )
         
         if response.text:
             return response.text.strip()
