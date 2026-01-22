@@ -105,18 +105,31 @@ async def handle_voice_message(update: Update, context):
         await update.message.reply_text("❌ Fehler beim Verarbeiten der Sprachnachricht.")
 
 from fastapi import BackgroundTasks
+from telegram import Bot
 
-async def run_generation_task(chat_id: str, bot):
+async def run_generation_task(chat_id: str):
     """Background task for briefing generation."""
     try:
+        # Initialize a fresh bot instance for the background task
+        # We cannot use the bot from the request context as it will be closed
+        bot = Bot(token=settings.TELEGRAM_BOT_TOKEN)
+        
         from services.content_generator import generate_briefing_content
-        # This function generates content AND sends it to Telegram
+        # This function generates content AND sends it to Telegram via services/telegram_service.py
+        # which creates its own bot instance, so we don't need to pass the bot there.
+        # But we do need a bot here for the status messages.
+        
         await asyncio.to_thread(generate_briefing_content)
         await bot.send_message(chat_id=chat_id, text="✅ Briefing wurde erstellt!")
+        
     except Exception as e:
         logger.error(f"Error in background generation: {e}")
-        error_msg = str(e)[:200] if len(str(e)) > 200 else str(e)
-        await bot.send_message(chat_id=chat_id, text=f"❌ Fehler: {error_msg}")
+        try:
+            bot = Bot(token=settings.TELEGRAM_BOT_TOKEN)
+            error_msg = str(e)[:200] if len(str(e)) > 200 else str(e)
+            await bot.send_message(chat_id=chat_id, text=f"❌ Fehler: {error_msg}")
+        except Exception:
+            pass
 
 @router.post("/webhook")
 async def telegram_webhook(request: Request, background_tasks: BackgroundTasks):
@@ -135,7 +148,7 @@ async def telegram_webhook(request: Request, background_tasks: BackgroundTasks):
         async def generate_wrapper(update: Update, context):
             await update.message.reply_text("⏳ Briefing wird generiert... Ich sende es dir, sobald es fertig ist.")
             # Add to background tasks - returns immediately to Telegram
-            background_tasks.add_task(run_generation_task, update.effective_chat.id, context.bot)
+            background_tasks.add_task(run_generation_task, update.effective_chat.id)
 
         # Register handlers
         app.add_handler(CommandHandler("start", start_command))
