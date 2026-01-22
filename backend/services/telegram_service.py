@@ -51,14 +51,52 @@ async def send_briefing_audio(chat_id: str, audio_path: str, caption: str = None
 async def send_text_message(chat_id: str, text: str):
     """
     Sends a text message to Telegram chat.
+    Splits long messages into chunks (Telegram limit: 4096 chars).
     
     Args:
         chat_id: Telegram chat ID
         text: Message text
     """
+    MAX_LENGTH = 4000  # Leave some margin
+    
     try:
         bot = get_bot()
-        await bot.send_message(chat_id=chat_id, text=text)
+        
+        # Split long messages into chunks
+        if len(text) <= MAX_LENGTH:
+            await bot.send_message(chat_id=chat_id, text=text)
+        else:
+            # Split by paragraphs first, then by length
+            chunks = []
+            current_chunk = ""
+            
+            for paragraph in text.split('\n\n'):
+                if len(current_chunk) + len(paragraph) + 2 <= MAX_LENGTH:
+                    current_chunk += paragraph + '\n\n'
+                else:
+                    if current_chunk:
+                        chunks.append(current_chunk.strip())
+                    # If single paragraph is too long, split by sentences
+                    if len(paragraph) > MAX_LENGTH:
+                        words = paragraph.split()
+                        current_chunk = ""
+                        for word in words:
+                            if len(current_chunk) + len(word) + 1 <= MAX_LENGTH:
+                                current_chunk += word + ' '
+                            else:
+                                chunks.append(current_chunk.strip())
+                                current_chunk = word + ' '
+                    else:
+                        current_chunk = paragraph + '\n\n'
+            
+            if current_chunk.strip():
+                chunks.append(current_chunk.strip())
+            
+            # Send each chunk
+            for i, chunk in enumerate(chunks):
+                prefix = f"📄 Teil {i+1}/{len(chunks)}\n\n" if len(chunks) > 1 else ""
+                await bot.send_message(chat_id=chat_id, text=prefix + chunk)
+        
         return True
     except TelegramError as e:
         logger.error(f"Telegram error sending message: {e}")
