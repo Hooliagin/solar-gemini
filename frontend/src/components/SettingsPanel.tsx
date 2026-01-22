@@ -133,12 +133,21 @@ export default function SettingsPanel() {
                             <button
                                 key={voice.id}
                                 onClick={() => setVoiceId(voice.id)}
-                                className={`p-3 rounded-lg border text-left transition-all ${voiceId === voice.id
-                                        ? 'border-purple-500 bg-purple-500/20'
+                                className={`p-3 rounded-lg border-2 text-left transition-all relative ${voiceId === voice.id
+                                        ? 'border-purple-500 bg-purple-500/30 ring-2 ring-purple-500/50'
                                         : 'border-white/10 hover:border-white/30 bg-white/5'
                                     }`}
                             >
-                                <div className="font-medium text-sm">{voice.name}</div>
+                                {voiceId === voice.id && (
+                                    <div className="absolute top-2 right-2 w-4 h-4 bg-purple-500 rounded-full flex items-center justify-center">
+                                        <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                        </svg>
+                                    </div>
+                                )}
+                                <div className={`font-medium text-sm ${voiceId === voice.id ? 'text-purple-300' : 'text-gray-300'}`}>
+                                    {voice.name}
+                                </div>
                                 <div className="text-xs text-gray-500">{voice.description}</div>
                             </button>
                         ))}
