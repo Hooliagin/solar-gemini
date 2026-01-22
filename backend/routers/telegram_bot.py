@@ -123,7 +123,16 @@ async def start_command(update: Update, context):
 from telegram.ext import ConversationHandler, CallbackQueryHandler
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
-# States
+# States (now stored in database as strings)
+STEP_NAME = 'name'
+STEP_AGE = 'age'
+STEP_CITY = 'city'
+STEP_VOICE = 'voice'
+STEP_NEWS = 'news'
+STEP_INTERESTS = 'interests'
+STEP_DONE = 'done'
+
+# Keep old constants for ConversationHandler compatibility during transition
 NAME, AGE, CITY, VOICE, NEWS, INTERESTS = range(6)
 
 async def start_onboarding(update: Update, context):
@@ -142,8 +151,14 @@ async def start_onboarding(update: Update, context):
             user_id=new_id,
             telegram_chat_id=chat_id,
             telegram_enabled=True,
+            onboarding_step=STEP_NAME,  # Set initial state
             updated_at=datetime.utcnow()
         )
+        session.add(user)
+        session.commit()
+    else:
+        # Reset onboarding for existing user
+        user.onboarding_step = STEP_NAME
         session.add(user)
         session.commit()
     session.close()
@@ -171,6 +186,7 @@ async def name_state(update: Update, context):
         user = session.exec(stmt).first()
         if user:
             user.name = name
+            user.onboarding_step = STEP_AGE  # Set next step
             session.add(user)
             session.commit()
         session.close()
@@ -204,6 +220,7 @@ async def age_state(update: Update, context):
         user = session.exec(stmt).first()
         if user:
             user.age = age
+            user.onboarding_step = STEP_CITY  # Set next step
             session.add(user)
             session.commit()
         session.close()
@@ -223,15 +240,19 @@ async def city_state(update: Update, context):
     city = update.message.text
     chat_id = str(update.effective_chat.id)
     
-    session = next(get_session())
-    stmt = select(UserSettings).where(UserSettings.telegram_chat_id == chat_id)
-    user = session.exec(stmt).first()
-    if user:
-        user.weather_city = city
-        user.weather_enabled = True
-        session.add(user)
-        session.commit()
-    session.close()
+    try:
+        session = next(get_session())
+        stmt = select(UserSettings).where(UserSettings.telegram_chat_id == chat_id)
+        user = session.exec(stmt).first()
+        if user:
+            user.weather_city = city
+            user.weather_enabled = True
+            user.onboarding_step = STEP_VOICE  # Set next step
+            session.add(user)
+            session.commit()
+        session.close()
+    except Exception as e:
+        logger.error(f"Error saving city: {e}")
     
     # Ask for Voice
     keyboard = [
@@ -258,14 +279,18 @@ async def voice_state(update: Update, context):
     voice = query.data.replace("voice_", "")
     chat_id = str(update.effective_chat.id)
     
-    session = next(get_session())
-    stmt = select(UserSettings).where(UserSettings.telegram_chat_id == chat_id)
-    user = session.exec(stmt).first()
-    if user:
-        user.voice_id = voice
-        session.add(user)
-        session.commit()
-    session.close()
+    try:
+        session = next(get_session())
+        stmt = select(UserSettings).where(UserSettings.telegram_chat_id == chat_id)
+        user = session.exec(stmt).first()
+        if user:
+            user.voice_id = voice
+            user.onboarding_step = STEP_NEWS  # Set next step
+            session.add(user)
+            session.commit()
+        session.close()
+    except Exception as e:
+        logger.error(f"Error saving voice: {e}")
     
     # Save context for news toggles
     context.user_data['news_selection'] = {
@@ -317,20 +342,26 @@ async def news_state(update: Update, context):
     if data == 'news_done':
         # Save to DB
         chat_id = str(update.effective_chat.id)
-        selection = context.user_data['news_selection']
+        selection = context.user_data.get('news_selection', {
+            "politics": True, "local": True, "economy": False, "tech": False, "sports": False
+        })
         
-        session = next(get_session())
-        stmt = select(UserSettings).where(UserSettings.telegram_chat_id == chat_id)
-        user = session.exec(stmt).first()
-        if user:
-            user.news_politics = selection['politics']
-            user.news_local = selection['local']
-            user.news_economy = selection['economy']
-            user.news_tech = selection['tech']
-            user.news_sports = selection['sports']
-            session.add(user)
-            session.commit()
-        session.close()
+        try:
+            session = next(get_session())
+            stmt = select(UserSettings).where(UserSettings.telegram_chat_id == chat_id)
+            user = session.exec(stmt).first()
+            if user:
+                user.news_politics = selection.get('politics', True)
+                user.news_local = selection.get('local', True)
+                user.news_economy = selection.get('economy', False)
+                user.news_tech = selection.get('tech', False)
+                user.news_sports = selection.get('sports', False)
+                user.onboarding_step = STEP_INTERESTS  # Set next step
+                session.add(user)
+                session.commit()
+            session.close()
+        except Exception as e:
+            logger.error(f"Error saving news: {e}")
         
         await query.message.reply_text(
             "6️⃣ **Hast du spezielle Interessen?**\n\n"
@@ -343,6 +374,10 @@ async def news_state(update: Update, context):
         
     # Toggle
     cat = data.replace('toggle_', '')
+    if 'news_selection' not in context.user_data:
+        context.user_data['news_selection'] = {
+            "politics": True, "local": True, "economy": False, "tech": False, "sports": False
+        }
     if cat in context.user_data['news_selection']:
         context.user_data['news_selection'][cat] = not context.user_data['news_selection'][cat]
         await show_news_keyboard(query.message, context.user_data['news_selection'])
@@ -350,59 +385,38 @@ async def news_state(update: Update, context):
     return NEWS
 
 async def interests_state(update: Update, context):
-    """Save interests and ask for calendar."""
+    """Save interests and finish onboarding."""
     text = update.message.text
     chat_id = str(update.effective_chat.id)
     
-    if text.lower() != 'keine':
-        topics = [t.strip() for t in text.split(',') if t.strip()]
-        
+    try:
         session = next(get_session())
-        # Delete old interests
         stmt = select(UserSettings).where(UserSettings.telegram_chat_id == chat_id)
         user = session.exec(stmt).first()
         
         if user:
-            # Clear existing interests for this user
-            # Need to select interests manually since we don't have relationship loaded or cascade might vary
-            from models import Interest
-            stmt_del = select(Interest).where(Interest.user_id == user.user_id)
-            existing_interests = session.exec(stmt_del).all()
-            for i in existing_interests:
-                session.delete(i)
+            if text.lower() != 'keine':
+                topics = [t.strip() for t in text.split(',') if t.strip()]
                 
-            # Add new
-            for topic in topics:
-                session.add(Interest(topic=topic, user_id=user.user_id))
+                # Clear existing interests
+                from models import Interest
+                stmt_del = select(Interest).where(Interest.user_id == user.user_id)
+                existing_interests = session.exec(stmt_del).all()
+                for i in existing_interests:
+                    session.delete(i)
+                    
+                # Add new
+                for topic in topics:
+                    session.add(Interest(topic=topic, user_id=user.user_id))
+            
+            # Mark onboarding as done
+            user.onboarding_step = STEP_DONE
+            session.add(user)
             session.commit()
         session.close()
+    except Exception as e:
+        logger.error(f"Error saving interests: {e}")
 
-    # Calendar Step
-    from config import settings
-    # We need user_id for the OAuth state
-    session = next(get_session())
-    stmt = select(UserSettings).where(UserSettings.telegram_chat_id == chat_id)
-    user = session.exec(stmt).first()
-    session.close()
-    
-    # Construct OAuth URL manually or via helper
-    # Simulating helper logic here for simplicity, assuming API URL
-    # Real URL should be: API_URL + /auth/google?user_id=... but the auth endpoint expects Bearer usually
-    # But wait, our /auth/google endpoint takes user_id from DEPENDS. That works for web with token.
-    # For Telegram, we need a special endpoint or we construct the Google URL directly here.
-    # Direct construction is safer/easier if we have client params.
-    
-    # Let's direct them to the backend endpoint but we need to pass user_id.
-    # We can modify /auth/google to accept query param 'user_id' OR token.
-    # Or simpler: Just tell them to use the Web App for Calendar for now, or link to the endpoint with a temp token?
-    # The 'state' param in OAuth is key.
-    # Let's assume we can link to: {API_URL}/auth/google_login?telegram_user_id={user_id} -> Redirects to Google
-    
-    # For now, simplistic approach: Link to Web App Settings? Or skip calendar?
-    # User asked for Flow. Let's provide a link to the backend endpoint that initiates the flow.
-    # Note: I need to update google_auth.py to allow 'telegram_user_id' param if I do this.
-    
-    # Fallback: Just done message.
     await update.message.reply_text(
         "🎉 **Perfekt! Dein Setup ist fertig.**\n\n"
         "Du kannst jetzt:\n"
@@ -492,6 +506,42 @@ async def handle_voice_message(update: Update, context):
 
 # --- End Onboarding ---
 
+async def onboarding_text_router(update: Update, context):
+    """Route text messages based on user's onboarding step in database."""
+    chat_id = str(update.effective_chat.id)
+    
+    try:
+        session = next(get_session())
+        stmt = select(UserSettings).where(UserSettings.telegram_chat_id == chat_id)
+        user = session.exec(stmt).first()
+        step = user.onboarding_step if user else None
+        session.close()
+    except Exception as e:
+        logger.error(f"Error getting onboarding step: {e}")
+        return
+    
+    if step == STEP_NAME:
+        await name_state(update, context)
+    elif step == STEP_AGE:
+        await age_state(update, context)
+    elif step == STEP_CITY:
+        await city_state(update, context)
+    elif step == STEP_INTERESTS:
+        await interests_state(update, context)
+    else:
+        # User is not in onboarding, just acknowledge
+        pass
+
+async def onboarding_callback_router(update: Update, context):
+    """Route callback queries based on pattern (voice/news buttons)."""
+    query = update.callback_query
+    data = query.data
+    
+    if data.startswith('voice_'):
+        await voice_state(update, context)
+    elif data.startswith('toggle_') or data == 'news_done':
+        await news_state(update, context)
+
 @router.post("/webhook")
 async def telegram_webhook(request: Request, background_tasks: BackgroundTasks):
     """Telegram webhook endpoint."""
@@ -505,34 +555,25 @@ async def telegram_webhook(request: Request, background_tasks: BackgroundTasks):
             await update.message.reply_text("⏳ Briefing wird generiert...")
             background_tasks.add_task(run_generation_task, update.effective_chat.id)
 
-        # Conversation Handler for Onboarding
-        conv_handler = ConversationHandler(
-            entry_points=[
-                CommandHandler("start", start_onboarding),
-                CommandHandler("setup", start_onboarding)
-            ],
-            states={
-                NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, name_state)],
-                AGE: [MessageHandler(filters.TEXT & ~filters.COMMAND, age_state)],
-                CITY: [MessageHandler(filters.TEXT & ~filters.COMMAND, city_state)],
-                VOICE: [CallbackQueryHandler(voice_state, pattern='^voice_')],
-                NEWS: [CallbackQueryHandler(news_state, pattern='^(toggle_|news_done)')],
-                INTERESTS: [MessageHandler(filters.TEXT & ~filters.COMMAND, interests_state)],
-            },
-            fallbacks=[CommandHandler("cancel", cancel_onboarding)]
-        )
-        
-        app.add_handler(conv_handler)
+        # Commands
+        app.add_handler(CommandHandler("start", start_onboarding))
+        app.add_handler(CommandHandler("setup", start_onboarding))
         app.add_handler(CommandHandler("generate", generate_wrapper))
         app.add_handler(CommandHandler("login", login_command))
-        
-        # Existing Settings Commands (keeping them for quick access)
+        app.add_handler(CommandHandler("cancel", cancel_onboarding))
         app.add_handler(CommandHandler("settings", settings_command))
         app.add_handler(CommandHandler("set_city", set_city_command))
         app.add_handler(CommandHandler("set_voice", set_voice_command))
         app.add_handler(CommandHandler("toggle_news", toggle_news_command))
         
+        # Callback queries (inline buttons)
+        app.add_handler(CallbackQueryHandler(onboarding_callback_router))
+        
+        # Voice messages
         app.add_handler(MessageHandler(filters.VOICE, handle_voice_message))
+        
+        # Text messages - route based on database step
+        app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, onboarding_text_router))
         
         await app.initialize()
         await app.start()
