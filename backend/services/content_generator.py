@@ -2,9 +2,10 @@ import google.generativeai as genai
 from config import settings
 from services.calendar_service import get_calendar_events
 from services.news_service import fetch_ai_news_summary
+from services.weather_service import get_weather_briefing
 from services.tts_service import generate_speech
 from database import get_session
-from models import Entry, Briefing
+from models import Entry, Briefing, UserSettings
 from datetime import datetime
 import logging
 import os
@@ -65,6 +66,22 @@ def generate_briefing_content():
         last_entry = session.query(Entry).order_by(Entry.id.desc()).first()
         diary_transcript = last_entry.transcript if last_entry else "No diary entry for last night."
         
+        # 4. Fetch Weather (if enabled)
+        print("DEBUG: Checking Weather Settings...", flush=True)
+        user_settings = session.query(UserSettings).first()
+        weather_text = ""
+        if user_settings and user_settings.weather_enabled:
+            print(f"DEBUG: Fetching Weather for {user_settings.weather_city}...", flush=True)
+            weather_text = get_weather_briefing(user_settings.weather_city)
+            print(f"DEBUG: Weather Fetched ({len(weather_text)} chars).", flush=True)
+        elif not user_settings:
+            # Create default settings if none exist
+            print("DEBUG: Creating default UserSettings...", flush=True)
+            user_settings = UserSettings()
+            session.add(user_settings)
+            session.commit()
+            weather_text = get_weather_briefing(user_settings.weather_city)
+        
         # 4. Generate Script using Gemini
         print("DEBUG: Initializing Gemini Model...", flush=True)
         model = genai.GenerativeModel('gemini-2.0-flash')
@@ -81,14 +98,18 @@ def generate_briefing_content():
         [TODAY'S CALENDAR]
         {calendar_text}
         
+        [WEATHER]
+        {weather_text if weather_text else "Weather data not available."}
+        
         [NEWS UPDATES]
         {news_text}
         
         Structure the briefing as follows:
         1. Good morning & quick reflection on yesterday's thoughts.
         2. Overview of today's schedule.
-        3. Interesting news snippet.
-        4. Motivational closing.
+        3. Weather update with clothing recommendation.
+        4. Interesting news snippet.
+        5. Motivational closing.
         
         Keep it conversational, warm, and concise (under 3 minutes spoken).
         Do not use markdown formatting like **bold** in the script, as it will be read by TTS. Write it as plain spoken text.

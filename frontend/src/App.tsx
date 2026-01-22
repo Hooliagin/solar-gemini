@@ -15,6 +15,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 import InterestManager from './components/InterestManager';
+import SettingsPanel from './components/SettingsPanel';
 import { Sparkles, Mic, Play, LogOut } from 'lucide-react';
 
 // Main Layout for authenticated users
@@ -53,7 +54,7 @@ const Dashboard = () => {
           </div>
         </section>
 
-        {/* Right Column: Evening Log & Interests */}
+        {/* Right Column: Evening Log, Interests & Settings */}
         <div className="space-y-8">
           <section className="space-y-6">
             <div className="flex items-center gap-2 mb-4">
@@ -67,6 +68,10 @@ const Dashboard = () => {
 
           <section>
             <InterestManager />
+          </section>
+
+          <section>
+            <SettingsPanel />
           </section>
         </div>
       </main>

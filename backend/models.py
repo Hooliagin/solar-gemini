@@ -21,3 +21,14 @@ class Interest(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     topic: str
     created_at: datetime = Field(default_factory=datetime.utcnow)
+
+class UserSettings(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    # Weather settings
+    weather_enabled: bool = Field(default=True)
+    weather_city: str = Field(default="Berlin")
+    # Voice settings (for Phase 3)
+    voice_id: str = Field(default="alloy")  # OpenAI TTS voice
+    # Language preference (for Phase 2)
+    language: str = Field(default="de")
+    updated_at: datetime = Field(default_factory=datetime.utcnow)

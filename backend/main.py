@@ -30,7 +30,8 @@ app.include_router(entries.router)
 app.include_router(briefings.router)
 from routers import interests
 app.include_router(interests.router)
-
+from routers import settings
+app.include_router(settings.router)
 # Parse origins and ensure they have a scheme (https://) if provided by Render
 origins_raw = os.getenv("ALLOWED_ORIGINS", "*").split(",")
 origins = []
