@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { Loader2, Sparkles } from 'lucide-react';
+import { Loader2, Sparkles, Mail, ArrowRight } from 'lucide-react';
 
 export default function AuthPage() {
     const [loading, setLoading] = useState(false);
@@ -28,52 +28,84 @@ export default function AuthPage() {
     };
 
     return (
-        <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white relative overflow-hidden">
-            {/* Background decoration */}
-            <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-purple-500/20 rounded-full blur-3xl pointer-events-none" />
-            <div className="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-blue-500/20 rounded-full blur-3xl pointer-events-none" />
+        <div className="min-h-screen flex flex-col items-center justify-center p-6 relative overflow-hidden">
+            {/* Animated Background Orbs */}
+            <div className="fixed inset-0 pointer-events-none">
+                <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-purple-500/20 rounded-full blur-[128px] animate-pulse-slow" />
+                <div className="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] bg-blue-500/20 rounded-full blur-[128px] animate-pulse-slow" style={{ animationDelay: '2s' }} />
+            </div>
 
-            <div className="w-full max-w-md bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl p-8 shadow-2xl z-10">
-                <div className="flex flex-col items-center mb-8">
-                    <div className="p-3 bg-gradient-to-br from-purple-500 to-blue-500 rounded-xl mb-4 shadow-lg">
-                        <Sparkles className="w-8 h-8 text-white" />
+            <div className="w-full max-w-md z-10 animate-fade-in-up">
+                {/* Logo & Title */}
+                <div className="flex flex-col items-center mb-10">
+                    <div className="p-4 bg-gradient-to-br from-purple-500 to-blue-600 rounded-2xl mb-6 shadow-2xl shadow-purple-500/30 glow-purple animate-float">
+                        <Sparkles className="w-10 h-10 text-white" />
                     </div>
-                    <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-blue-400">
+                    <h1 className="text-4xl font-bold gradient-text mb-2">
                         Daily Manager
                     </h1>
-                    <p className="text-gray-400 mt-2 text-center">
-                        Turn your chaotic days into structured success.
+                    <p className="text-gray-400 text-center text-lg">
+                        Dein persönlicher KI-Morgenassistent
                     </p>
                 </div>
 
-                <form onSubmit={handleLogin} className="space-y-4">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-1">Email address</label>
-                        <input
-                            type="email"
-                            placeholder="you@example.com"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            required
-                            className="w-full px-4 py-3 bg-black/30 border border-gray-600 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all placeholder-gray-500 text-white"
-                        />
-                    </div>
+                {/* Login Card */}
+                <div className="glass-card p-8">
+                    <h2 className="text-xl font-semibold text-white mb-6 text-center">
+                        Anmelden
+                    </h2>
 
-                    <button
-                        type="submit"
-                        disabled={loading}
-                        className="w-full py-3 px-4 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 rounded-xl font-medium shadow-lg hover:shadow-purple-500/25 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                    >
-                        {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-                        {loading ? 'Sending Magic Link...' : 'Sign In with Email'}
-                    </button>
-                </form>
+                    <form onSubmit={handleLogin} className="space-y-5">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-400 mb-2">
+                                E-Mail Adresse
+                            </label>
+                            <div className="relative">
+                                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
+                                <input
+                                    type="email"
+                                    placeholder="du@beispiel.de"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    required
+                                    className="input-field w-full pl-12"
+                                />
+                            </div>
+                        </div>
 
-                {message && (
-                    <div className={`mt-6 p-4 rounded-xl text-center text-sm ${message.includes('Check') ? 'bg-green-500/20 text-green-300 border border-green-500/30' : 'bg-red-500/20 text-red-300 border border-red-500/30'}`}>
-                        {message}
-                    </div>
-                )}
+                        <button
+                            type="submit"
+                            disabled={loading}
+                            className="btn-primary w-full flex items-center justify-center gap-3"
+                        >
+                            {loading ? (
+                                <>
+                                    <Loader2 className="w-5 h-5 animate-spin" />
+                                    Sende Magic Link...
+                                </>
+                            ) : (
+                                <>
+                                    Magic Link senden
+                                    <ArrowRight className="w-5 h-5" />
+                                </>
+                            )}
+                        </button>
+                    </form>
+
+                    {message && (
+                        <div className={`mt-6 p-4 rounded-xl text-center text-sm animate-fade-in ${message.includes('Check')
+                                ? 'bg-green-500/20 text-green-300 border border-green-500/30'
+                                : 'bg-red-500/20 text-red-300 border border-red-500/30'
+                            }`}>
+                            {message}
+                        </div>
+                    )}
+                </div>
+
+                {/* Footer */}
+                <p className="text-center text-gray-600 text-sm mt-8">
+                    Kein Account? Einfach E-Mail eingeben und loslegen!
+                </p>
             </div>
         </div>
     );

@@ -5,23 +5,30 @@ import AuthPage from './pages/Auth';
 import Onboarding from './pages/Onboarding';
 import Recorder from './components/Recorder';
 import Player from './components/Player';
+import InterestManager from './components/InterestManager';
+import SettingsPanel from './components/SettingsPanel';
+import { Sparkles, Mic, Play, LogOut, Sun, Moon } from 'lucide-react';
+import { API_BASE_URL } from './config';
+import { useSearchParams } from 'react-router-dom';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { session, loading } = useAuth();
-  if (loading) return <div className="min-h-screen bg-black flex items-center justify-center text-white">Loading...</div>;
+  if (loading) return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="flex flex-col items-center gap-4">
+        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-blue-600 animate-pulse-slow flex items-center justify-center">
+          <Sparkles className="w-6 h-6 text-white" />
+        </div>
+        <p className="text-gray-400 animate-pulse">Loading...</p>
+      </div>
+    </div>
+  );
   if (!session) return <Navigate to="/login" replace />;
   return <>{children}</>;
 };
 
-import InterestManager from './components/InterestManager';
-import SettingsPanel from './components/SettingsPanel';
-import { Sparkles, Mic, Play, LogOut } from 'lucide-react';
-
-import { API_BASE_URL } from './config';
-import { useSearchParams } from 'react-router-dom';
-
-// Main Layout for authenticated users
+// Main Dashboard Layout
 const Dashboard = () => {
   const { signOut, session } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -46,7 +53,6 @@ const Dashboard = () => {
       const data = await res.json();
       if (res.ok) {
         alert(`✅ Account erfolgreich verknüpft! ${data.merged_items} Elemente wurden übertragen.`);
-        // Remove query param
         searchParams.delete('claim_code');
         setSearchParams(searchParams);
       } else if (data.status === 'same_user') {
@@ -60,59 +66,110 @@ const Dashboard = () => {
     }
   };
 
-  return (
-    <div className="min-h-screen text-white p-6 pb-24 max-w-7xl mx-auto">
-      <header className="flex justify-between items-center mb-12">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-gradient-to-br from-purple-500 to-blue-600 rounded-xl shadow-lg shadow-purple-500/20">
-            <Sparkles className="w-6 h-6 text-white" />
-          </div>
-          <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">
-            Daily Manager
-          </h1>
-        </div>
-        <button
-          onClick={signOut}
-          className="btn-icon"
-          title="Sign Out"
-        >
-          <LogOut className="w-5 h-5" />
-        </button>
-      </header>
+  const getTimeOfDay = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return { greeting: "Guten Morgen", icon: Sun, period: "morning" };
+    if (hour < 18) return { greeting: "Guten Tag", icon: Sun, period: "afternoon" };
+    return { greeting: "Guten Abend", icon: Moon, period: "evening" };
+  };
 
-      <main className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        {/* Left Column: Morning Briefing */}
-        <section className="space-y-6">
-          <div className="flex items-center gap-2 mb-4">
-            <Play className="w-5 h-5 text-purple-400" />
-            <h2 className="text-lg font-medium text-gray-200">Morning Briefing</h2>
+  const timeInfo = getTimeOfDay();
+  const TimeIcon = timeInfo.icon;
+
+  return (
+    <div className="min-h-screen text-white">
+      {/* Decorative Background Elements */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden">
+        <div className="absolute top-1/4 -left-32 w-96 h-96 bg-purple-500/20 rounded-full blur-[128px] animate-pulse-slow" />
+        <div className="absolute bottom-1/4 -right-32 w-96 h-96 bg-blue-500/20 rounded-full blur-[128px] animate-pulse-slow" style={{ animationDelay: '2s' }} />
+      </div>
+
+      <div className="relative z-10 max-w-6xl mx-auto px-6 py-8">
+        {/* Header */}
+        <header className="flex justify-between items-center mb-12 animate-fade-in-up">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-gradient-to-br from-purple-500 to-blue-600 rounded-2xl shadow-lg shadow-purple-500/25 glow-purple">
+              <Sparkles className="w-7 h-7 text-white" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold gradient-text">
+                Daily Manager
+              </h1>
+              <p className="text-sm text-gray-500">Dein KI-Morgenassistent</p>
+            </div>
           </div>
-          <div className="glass-panel rounded-2xl p-6 min-h-[200px] flex flex-col justify-center transition-all hover:bg-white/5">
-            <Player />
+          <button
+            onClick={signOut}
+            className="btn-icon"
+            title="Abmelden"
+          >
+            <LogOut className="w-5 h-5" />
+          </button>
+        </header>
+
+        {/* Welcome Section */}
+        <section className="mb-12 animate-fade-in-up stagger-1">
+          <div className="glass-card p-8 flex items-center gap-6">
+            <div className="p-4 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 shadow-lg">
+              <TimeIcon className="w-8 h-8 text-white" />
+            </div>
+            <div>
+              <h2 className="text-3xl font-bold text-white mb-1">
+                {timeInfo.greeting}! 👋
+              </h2>
+              <p className="text-gray-400">
+                {timeInfo.period === 'morning'
+                  ? 'Bereit für dein personalisiertes Morgen-Briefing?'
+                  : timeInfo.period === 'afternoon'
+                    ? 'Zeit für ein Update? Hör dir dein Briefing an.'
+                    : 'Vergiss nicht, dein Tagebuch für heute einzusprechen!'}
+              </p>
+            </div>
           </div>
         </section>
 
-        {/* Right Column: Evening Log, Interests & Settings */}
-        <div className="space-y-8">
-          <section className="space-y-6">
-            <div className="flex items-center gap-2 mb-4">
-              <Mic className="w-5 h-5 text-blue-400" />
-              <h2 className="text-lg font-medium text-gray-200">Evening Log</h2>
-            </div>
-            <div className="glass-panel rounded-2xl p-6 transition-all hover:bg-white/5">
-              <Recorder onUploadComplete={() => window.location.reload()} />
-            </div>
-          </section>
+        {/* Main Content Grid */}
+        <main className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Left Column: Briefing */}
+          <div className="space-y-8">
+            <section className="animate-fade-in-up stagger-2">
+              <div className="section-title">
+                <Play className="w-4 h-4 text-purple-400" />
+                <span>Morgen-Briefing</span>
+              </div>
+              <div className="glass-card p-6">
+                <Player />
+              </div>
+            </section>
 
-          <section>
-            <InterestManager />
-          </section>
+            <section className="animate-fade-in-up stagger-3">
+              <div className="section-title">
+                <Mic className="w-4 h-4 text-blue-400" />
+                <span>Tagebuch</span>
+              </div>
+              <div className="glass-card p-6">
+                <Recorder onUploadComplete={() => window.location.reload()} />
+              </div>
+            </section>
+          </div>
 
-          <section>
-            <SettingsPanel />
-          </section>
-        </div>
-      </main>
+          {/* Right Column: Settings & Interests */}
+          <div className="space-y-8">
+            <section className="animate-fade-in-up stagger-3">
+              <InterestManager />
+            </section>
+
+            <section className="animate-fade-in-up stagger-4">
+              <SettingsPanel />
+            </section>
+          </div>
+        </main>
+
+        {/* Footer */}
+        <footer className="mt-16 text-center text-gray-600 text-sm animate-fade-in stagger-4">
+          <p>Made with ❤️ for better mornings</p>
+        </footer>
+      </div>
     </div>
   );
 };
