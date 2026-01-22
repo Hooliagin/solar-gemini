@@ -166,7 +166,32 @@ def generate_briefing_content():
         session.commit()
         
         logger.info(f"Briefing generated successfully: {audio_path_abs}")
-        print("DEBUG: Briefing saved to DB. Done.", flush=True)
+        print("DEBUG: Briefing saved to DB.", flush=True)
+        
+        # 7. Send to Telegram if enabled
+        if user_settings and user_settings.telegram_enabled and user_settings.telegram_chat_id:
+            try:
+                print(f"DEBUG: Sending briefing to Telegram (chat_id: {user_settings.telegram_chat_id})...", flush=True)
+                from services.telegram_service import send_briefing_audio
+                import asyncio
+                
+                caption = f"🌅 Dein Morgen-Briefing für {datetime.now().strftime('%d.%m.%Y')}"
+                success = asyncio.run(send_briefing_audio(
+                    chat_id=user_settings.telegram_chat_id,
+                    audio_path=audio_path_abs,
+                    caption=caption
+                ))
+                
+                if success:
+                    print("DEBUG: Briefing sent to Telegram successfully!", flush=True)
+                else:
+                    print("DEBUG: Failed to send briefing to Telegram.", flush=True)
+                    
+            except Exception as telegram_error:
+                logger.error(f"Error sending to Telegram: {telegram_error}")
+                print(f"DEBUG: Telegram error: {telegram_error}", flush=True)
+        
+        print("DEBUG: Done.", flush=True)
         return briefing
         
     except Exception as e:
