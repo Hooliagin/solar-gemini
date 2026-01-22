@@ -13,9 +13,8 @@ SCOPES = ['https://www.googleapis.com/auth/calendar.readonly']
 
 def get_calendar_events():
     """
-    Fetches the upcoming 10 events for today using DB-stored OAuth tokens.
+    Fetches events from ALL calendars for today using DB-stored OAuth tokens.
     """
-    # Get tokens from database
     session = next(get_session())
     user_settings = session.query(UserSettings).first()
     
@@ -23,7 +22,6 @@ def get_calendar_events():
         return "Calendar: Not connected. Please connect your Google Calendar in Settings."
     
     try:
-        # Build credentials from stored tokens
         creds = Credentials(
             token=user_settings.google_access_token,
             refresh_token=user_settings.google_refresh_token,
@@ -33,11 +31,9 @@ def get_calendar_events():
             scopes=SCOPES
         )
         
-        # Refresh if expired
         if creds.expired and creds.refresh_token:
             try:
                 creds.refresh(Request())
-                # Update stored tokens
                 user_settings.google_access_token = creds.token
                 user_settings.google_token_expiry = creds.expiry
                 session.commit()
@@ -46,36 +42,58 @@ def get_calendar_events():
                 logger.error(f"Token refresh failed: {e}")
                 return "Calendar: Token expired. Please reconnect your Google Calendar."
         
-        # Build calendar service
         service = build('calendar', 'v3', credentials=creds)
         
-        # Get today's events
+        # Get all calendars
+        calendars_result = service.calendarList().list().execute()
+        calendars = calendars_result.get('items', [])
+        
         now = datetime.datetime.utcnow().isoformat() + 'Z'
         end_of_day = (datetime.datetime.utcnow().replace(hour=23, minute=59, second=59)).isoformat() + 'Z'
         
-        events_result = service.events().list(
-            calendarId='primary',
-            timeMin=now,
-            timeMax=end_of_day,
-            maxResults=10,
-            singleEvents=True,
-            orderBy='startTime'
-        ).execute()
+        all_events = []
         
-        events = events_result.get('items', [])
+        # Fetch events from each calendar
+        for calendar in calendars:
+            calendar_id = calendar['id']
+            calendar_name = calendar.get('summary', 'Unknown')
+            
+            try:
+                events_result = service.events().list(
+                    calendarId=calendar_id,
+                    timeMin=now,
+                    timeMax=end_of_day,
+                    maxResults=10,
+                    singleEvents=True,
+                    orderBy='startTime'
+                ).execute()
+                
+                for event in events_result.get('items', []):
+                    start = event['start'].get('dateTime', event['start'].get('date'))
+                    event_name = event.get('summary', 'No title')
+                    all_events.append({
+                        'start': start,
+                        'name': event_name,
+                        'calendar': calendar_name
+                    })
+            except Exception as e:
+                logger.warning(f"Could not fetch events from {calendar_name}: {e}")
+                continue
         
-        if not events:
+        if not all_events:
             return "No upcoming events for today."
         
+        # Sort by start time
+        all_events.sort(key=lambda x: x['start'])
+        
         event_summary = []
-        for event in events:
-            start = event['start'].get('dateTime', event['start'].get('date'))
-            # Format time nicely
+        for event in all_events[:15]:  # Limit to 15 events
+            start = event['start']
             if 'T' in start:
                 time_part = start.split('T')[1][:5]
-                event_summary.append(f"- {time_part}: {event['summary']}")
+                event_summary.append(f"- {time_part}: {event['name']}")
             else:
-                event_summary.append(f"- {event['summary']} (all day)")
+                event_summary.append(f"- {event['name']} (all day)")
         
         return "Today's Calendar:\n" + "\n".join(event_summary)
         
