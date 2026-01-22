@@ -1,34 +1,66 @@
 import google.generativeai as genai
 from config import settings
 import logging
+from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
 
 # Configure Gemini
 genai.configure(api_key=settings.GOOGLE_API_KEY)
 
-def fetch_ai_news_summary(topics: list[str] = None):
+def fetch_detailed_news_per_topic(topics: list[str]) -> str:
     """
-    Uses Gemini with Google Search Grounding to generate a summary of news.
-    If topics are provided, it focuses on those. Otherwise, defaults to AI/Tech.
+    Performs separate news searches for EACH topic with focus on last 24 hours.
+    Returns a structured summary with one section per topic.
+    """
+    if not topics or len(topics) == 0:
+        return "Keine News-Topics konfiguriert."
+    
+    results = []
+    model = genai.GenerativeModel('gemini-2.0-flash')
+    
+    # Enable Google Search tool
+    tools = [{'google_search_retrieval': {
+        'dynamic_retrieval_config': {
+            'mode': 'dynamic',
+            'dynamic_threshold': 0.3,
+        }
+    }}]
+    
+    for topic in topics:
+        try:
+            prompt = (
+                f"Suche nach den neuesten Entwicklungen zu '{topic}' der letzten 24 Stunden. "
+                f"Fokus auf:\n"
+                f"- Was ist NEU passiert seit gestern?\n"
+                f"- Wichtige Ereignisse, Ankündigungen oder Durchbrüche\n"
+                f"- Qualitätsquellen bevorzugen (keine Clickbait)\n\n"
+                f"Erstelle eine kompakte Zusammenfassung (2-3 Sätze) im Briefing-Stil. "
+                f"Falls nichts Relevantes gefunden wurde, sage: 'Keine bedeutenden Updates zu {topic}.'"
+            )
+            
+            response = model.generate_content(prompt, tools=tools)
+            
+            if response.text:
+                results.append(f"**{topic}:**\n{response.text.strip()}\n")
+            else:
+                results.append(f"**{topic}:**\nKeine Updates verfügbar.\n")
+                
+        except Exception as e:
+            logger.error(f"News fetch failed for topic '{topic}': {e}")
+            results.append(f"**{topic}:**\nFehler beim Abrufen der News.\n")
+    
+    return "\n".join(results)
+
+
+def fetch_general_news_briefing() -> str:
+    """
+    Optional: Generates a general news briefing covering politics, economy, and tech.
+    Called only if user has general_news_enabled = True.
     """
     try:
-        # Use a model that supports search grounding (Gemini 1.5 usually recommended)
-        # We try to use the 'tools' for google search if the API key supports it.
         model = genai.GenerativeModel('gemini-2.0-flash')
         
-        search_query = "AI and Tech"
-        if topics and len(topics) > 0:
-            search_query = ", ".join(topics)
-            
-        prompt = (
-            f"You are a news assistant. Search for the latest news and updates regarding: {search_query}. "
-            "Provide a short, distinct, spoken-word style summary of 3 key stories found. "
-            "Focus on what's new today/yesterday. "
-            "Keep it brief (3-4 sentences per story) and interesting for a morning briefing."
-        )
-        
-        # Enable Google Search tool
         tools = [{'google_search_retrieval': {
             'dynamic_retrieval_config': {
                 'mode': 'dynamic',
@@ -36,23 +68,32 @@ def fetch_ai_news_summary(topics: list[str] = None):
             }
         }}]
         
-        try:
-            response = model.generate_content(prompt, tools=tools)
-            # Check if we got a valid text response
-            if response.text:
-                return response.text
-        except Exception as tool_error:
-            logger.warning(f"Gemini with Search Tool failed ({tool_error}), falling back to standard generation.")
-            # Fallback to standard generation without specific tools if search fails (e.g. API tier)
-            model_fallback = genai.GenerativeModel('gemini-2.0-flash')
-            fallback_prompt = (
-               f"You are a news assistant. Provide a short, bulleted summary of 3 key trends or concepts "
-               f"related to: {search_query}. "
-               "Since you might not have real-time web access, focus on general knowledge or recent major context you know."
-            )
-            response = model_fallback.generate_content(fallback_prompt)
-            return response.text
-
+        prompt = (
+            "Erstelle ein 3-Minuten-News-Briefing für heute mit folgenden Bereichen:\n\n"
+            "1. **Politik** (Deutschland/International): Top 2 wichtigste Entwicklungen seit gestern\n"
+            "2. **Wirtschaft**: DAX-Entwicklung + 1 relevante Wirtschaftsnachricht\n"
+            "3. **Technologie/Wissenschaft**: 1 interessanter Durchbruch oder Trend\n\n"
+            "Stil: Kompakt, sachlich, für gebildete Hörer. Keine Sensationen, nur Relevantes.\n"
+            "Fokus: Ereignisse der letzten 24 Stunden."
+        )
+        
+        response = model.generate_content(prompt, tools=tools)
+        
+        if response.text:
+            return response.text.strip()
+        else:
+            return "Allgemeine News konnten nicht abgerufen werden."
+            
     except Exception as e:
-        logger.error(f"Gemini News Error: {e}")
-        return "Could not fetch specific news updates at this time, but I hope you have a great day!"
+        logger.error(f"General news fetch failed: {e}")
+        return "Fehler beim Abrufen allgemeiner News."
+
+
+# Legacy function for backward compatibility
+def fetch_ai_news_summary(topics: list[str] = None):
+    """
+    DEPRECATED: Use fetch_detailed_news_per_topic instead.
+    Kept for compatibility during migration.
+    """
+    logger.warning("fetch_ai_news_summary is deprecated, use fetch_detailed_news_per_topic")
+    return fetch_detailed_news_per_topic(topics if topics else ["AI", "Tech"])

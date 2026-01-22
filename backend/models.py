@@ -36,4 +36,6 @@ class UserSettings(SQLModel, table=True):
     google_access_token: Optional[str] = Field(default=None)
     google_refresh_token: Optional[str] = Field(default=None)
     google_token_expiry: Optional[datetime] = Field(default=None)
+    # News settings
+    general_news_enabled: bool = Field(default=False)
     updated_at: datetime = Field(default_factory=datetime.utcnow)

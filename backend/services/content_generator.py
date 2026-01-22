@@ -56,10 +56,20 @@ def generate_briefing_content():
         topic_list = [i.topic for i in interests]
         print(f"DEBUG: Found topics: {topic_list}", flush=True)
         
-        # Fetch News based on interests
-        print("DEBUG: Fetching News...", flush=True)
-        news_text = fetch_ai_news_summary(topic_list)
-        print(f"DEBUG: News Fetched ({len(news_text)} chars).", flush=True)
+        # Fetch News - NEW: Separate search for each topic
+        print("DEBUG: Fetching News (per-topic)...", flush=True)
+        from services.news_service import fetch_detailed_news_per_topic, fetch_general_news_briefing
+        
+        topic_news = fetch_detailed_news_per_topic(topic_list) if topic_list else "Keine Topics konfiguriert."
+        print(f"DEBUG: Topic News Fetched ({len(topic_news)} chars).", flush=True)
+        
+        # Optional: General news if enabled
+        general_news = ""
+        user_settings = session.query(UserSettings).first()
+        if user_settings and user_settings.general_news_enabled:
+            print("DEBUG: Fetching General News...", flush=True)
+            general_news = fetch_general_news_briefing()
+            print(f"DEBUG: General News Fetched ({len(general_news)} chars).", flush=True)
         
         # 3. Fetch yesterday's diary (Last entry from DB)
         print("DEBUG: Fetching last diary entry...", flush=True)
@@ -110,15 +120,18 @@ def generate_briefing_content():
         [WEATHER]
         {weather_text if weather_text else "Weather data not available."}
         
-        [NEWS UPDATES]
-        {news_text}
+        [YOUR TOPICS - NEWS]
+        {topic_news}
+        
+        {f"[GENERAL NEWS BRIEFING]\n{general_news}" if general_news else ""}
         
         Structure the briefing as follows:
         1. Good morning & quick reflection on yesterday's thoughts.
         2. Overview of today's schedule.
         3. Weather update with clothing recommendation.
-        4. Interesting news snippet.
-        5. Motivational closing.
+        4. News updates on your topics (briefly summarize each).
+        {5 if general_news else 5}. {f"General news overview." if general_news else ""}
+        {6 if general_news else 5}. Motivational closing.
         
         Keep it conversational, warm, and concise (under 3 minutes spoken).
         Do not use markdown formatting like **bold** in the script, as it will be read by TTS. Write it as plain spoken text.
