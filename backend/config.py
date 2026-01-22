@@ -8,6 +8,9 @@ class Settings:
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
     GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
     OPENWEATHERMAP_API_KEY = os.getenv("OPENWEATHERMAP_API_KEY")
+    # Google OAuth
+    GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
+    GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
     
     # Paths
     BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

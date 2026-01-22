@@ -1,10 +1,10 @@
 import datetime
-import os.path
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from config import settings
+from database import get_session
+from models import UserSettings
 import logging
 
 logger = logging.getLogger(__name__)
@@ -13,48 +13,74 @@ SCOPES = ['https://www.googleapis.com/auth/calendar.readonly']
 
 def get_calendar_events():
     """
-    Fetches the upcoming 10 events for today.
+    Fetches the upcoming 10 events for today using DB-stored OAuth tokens.
     """
-    creds = None
-    # Token file stores the user's access and refresh tokens
-    token_path = os.path.join(settings.BASE_DIR, 'token.json')
+    # Get tokens from database
+    session = next(get_session())
+    user_settings = session.query(UserSettings).first()
     
-    if os.path.exists(token_path):
-        creds = Credentials.from_authorized_user_file(token_path, SCOPES)
+    if not user_settings or not user_settings.google_access_token:
+        return "Calendar: Not connected. Please connect your Google Calendar in Settings."
+    
+    try:
+        # Build credentials from stored tokens
+        creds = Credentials(
+            token=user_settings.google_access_token,
+            refresh_token=user_settings.google_refresh_token,
+            token_uri="https://oauth2.googleapis.com/token",
+            client_id=settings.GOOGLE_CLIENT_ID,
+            client_secret=settings.GOOGLE_CLIENT_SECRET,
+            scopes=SCOPES
+        )
         
-    if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
+        # Refresh if expired
+        if creds.expired and creds.refresh_token:
             try:
                 creds.refresh(Request())
-            except Exception:
-                return "Calendar Error: Token expired and refresh failed."
-        else:
-            # If no creds, we can't fetch. 
-            # In a real app we'd trigger a flow, but for backend service we might need a stored token.
-            return "Calendar: No credentials found. Please authenticate."
-
-    try:
-        service = build('calendar', 'v3', credentials=creds)
-
-        # Call the Calendar API
-        now = datetime.datetime.utcnow().isoformat() + 'Z'  # 'Z' indicates UTC time
-        # End of day
+                # Update stored tokens
+                user_settings.google_access_token = creds.token
+                user_settings.google_token_expiry = creds.expiry
+                session.commit()
+                logger.info("Calendar token refreshed successfully")
+            except Exception as e:
+                logger.error(f"Token refresh failed: {e}")
+                return "Calendar: Token expired. Please reconnect your Google Calendar."
         
-        events_result = service.events().list(calendarId='primary', timeMin=now,
-                                              maxResults=10, singleEvents=True,
-                                              orderBy='startTime').execute()
+        # Build calendar service
+        service = build('calendar', 'v3', credentials=creds)
+        
+        # Get today's events
+        now = datetime.datetime.utcnow().isoformat() + 'Z'
+        end_of_day = (datetime.datetime.utcnow().replace(hour=23, minute=59, second=59)).isoformat() + 'Z'
+        
+        events_result = service.events().list(
+            calendarId='primary',
+            timeMin=now,
+            timeMax=end_of_day,
+            maxResults=10,
+            singleEvents=True,
+            orderBy='startTime'
+        ).execute()
+        
         events = events_result.get('items', [])
-
+        
         if not events:
-            return "No upcoming events found."
+            return "No upcoming events for today."
         
         event_summary = []
         for event in events:
             start = event['start'].get('dateTime', event['start'].get('date'))
-            event_summary.append(f"- {event['summary']} at {start}")
-            
-        return "\n".join(event_summary)
-
+            # Format time nicely
+            if 'T' in start:
+                time_part = start.split('T')[1][:5]
+                event_summary.append(f"- {time_part}: {event['summary']}")
+            else:
+                event_summary.append(f"- {event['summary']} (all day)")
+        
+        return "Today's Calendar:\n" + "\n".join(event_summary)
+        
     except Exception as e:
         logger.error(f"Calendar API Error: {e}")
-        return f"Error fetching calendar: {str(e)}"
+        return f"Calendar error: Unable to fetch events."
+    finally:
+        session.close()

@@ -32,6 +32,8 @@ from routers import interests
 app.include_router(interests.router)
 from routers import settings
 app.include_router(settings.router)
+from routers import google_auth
+app.include_router(google_auth.router)
 # Parse origins and ensure they have a scheme (https://) if provided by Render
 origins_raw = os.getenv("ALLOWED_ORIGINS", "*").split(",")
 origins = []

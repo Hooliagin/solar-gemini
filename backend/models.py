@@ -28,8 +28,12 @@ class UserSettings(SQLModel, table=True):
     # Weather settings
     weather_enabled: bool = Field(default=True)
     weather_city: str = Field(default="Berlin")
-    # Voice settings (for Phase 3)
+    # Voice settings
     voice_id: str = Field(default="alloy")  # OpenAI TTS voice
-    # Language preference (for Phase 2)
+    # Language preference
     language: str = Field(default="de")
+    # Google Calendar OAuth tokens
+    google_access_token: Optional[str] = Field(default=None)
+    google_refresh_token: Optional[str] = Field(default=None)
+    google_token_expiry: Optional[datetime] = Field(default=None)
     updated_at: datetime = Field(default_factory=datetime.utcnow)

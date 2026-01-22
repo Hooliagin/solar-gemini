@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Cloud, MapPin, Save, Settings as SettingsIcon, Volume2 } from 'lucide-react';
+import { Cloud, MapPin, Save, Settings as SettingsIcon, Volume2, Calendar, Link, Unlink } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { API_BASE_URL } from '../config';
 
@@ -19,9 +19,17 @@ export default function SettingsPanel() {
     const [city, setCity] = useState('');
     const [weatherEnabled, setWeatherEnabled] = useState(true);
     const [voiceId, setVoiceId] = useState('alloy');
+    const [calendarConnected, setCalendarConnected] = useState(false);
 
     useEffect(() => {
         fetchSettings();
+        checkCalendarStatus();
+        // Check URL for OAuth callback result
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('calendar_connected') === 'true') {
+            setCalendarConnected(true);
+            window.history.replaceState({}, '', window.location.pathname);
+        }
     }, []);
 
     const fetchSettings = async () => {
@@ -43,6 +51,31 @@ export default function SettingsPanel() {
         }
     };
 
+    const checkCalendarStatus = async () => {
+        try {
+            const res = await fetch(`${API_BASE_URL}/auth/google/status`);
+            if (res.ok) {
+                const data = await res.json();
+                setCalendarConnected(data.connected);
+            }
+        } catch (error) {
+            console.error('Failed to check calendar status', error);
+        }
+    };
+
+    const connectCalendar = () => {
+        window.location.href = `${API_BASE_URL}/auth/google`;
+    };
+
+    const disconnectCalendar = async () => {
+        try {
+            await fetch(`${API_BASE_URL}/auth/google/disconnect`, { method: 'POST' });
+            setCalendarConnected(false);
+        } catch (error) {
+            console.error('Failed to disconnect calendar', error);
+        }
+    };
+
     const saveSettings = async () => {
         setSaving(true);
         try {
@@ -60,7 +93,7 @@ export default function SettingsPanel() {
                 })
             });
             if (res.ok) {
-                // Settings saved successfully
+                // Settings saved
             }
         } catch (error) {
             console.error('Failed to save settings', error);
@@ -91,7 +124,35 @@ export default function SettingsPanel() {
             </h2>
 
             <div className="space-y-6">
-                {/* Weather Section */}
+                {/* Google Calendar */}
+                <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <Calendar className="w-5 h-5 text-green-400" />
+                            <span className="text-gray-300">Google Calendar</span>
+                        </div>
+                        {calendarConnected ? (
+                            <span className="text-xs px-2 py-1 bg-green-500/20 text-green-400 rounded-full">Connected</span>
+                        ) : (
+                            <span className="text-xs px-2 py-1 bg-yellow-500/20 text-yellow-400 rounded-full">Not connected</span>
+                        )}
+                    </div>
+                    <div className="ml-8">
+                        {calendarConnected ? (
+                            <button onClick={disconnectCalendar} className="flex items-center gap-2 px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg transition-all text-sm">
+                                <Unlink className="w-4 h-4" />
+                                Disconnect
+                            </button>
+                        ) : (
+                            <button onClick={connectCalendar} className="flex items-center gap-2 px-4 py-2 bg-green-500/20 hover:bg-green-500/30 text-green-400 rounded-lg transition-all text-sm">
+                                <Link className="w-4 h-4" />
+                                Connect Calendar
+                            </button>
+                        )}
+                    </div>
+                </div>
+
+                {/* Weather */}
                 <div className="space-y-3">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
@@ -102,22 +163,13 @@ export default function SettingsPanel() {
                             onClick={() => setWeatherEnabled(!weatherEnabled)}
                             className={`relative w-12 h-6 rounded-full transition-colors ${weatherEnabled ? 'bg-blue-500' : 'bg-white/20'}`}
                         >
-                            <div
-                                className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${weatherEnabled ? 'left-7' : 'left-1'}`}
-                            />
+                            <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${weatherEnabled ? 'left-7' : 'left-1'}`} />
                         </button>
                     </div>
-
                     {weatherEnabled && (
                         <div className="flex items-center gap-2 ml-8">
                             <MapPin className="w-4 h-4 text-gray-500" />
-                            <input
-                                type="text"
-                                value={city}
-                                onChange={(e) => setCity(e.target.value)}
-                                placeholder="City (e.g. Berlin)"
-                                className="input-field flex-1 text-sm"
-                            />
+                            <input type="text" value={city} onChange={(e) => setCity(e.target.value)} placeholder="City (e.g. Berlin)" className="input-field flex-1 text-sm" />
                         </div>
                     )}
                 </div>
@@ -133,10 +185,7 @@ export default function SettingsPanel() {
                             <button
                                 key={voice.id}
                                 onClick={() => setVoiceId(voice.id)}
-                                className={`p-3 rounded-lg border-2 text-left transition-all relative ${voiceId === voice.id
-                                        ? 'border-purple-500 bg-purple-500/30 ring-2 ring-purple-500/50'
-                                        : 'border-white/10 hover:border-white/30 bg-white/5'
-                                    }`}
+                                className={`p-3 rounded-lg border-2 text-left transition-all relative ${voiceId === voice.id ? 'border-purple-500 bg-purple-500/30 ring-2 ring-purple-500/50' : 'border-white/10 hover:border-white/30 bg-white/5'}`}
                             >
                                 {voiceId === voice.id && (
                                     <div className="absolute top-2 right-2 w-4 h-4 bg-purple-500 rounded-full flex items-center justify-center">
@@ -145,20 +194,14 @@ export default function SettingsPanel() {
                                         </svg>
                                     </div>
                                 )}
-                                <div className={`font-medium text-sm ${voiceId === voice.id ? 'text-purple-300' : 'text-gray-300'}`}>
-                                    {voice.name}
-                                </div>
+                                <div className={`font-medium text-sm ${voiceId === voice.id ? 'text-purple-300' : 'text-gray-300'}`}>{voice.name}</div>
                                 <div className="text-xs text-gray-500">{voice.description}</div>
                             </button>
                         ))}
                     </div>
                 </div>
 
-                <button
-                    onClick={saveSettings}
-                    disabled={saving}
-                    className="w-full py-2.5 px-4 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 rounded-xl font-medium transition-all disabled:opacity-50 flex items-center justify-center gap-2"
-                >
+                <button onClick={saveSettings} disabled={saving} className="w-full py-2.5 px-4 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 rounded-xl font-medium transition-all disabled:opacity-50 flex items-center justify-center gap-2">
                     <Save className="w-4 h-4" />
                     {saving ? 'Saving...' : 'Save Settings'}
                 </button>
