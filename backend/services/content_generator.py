@@ -137,8 +137,10 @@ def generate_briefing_content():
         os.makedirs(settings.AUDIO_DIR, exist_ok=True)
         audio_path_abs = os.path.join(settings.AUDIO_DIR, audio_filename)
         
-        generate_speech(script, audio_path_abs, language=detected_language)
-        print(f"DEBUG: Audio saved to {audio_path_abs} (lang: {detected_language})", flush=True)
+        # Get user's preferred voice from settings
+        user_voice = user_settings.voice_id if user_settings else None
+        generate_speech(script, audio_path_abs, language=detected_language, voice_override=user_voice)
+        print(f"DEBUG: Audio saved to {audio_path_abs} (lang: {detected_language}, voice: {user_voice})", flush=True)
         
         # 6. Save Briefing to DB
         briefing = Briefing(
