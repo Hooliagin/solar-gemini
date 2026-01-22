@@ -8,17 +8,54 @@ from database import create_db_and_tables
 # Global scheduler instance
 scheduler = None
 
+def should_run_scheduler():
+    """
+    Only run scheduler on one worker to prevent duplicate briefings.
+    In production (gunicorn), only the first worker should run it.
+    Check if we're worker 1 or in development mode.
+    """
+    # Check for gunicorn worker ID
+    worker_id = os.environ.get("GUNICORN_WORKER_ID")
+    if worker_id and worker_id != "1":
+        return False
+    
+    # For render.com with multiple workers, use a file lock approach
+    lock_file = "/tmp/scheduler_lock"
+    try:
+        if os.path.exists(lock_file):
+            # Check if lock is stale (older than 5 minutes)
+            import time
+            if time.time() - os.path.getmtime(lock_file) < 300:
+                return False
+        # Create lock file
+        with open(lock_file, "w") as f:
+            f.write(str(os.getpid()))
+        return True
+    except Exception:
+        return True  # Default to running if we can't check
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
     create_db_and_tables()
     global scheduler
-    scheduler = start_scheduler()
-    print("Scheduler started.")
+    
+    if should_run_scheduler():
+        scheduler = start_scheduler()
+        print("Scheduler started (this worker).")
+    else:
+        print("Scheduler skipped (another worker handles it).")
+    
     yield
+    
     # Shutdown
     if scheduler:
         scheduler.shutdown()
+        # Clean up lock file
+        try:
+            os.remove("/tmp/scheduler_lock")
+        except Exception:
+            pass
     print("Scheduler shutdown.")
 
 app = FastAPI(lifespan=lifespan, title="Audio Daily Manager")
