@@ -128,12 +128,26 @@ async def telegram_webhook(request: Request):
         raise HTTPException(status_code=503, detail="Telegram bot not configured")
     
     try:
-        app = get_application()
+        # Build fresh application for each request
+        app = Application.builder().token(settings.TELEGRAM_BOT_TOKEN).build()
+        
+        # Register handlers
+        app.add_handler(CommandHandler("start", start_command))
+        app.add_handler(CommandHandler("generate", generate_command))
+        app.add_handler(MessageHandler(filters.VOICE, handle_voice_message))
+        
+        # Initialize the application
+        await app.initialize()
+        await app.start()
+        
+        # Process the update
         update_data = await request.json()
         update = Update.de_json(update_data, app.bot)
-        
-        # Process update
         await app.process_update(update)
+        
+        # Cleanup
+        await app.stop()
+        await app.shutdown()
         
         return {"ok": True}
         
