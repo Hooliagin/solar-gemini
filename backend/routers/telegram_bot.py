@@ -162,14 +162,20 @@ async def name_state(update: Update, context):
     name = update.message.text
     chat_id = str(update.effective_chat.id)
     
-    session = next(get_session())
-    stmt = select(UserSettings).where(UserSettings.telegram_chat_id == chat_id)
-    user = session.exec(stmt).first()
-    if user:
-        user.name = name
-        session.add(user)
-        session.commit()
-    session.close()
+    # Store in context for later use even if DB fails
+    context.user_data['name'] = name
+    
+    try:
+        session = next(get_session())
+        stmt = select(UserSettings).where(UserSettings.telegram_chat_id == chat_id)
+        user = session.exec(stmt).first()
+        if user:
+            user.name = name
+            session.add(user)
+            session.commit()
+        session.close()
+    except Exception as e:
+        logger.error(f"Error saving name: {e}")
     
     await update.message.reply_text(
         f"✅ Hallo **{name}**!\n\n"
@@ -190,15 +196,19 @@ async def age_state(update: Update, context):
         return AGE
     
     chat_id = str(update.effective_chat.id)
+    context.user_data['age'] = age
     
-    session = next(get_session())
-    stmt = select(UserSettings).where(UserSettings.telegram_chat_id == chat_id)
-    user = session.exec(stmt).first()
-    if user:
-        user.age = age
-        session.add(user)
-        session.commit()
-    session.close()
+    try:
+        session = next(get_session())
+        stmt = select(UserSettings).where(UserSettings.telegram_chat_id == chat_id)
+        user = session.exec(stmt).first()
+        if user:
+            user.age = age
+            session.add(user)
+            session.commit()
+        session.close()
+    except Exception as e:
+        logger.error(f"Error saving age: {e}")
     
     await update.message.reply_text(
         f"✅ Dankeschön!\n\n"
