@@ -15,7 +15,7 @@ def fetch_ai_news_summary(topics: list[str] = None):
     try:
         # Use a model that supports search grounding (Gemini 1.5 usually recommended)
         # We try to use the 'tools' for google search if the API key supports it.
-        model = genai.GenerativeModel('models/gemini-1.5-flash')
+        model = genai.GenerativeModel('gemini-2.0-flash')
         
         search_query = "AI and Tech"
         if topics and len(topics) > 0:
@@ -44,7 +44,7 @@ def fetch_ai_news_summary(topics: list[str] = None):
         except Exception as tool_error:
             logger.warning(f"Gemini with Search Tool failed ({tool_error}), falling back to standard generation.")
             # Fallback to standard generation without specific tools if search fails (e.g. API tier)
-            model_fallback = genai.GenerativeModel('gemini-pro')
+            model_fallback = genai.GenerativeModel('gemini-2.0-flash')
             fallback_prompt = (
                f"You are a news assistant. Provide a short, bulleted summary of 3 key trends or concepts "
                f"related to: {search_query}. "

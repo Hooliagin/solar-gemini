@@ -67,7 +67,7 @@ def generate_briefing_content():
         
         # 4. Generate Script using Gemini
         print("DEBUG: Initializing Gemini Model...", flush=True)
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        model = genai.GenerativeModel('gemini-2.0-flash')
         
         prompt = f"""
         You are a friendly, professional personal assistant. It is morning.
