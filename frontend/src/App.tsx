@@ -18,9 +18,47 @@ import InterestManager from './components/InterestManager';
 import SettingsPanel from './components/SettingsPanel';
 import { Sparkles, Mic, Play, LogOut } from 'lucide-react';
 
+import { API_BASE_URL } from './config';
+import { useSearchParams } from 'react-router-dom';
+
 // Main Layout for authenticated users
 const Dashboard = () => {
-  const { signOut } = useAuth();
+  const { signOut, session } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const claimCode = searchParams.get('claim_code');
+
+  React.useEffect(() => {
+    if (claimCode && session?.access_token) {
+      mergeAccount(claimCode, session.access_token);
+    }
+  }, [claimCode, session]);
+
+  const mergeAccount = async (code: string, token: string) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/settings/merge`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ link_code: code })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert(`✅ Account erfolgreich verknüpft! ${data.merged_items} Elemente wurden übertragen.`);
+        // Remove query param
+        searchParams.delete('claim_code');
+        setSearchParams(searchParams);
+      } else if (data.status === 'same_user') {
+        // Ignore
+      } else {
+        alert(`Fehler beim Verknüpfen: ${data.detail || 'Unbekannter Fehler'}`);
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Verbindungsfehler beim Account-Merge.");
+    }
+  };
 
   return (
     <div className="min-h-screen text-white p-6 pb-24 max-w-7xl mx-auto">
