@@ -105,7 +105,12 @@ export default function SettingsPanel() {
     // ... (rest of calendar/news functions unchanged) ...
     const checkCalendarStatus = async () => {
         try {
-            const res = await fetch(`${API_BASE_URL}/auth/google/status`);
+            const token = (await supabase.auth.getSession()).data.session?.access_token;
+            if (!token) return;
+
+            const res = await fetch(`${API_BASE_URL}/auth/google/status`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
             if (res.ok) {
                 const data = await res.json();
                 setCalendarConnected(data.connected);
@@ -115,13 +120,24 @@ export default function SettingsPanel() {
         }
     };
 
-    const connectCalendar = () => {
-        window.location.href = `${API_BASE_URL}/auth/google`;
+    const connectCalendar = async () => {
+        const session = (await supabase.auth.getSession()).data.session;
+        if (session?.user?.id) {
+            window.location.href = `${API_BASE_URL}/auth/google?user_id=${session.user.id}`;
+        } else {
+            console.error('No user session found');
+        }
     };
 
     const disconnectCalendar = async () => {
         try {
-            await fetch(`${API_BASE_URL}/auth/google/disconnect`, { method: 'POST' });
+            const token = (await supabase.auth.getSession()).data.session?.access_token;
+            if (!token) return;
+
+            await fetch(`${API_BASE_URL}/auth/google/disconnect`, {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${token}` }
+            });
             setCalendarConnected(false);
         } catch (error) {
             console.error('Failed to disconnect calendar', error);

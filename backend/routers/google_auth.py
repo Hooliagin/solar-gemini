@@ -36,10 +36,17 @@ def get_flow():
 
 from auth import get_current_user_id
 from sqlmodel import select
+from typing import Optional
 
 @router.get("/google")
-def google_auth(user_id: str = Depends(get_current_user_id)):
-    """Initiate Google OAuth flow - redirects user to Google login."""
+def google_auth(user_id: Optional[str] = None):
+    """Initiate Google OAuth flow - redirects user to Google login.
+    
+    user_id can be passed as query param for direct browser redirects.
+    """
+    if not user_id:
+        raise HTTPException(status_code=400, detail="user_id is required as query parameter")
+    
     flow = get_flow()
     # Pass user_id as state to identify user in callback
     authorization_url, state = flow.authorization_url(
