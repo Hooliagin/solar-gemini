@@ -356,6 +356,11 @@ async def interests_state(update: Update, context):
     )
     return ConversationHandler.END
 
+async def cancel_onboarding(update: Update, context):
+    """Cancel the conversation."""
+    await update.message.reply_text("❌ Setup abgebrochen.")
+    return ConversationHandler.END
+
 async def login_command(update: Update, context):
     """Generate a login link for the web interface."""
     chat_id = str(update.effective_chat.id)
