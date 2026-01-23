@@ -133,50 +133,36 @@ def generate_briefing_content(target_user_id: str):
         1. **PERSONAL GREETING**
            - Warm, personalized good morning. {greeting_instruction}.
         
-        2. **YESTERDAY'S REFLECTION** (2-3 minutes)
-           - Thoughtfully reflect on yesterday's diary entry
-           - Pick up on emotions, achievements, or concerns mentioned
-           - Ask 1-2 rhetorical reflection questions that encourage the user to think deeper
-           - Examples: "Überleg dir: Was hast du daraus gelernt?" or "Wie könntest du dieses Gefühl heute nutzen?"
-           - Give supportive, actionable advice
+        2. **YESTERDAY'S REFLECTION** (1-2 minutes)
+           - Briefly reflect on yesterday's diary entry
+           - Pick ONE key emotion or achievement
+           - One short, punchy question for today (e.g., "Nimmst du diesen Schwung mit?")
         
-        3. **NEWS & TOPICS** (3-4 minutes - THIS IS THE LONGEST SECTION)
-           - Go through EACH news topic in detail
-           - For each topic, provide:
-             * Context and background
-             * Current developments
-             * Why it matters
-             * 2-3 sentences of analysis
-           - Make it informative and engaging
-           - Connect topics to the user's interests when possible
+        3. **NEWS & TOPICS** (2 minutes - COMPACT)
+           - Go through news topics efficiently
+           - For each topic: 1-2 sentenes MAXIMUM
+           - Focus on the "headline" and why it matters
+           - Keep it fast-paced and interesting
         
-        4. **TODAY'S APPOINTMENTS** (2-3 minutes - VERY DETAILED)
-           - For EACH appointment/event, provide:
-             a) **What will happen**: Describe the event/meeting
-             b) **Preparation needed**: What should be prepared beforehand?
-             c) **Goals**: What are the objectives for this appointment?
-             d) **Reflective questions about benefits**: Ask the user to think about:
-                - "Welche Vorteile ergeben sich, wenn dieser Termin gut läuft?"
-                - "Was könnte das beste Ergebnis sein?"
-                - "Wie würdest du dich fühlen, wenn alles optimal verläuft?"
-           - All times must be SPOKEN OUT as words
-           - Be specific and actionable
+        4. **TODAY'S APPOINTMENTS** (1-2 minutes - IMPULSE DRIVEN)
+           - Mention the appointments clearly with spoken times
+           - instead of deep analysis, give MAX ONE SHORT IMPULSE per appointment
+           - Only if it fits! If it's a routine blocker, just mention it
+           - Example: "Meeting mit Team X - vielleicht eine gute Chance, Thema Y kurz anzusprechen."
         
-        5. **WEATHER** (30 seconds)
-           - Brief weather update with clothing/planning recommendations
+        5. **WEATHER** (20 seconds)
+           - Very brief status update
         
         6. **MOTIVATIONAL CLOSING**
-           - Positive, encouraging thought for the day
-           - Reference something from the briefing (yesterday's achievement, today's goal)
+           - One strong sentence to start the day
         
         **CRITICAL REMINDERS:**
-        - Total briefing should be 7-10 minutes when spoken
-        - NEWS is the longest section (3-4 minutes)
-        - Appointments get detailed analysis with reflective benefit questions
-        - Be conversational and warm, like a personal coach who knows the user
-        - Remember: NO MARKDOWN, only natural spoken text suitable for text-to-speech
+        - **KEEP IT SHORT**: Total briefing should be ~5 minutes maximum
+        - **STYLE**: Energetic, punchy, like a smart radio moderator
+        - **Appointments**: No deep coaching questions, just quick strategic tips
+        - NO LISTS of questions, just single thought-starters
+        - NO MARKDOWN, only natural spoken text suitable for text-to-speech
         - All numbers, times, and dates MUST be written as words
-        - Use rhetorical questions to prompt reflection, not questions requiring answers
         """
         
         print("DEBUG: Generating Content with Gemini...", flush=True)
