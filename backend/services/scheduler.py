@@ -134,7 +134,7 @@ def scheduled_briefing_job():
                         if existing:
                             print(f"DEBUG: User {user.user_id} already has a briefing today, skipping", flush=True)
                             logger.debug(f"User {user.user_id} already has a briefing today, skipping")
-                            continue
+                            # REMOVED FOR TESTING: continue
                     finally:
                         session.close()
                     
