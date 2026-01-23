@@ -373,13 +373,14 @@ export default function SettingsPanel() {
                             <button
                                 key={cat.key}
                                 onClick={() => setNewsCategories(prev => ({ ...prev, [cat.key]: !isActive }))}
-                                className={`px-4 py-2.5 rounded-xl font-medium text-sm transition-all flex items-center gap-2 ${isActive
-                                    ? `${cat.color} text-white shadow-lg`
-                                    : 'bg-white/10 text-gray-400 hover:bg-white/20'
+                                className={`px-4 py-2.5 rounded-xl font-medium text-sm transition-all flex items-center gap-2 border-2 ${isActive
+                                    ? `${cat.color} text-white shadow-lg border-white/30 scale-105`
+                                    : 'bg-white/5 text-gray-500 hover:bg-white/10 border-transparent opacity-60'
                                     }`}
                             >
                                 <span className="text-lg">{cat.icon}</span>
                                 {cat.name}
+                                {isActive && <span className="ml-1">✓</span>}
                             </button>
                         );
                     })}
