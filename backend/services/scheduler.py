@@ -95,46 +95,64 @@ def scheduled_briefing_job():
     Main scheduler job that runs every minute.
     Checks for users whose briefing time matches now and generates/sends their briefings.
     """
-    now = datetime.now()
-    current_time = now.strftime("%H:%M")
-    
-    logger.info(f"Scheduler check at {current_time}")
-    
-    # Get users due for briefing
-    users = get_users_due_for_briefing()
-    
-    if users:
-        logger.info(f"Found {len(users)} users due for briefing at {current_time}")
+    print("DEBUG: scheduled_briefing_job STARTED", flush=True)
+    try:
+        now = datetime.now()
+        current_time = now.strftime("%H:%M")
         
-        for user in users:
-            try:
-                # Check if we already sent a briefing today
-                from database import get_session
-                from models import Briefing
-                from sqlmodel import select
-                
-                session = next(get_session())
+        print(f"DEBUG: Scheduler check at {current_time}", flush=True)
+        logger.info(f"Scheduler check at {current_time}")
+        
+        # Get users due for briefing
+        print("DEBUG: Calling get_users_due_for_briefing()...", flush=True)
+        users = get_users_due_for_briefing()
+        print(f"DEBUG: get_users_due_for_briefing returned {len(users)} users", flush=True)
+        
+        if users:
+            logger.info(f"Found {len(users)} users due for briefing at {current_time}")
+            
+            for user in users:
+                print(f"DEBUG: Processing user {user.user_id}", flush=True)
                 try:
-                    # Check for briefing created today
-                    today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-                    existing = session.exec(
-                        select(Briefing).where(
-                            Briefing.user_id == user.user_id,
-                            Briefing.created_at >= today_start
-                        )
-                    ).first()
+                    # Check if we already sent a briefing today
+                    from database import get_session
+                    from models import Briefing
+                    from sqlmodel import select
                     
-                    if existing:
-                        logger.debug(f"User {user.user_id} already has a briefing today, skipping")
-                        continue
-                finally:
-                    session.close()
-                
-                # Generate and send
-                generate_and_send_briefing(user.user_id, user.telegram_chat_id)
-                
-            except Exception as e:
-                logger.error(f"Error processing user {user.user_id}: {e}")
+                    print("DEBUG: Checking for existing briefing...", flush=True)
+                    session = next(get_session())
+                    try:
+                        # Check for briefing created today
+                        today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+                        existing = session.exec(
+                            select(Briefing).where(
+                                Briefing.user_id == user.user_id,
+                                Briefing.created_at >= today_start
+                            )
+                        ).first()
+                        
+                        if existing:
+                            print(f"DEBUG: User {user.user_id} already has a briefing today, skipping", flush=True)
+                            logger.debug(f"User {user.user_id} already has a briefing today, skipping")
+                            continue
+                    finally:
+                        session.close()
+                    
+                    # Generate and send
+                    print("DEBUG: Generating and sending briefing...", flush=True)
+                    generate_and_send_briefing(user.user_id, user.telegram_chat_id)
+                    print("DEBUG: generate_and_send_briefing returned", flush=True)
+                    
+                except Exception as e:
+                    print(f"ERROR processing user {user.user_id}: {e}", flush=True)
+                    logger.error(f"Error processing user {user.user_id}: {e}")
+        else:
+            print("DEBUG: No users found for briefing", flush=True)
+            
+    except Exception as e:
+        print(f"CRITICAL ERROR in scheduled_briefing_job: {e}", flush=True)
+        import traceback
+        traceback.print_exc()
 
 def start_scheduler():
     """
