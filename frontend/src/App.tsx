@@ -33,12 +33,33 @@ const Dashboard = () => {
   const { signOut, session } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const claimCode = searchParams.get('claim_code');
+  const [userName, setUserName] = React.useState<string>('');
 
   React.useEffect(() => {
     if (claimCode && session?.access_token) {
       mergeAccount(claimCode, session.access_token);
     }
   }, [claimCode, session]);
+
+  // Fetch user name
+  React.useEffect(() => {
+    const fetchUserName = async () => {
+      try {
+        const token = session?.access_token;
+        if (!token) return;
+        const res = await fetch(`${API_BASE_URL}/settings/`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setUserName(data.name || '');
+        }
+      } catch (error) {
+        console.error('Failed to fetch user name', error);
+      }
+    };
+    fetchUserName();
+  }, [session]);
 
   const mergeAccount = async (code: string, token: string) => {
     try {
@@ -115,7 +136,7 @@ const Dashboard = () => {
             </div>
             <div>
               <h2 className="text-3xl font-bold text-white mb-1">
-                {timeInfo.greeting}! 👋
+                {timeInfo.greeting}{userName ? `, ${userName}` : ''}! 👋
               </h2>
               <p className="text-gray-400">
                 {timeInfo.period === 'morning'

@@ -95,11 +95,24 @@ def generate_briefing_content(target_user_id: str):
         if detected_language not in ["de", "en"]:
             language_instruction = f"Respond in the same language as the diary entry (detected: {detected_language})."
         
+        # Get user's name for personalized greeting
+        user_name = user_settings.name if user_settings.name else ""
+        greeting_instruction = f"Address the user by name: '{user_name}'" if user_name else "Use a friendly greeting"
+        
         prompt = f"""
         You are a friendly, professional personal assistant. It is morning.
-        Create a DETAILED morning briefing script for me.
+        Create a DETAILED morning briefing script for the user.
         
         **IMPORTANT: {language_instruction}**
+        
+        **CRITICAL TTS OPTIMIZATION RULES:**
+        - NEVER use Markdown formatting (no **, -, #, _, `, etc.)
+        - Write EVERYTHING as natural spoken text
+        - Spell out ALL numbers as words (e.g., "fünf" not "5", "zehn Uhr" not "10:00")
+        - Use full words, NEVER abbreviations (e.g., "zum Beispiel" not "z.B.", "das heißt" not "d.h.")
+        - Write times in spoken format (e.g., "zehn Uhr dreißig" not "10:30")
+        - Use natural pauses with punctuation (commas, periods)
+        - Write dates in full spoken form (e.g., "dreiundzwanzigster Januar" not "23.01.")
         
         Here is the context:
         
@@ -116,9 +129,9 @@ def generate_briefing_content(target_user_id: str):
         {all_news}
         
         Structure the briefing as follows:
-        1. Warm, personal good morning greeting.
+        1. Warm, personal good morning greeting. {greeting_instruction}.
         2. Thoughtful reflection on yesterday's diary entry - pick up on emotions or plans mentioned, give supportive advice.
-        3. Detailed overview of today's schedule - mention each event with times and any preparation tips.
+        3. Detailed overview of today's schedule - mention each event with times (SPELLED OUT as words!) and any preparation tips.
         4. Weather update with specific clothing and planning recommendations.
         5. NEWS SECTION (THIS IS IMPORTANT - spend time on this):
            - Go through EACH news topic in detail
@@ -129,9 +142,9 @@ def generate_briefing_content(target_user_id: str):
         IMPORTANT:
         - Make the briefing DETAILED and SUBSTANTIAL (aim for 5-7 minutes spoken)
         - The news section should be the longest part
-        - Be conversational and warm, like a personal assistant who knows me
-        - Do not use markdown formatting like **bold**, as it will be read by TTS
-        - Write it as natural spoken text
+        - Be conversational and warm, like a personal assistant who knows the user
+        - Remember: NO MARKDOWN, only natural spoken text suitable for text-to-speech
+        - All numbers, times, and dates MUST be written as words
         """
         
         print("DEBUG: Generating Content with Gemini...", flush=True)
