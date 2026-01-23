@@ -593,6 +593,64 @@ async def onboarding_callback_router(update: Update, context):
     elif data.startswith('toggle_') or data == 'news_done':
         await news_state(update, context)
 
+def run_generation_task(chat_id: int):
+    """Background task to generate and send a briefing."""
+    import asyncio
+    from services.content_generator import generate_briefing_content
+    from services.telegram_service import send_briefing_audio, send_text_message
+    
+    chat_id_str = str(chat_id)
+    
+    # Get user by chat_id
+    session = next(get_session())
+    try:
+        stmt = select(UserSettings).where(UserSettings.telegram_chat_id == chat_id_str)
+        user = session.exec(stmt).first()
+        
+        if not user:
+            logger.error(f"No user found for chat_id {chat_id}")
+            return
+            
+        user_id = user.user_id
+    finally:
+        session.close()
+    
+    try:
+        # Generate briefing
+        logger.info(f"Generating briefing for user {user_id}")
+        briefing = generate_briefing_content(user_id)
+        
+        if briefing and briefing.audio_path:
+            async def send():
+                await send_briefing_audio(
+                    chat_id=chat_id_str,
+                    audio_path=briefing.audio_path,
+                    caption=f"🌅 Dein persönliches Briefing"
+                )
+            
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                loop.run_until_complete(send())
+            finally:
+                loop.close()
+                
+            logger.info(f"Briefing sent to chat {chat_id}")
+        else:
+            # Send error message
+            async def send_error():
+                await send_text_message(chat_id_str, "❌ Fehler beim Generieren des Briefings. Bitte versuche es später nochmal.")
+            
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                loop.run_until_complete(send_error())
+            finally:
+                loop.close()
+                
+    except Exception as e:
+        logger.error(f"Error generating briefing: {e}")
+
 @router.post("/webhook")
 async def telegram_webhook(request: Request, background_tasks: BackgroundTasks):
     """Telegram webhook endpoint."""
