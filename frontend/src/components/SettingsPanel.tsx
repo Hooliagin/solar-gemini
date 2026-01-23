@@ -1,36 +1,41 @@
 import { useEffect, useState } from 'react';
-import { Cloud, MapPin, Save, Settings as SettingsIcon, Volume2, Calendar, Link, Unlink, Newspaper, Clock } from 'lucide-react';
+import {
+    Cloud, MapPin, Save, Volume2, Calendar, Link, Unlink,
+    Clock, MessageCircle, CheckCircle, Sparkles, Globe, Zap
+} from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { API_BASE_URL } from '../config';
 
-// Available OpenAI TTS voices
+// Voice options with colors
 const VOICES = [
-    { id: 'alloy', name: 'Alloy', description: 'Neutral, balanced' },
-    { id: 'echo', name: 'Echo', description: 'Warm, conversational' },
-    { id: 'fable', name: 'Fable', description: 'Expressive, storyteller' },
-    { id: 'onyx', name: 'Onyx', description: 'Deep, authoritative' },
-    { id: 'nova', name: 'Nova', description: 'Friendly, upbeat' },
-    { id: 'shimmer', name: 'Shimmer', description: 'Clear, professional' },
+    { id: 'alloy', name: 'Alloy', desc: 'Neutral', color: 'from-gray-400 to-gray-600', icon: '🎭' },
+    { id: 'echo', name: 'Echo', desc: 'Warm', color: 'from-amber-400 to-orange-500', icon: '🌅' },
+    { id: 'fable', name: 'Fable', desc: 'Storyteller', color: 'from-purple-400 to-pink-500', icon: '📖' },
+    { id: 'onyx', name: 'Onyx', desc: 'Deep', color: 'from-slate-600 to-slate-800', icon: '🎸' },
+    { id: 'nova', name: 'Nova', desc: 'Friendly', color: 'from-cyan-400 to-blue-500', icon: '✨' },
+    { id: 'shimmer', name: 'Shimmer', desc: 'Clear', color: 'from-emerald-400 to-teal-500', icon: '💎' },
 ];
 
-// Predefined news categories
-const NEWS_CATEGORIES = [
-    { key: 'news_politics', name: 'Politik', icon: '🏛️', description: 'Deutsche & internationale Politik' },
-    { key: 'news_local', name: 'Lokal', icon: '📍', description: 'News aus deiner Stadt' },
-    { key: 'news_economy', name: 'Wirtschaft', icon: '📈', description: 'DAX, Märkte, Unternehmen' },
-    { key: 'news_tech', name: 'Technologie', icon: '💻', description: 'Tech, KI, Startups' },
-    { key: 'news_sports', name: 'Sport', icon: '⚽', description: 'Bundesliga, Wettkämpfe' },
+// News categories with colors
+const NEWS_CATS = [
+    { key: 'news_politics', name: 'Politik', icon: '🏛️', color: 'bg-red-500' },
+    { key: 'news_local', name: 'Lokal', icon: '📍', color: 'bg-blue-500' },
+    { key: 'news_economy', name: 'Wirtschaft', icon: '📈', color: 'bg-green-500' },
+    { key: 'news_tech', name: 'Tech', icon: '💻', color: 'bg-purple-500' },
+    { key: 'news_sports', name: 'Sport', icon: '⚽', color: 'bg-orange-500' },
 ];
 
 export default function SettingsPanel() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [saved, setSaved] = useState(false);
     const [city, setCity] = useState('');
     const [weatherEnabled, setWeatherEnabled] = useState(true);
     const [voiceId, setVoiceId] = useState('alloy');
     const [briefingTime, setBriefingTime] = useState('07:00');
     const [calendarConnected, setCalendarConnected] = useState(false);
-    // News category toggles
+    const [telegramConnected, setTelegramConnected] = useState(false);
+    const [linkCode, setLinkCode] = useState<string | null>(null);
     const [newsCategories, setNewsCategories] = useState({
         news_politics: true,
         news_local: true,
@@ -39,14 +44,9 @@ export default function SettingsPanel() {
         news_sports: false,
     });
 
-    // Telegram linking state
-    const [telegramConnected, setTelegramConnected] = useState(false);
-    const [linkCode, setLinkCode] = useState<string | null>(null);
-
     useEffect(() => {
         fetchSettings();
         checkCalendarStatus();
-        // Check URL for OAuth callback result
         const params = new URLSearchParams(window.location.search);
         if (params.get('calendar_connected') === 'true') {
             setCalendarConnected(true);
@@ -58,19 +58,16 @@ export default function SettingsPanel() {
         try {
             const token = (await supabase.auth.getSession()).data.session?.access_token;
             if (!token) return;
-
             const res = await fetch(`${API_BASE_URL}/settings/`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             if (res.ok) {
                 const data = await res.json();
-                setCity(data.weather_city);
-                setWeatherEnabled(data.weather_enabled);
+                setCity(data.weather_city || '');
+                setWeatherEnabled(data.weather_enabled ?? true);
                 setVoiceId(data.voice_id || 'alloy');
                 setBriefingTime(data.briefing_time || '07:00');
                 setTelegramConnected(data.telegram_enabled || false);
-
-                // Load news category settings
                 setNewsCategories({
                     news_politics: data.news_politics ?? true,
                     news_local: data.news_local ?? true,
@@ -86,11 +83,43 @@ export default function SettingsPanel() {
         }
     };
 
+    const checkCalendarStatus = async () => {
+        try {
+            const token = (await supabase.auth.getSession()).data.session?.access_token;
+            if (!token) return;
+            const res = await fetch(`${API_BASE_URL}/auth/google/status`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setCalendarConnected(data.connected);
+            }
+        } catch (error) {
+            console.error('Failed to check calendar', error);
+        }
+    };
+
+    const connectCalendar = async () => {
+        const session = (await supabase.auth.getSession()).data.session;
+        if (session?.user?.id) {
+            window.location.href = `${API_BASE_URL}/auth/google?user_id=${session.user.id}`;
+        }
+    };
+
+    const disconnectCalendar = async () => {
+        const token = (await supabase.auth.getSession()).data.session?.access_token;
+        if (!token) return;
+        await fetch(`${API_BASE_URL}/auth/google/disconnect`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        setCalendarConnected(false);
+    };
+
     const generateLinkCode = async () => {
         try {
             const token = (await supabase.auth.getSession()).data.session?.access_token;
             if (!token) return;
-
             const res = await fetch(`${API_BASE_URL}/settings/telegram/link-code`, {
                 method: 'POST',
                 headers: { Authorization: `Bearer ${token}` }
@@ -104,57 +133,9 @@ export default function SettingsPanel() {
         }
     };
 
-    // ... (rest of calendar/news functions unchanged) ...
-    const checkCalendarStatus = async () => {
-        try {
-            const token = (await supabase.auth.getSession()).data.session?.access_token;
-            if (!token) return;
-
-            const res = await fetch(`${API_BASE_URL}/auth/google/status`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            if (res.ok) {
-                const data = await res.json();
-                setCalendarConnected(data.connected);
-            }
-        } catch (error) {
-            console.error('Failed to check calendar status', error);
-        }
-    };
-
-    const connectCalendar = async () => {
-        const session = (await supabase.auth.getSession()).data.session;
-        if (session?.user?.id) {
-            window.location.href = `${API_BASE_URL}/auth/google?user_id=${session.user.id}`;
-        } else {
-            console.error('No user session found');
-        }
-    };
-
-    const disconnectCalendar = async () => {
-        try {
-            const token = (await supabase.auth.getSession()).data.session?.access_token;
-            if (!token) return;
-
-            await fetch(`${API_BASE_URL}/auth/google/disconnect`, {
-                method: 'POST',
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            setCalendarConnected(false);
-        } catch (error) {
-            console.error('Failed to disconnect calendar', error);
-        }
-    };
-
-    const toggleNewsCategory = (key: string) => {
-        setNewsCategories(prev => ({
-            ...prev,
-            [key]: !prev[key as keyof typeof prev]
-        }));
-    };
-
     const saveSettings = async () => {
         setSaving(true);
+        setSaved(false);
         try {
             const token = (await supabase.auth.getSession()).data.session?.access_token;
             const res = await fetch(`${API_BASE_URL}/settings/`, {
@@ -172,7 +153,8 @@ export default function SettingsPanel() {
                 })
             });
             if (res.ok) {
-                // Settings saved
+                setSaved(true);
+                setTimeout(() => setSaved(false), 2000);
             }
         } catch (error) {
             console.error('Failed to save settings', error);
@@ -183,223 +165,243 @@ export default function SettingsPanel() {
 
     if (loading) {
         return (
-            <div className="glass-card rounded-2xl p-6 animate-pulse">
-                <div className="h-6 bg-white/10 rounded w-1/3 mb-4"></div>
-                <div className="h-10 bg-white/10 rounded w-full"></div>
+            <div className="glass-card rounded-2xl p-8 animate-pulse">
+                <div className="h-6 bg-white/10 rounded w-1/3 mb-6" />
+                <div className="space-y-4">
+                    <div className="h-16 bg-white/5 rounded-xl" />
+                    <div className="h-16 bg-white/5 rounded-xl" />
+                </div>
             </div>
         );
     }
 
     return (
-        <div className="glass-card rounded-2xl p-6 relative overflow-hidden group">
-            <div className="absolute top-0 right-0 p-4 opacity-50 group-hover:opacity-100 transition-opacity">
-                <SettingsIcon className="w-24 h-24 text-white/5 -rotate-12" />
+        <div className="space-y-6">
+            {/* Header */}
+            <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-bold gradient-text">Einstellungen</h2>
+                <button
+                    onClick={saveSettings}
+                    disabled={saving}
+                    className={`btn-primary flex items-center gap-2 ${saved ? 'bg-green-500' : ''}`}
+                >
+                    {saving ? (
+                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : saved ? (
+                        <CheckCircle className="w-5 h-5" />
+                    ) : (
+                        <Save className="w-5 h-5" />
+                    )}
+                    {saving ? 'Speichern...' : saved ? 'Gespeichert!' : 'Speichern'}
+                </button>
             </div>
 
-            <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
-                <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-cyan-400">
-                    Settings
-                </span>
-            </h2>
-
-            <div className="space-y-6">
-                {/* Telegram Connection - NEW */}
-                <div className="space-y-3 p-4 bg-blue-500/10 rounded-xl border border-blue-500/20">
-                    <div className="flex items-center justify-between">
+            {/* Connections Section */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Telegram Card */}
+                <div className="glass-card p-5 rounded-2xl">
+                    <div className="flex items-start justify-between">
                         <div className="flex items-center gap-3">
-                            <div className="p-2 bg-blue-500/20 rounded-lg text-blue-400">
-                                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .24z" /></svg>
+                            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/30">
+                                <MessageCircle className="w-6 h-6 text-white" />
                             </div>
                             <div>
-                                <h3 className="text-white font-medium">Telegram Bot</h3>
-                                <p className="text-xs text-gray-400">Erhalte dein Briefing direkt im Chat</p>
+                                <h3 className="font-semibold text-white">Telegram</h3>
+                                <p className="text-xs text-gray-400">Briefing im Chat</p>
                             </div>
                         </div>
-                        {telegramConnected ? (
-                            <span className="text-xs px-2 py-1 bg-green-500/20 text-green-400 rounded-full flex items-center gap-1">
-                                <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" /> Connected
-                            </span>
-                        ) : (
-                            <span className="text-xs px-2 py-1 bg-white/10 text-gray-400 rounded-full">Not connected</span>
-                        )}
+                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${telegramConnected
+                                ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                                : 'bg-white/10 text-gray-400'
+                            }`}>
+                            {telegramConnected ? '✓ Verbunden' : 'Nicht verbunden'}
+                        </span>
                     </div>
-
                     {!telegramConnected && (
-                        <div className="ml-11">
+                        <div className="mt-4">
                             {!linkCode ? (
-                                <button
-                                    onClick={generateLinkCode}
-                                    className="text-sm px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors flex items-center gap-2"
-                                >
-                                    <Link className="w-4 h-4" /> Code generieren
+                                <button onClick={generateLinkCode} className="w-full py-2.5 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2">
+                                    <Link className="w-4 h-4" />
+                                    Code generieren
                                 </button>
                             ) : (
-                                <div className="space-y-2 animate-in fade-in slide-in-from-top-2">
-                                    <p className="text-sm text-gray-300">Sende diesen Code an den Bot:</p>
-                                    <div className="flex items-center gap-3">
-                                        <code className="text-xl font-mono font-bold bg-black/30 px-4 py-2 rounded-lg tracking-wider text-blue-400 select-all">
-                                            /start {linkCode}
-                                        </code>
-                                        <a
-                                            href="https://t.me/DailyvoiceManagerbot"
-                                            target="_blank"
-                                            rel="noreferrer"
-                                            className="text-xs text-blue-400 hover:text-blue-300 underline"
-                                        >
-                                            Bot öffnen @DailyvoiceManagerbot
-                                        </a>
-                                    </div>
-                                    <p className="text-xs text-yellow-500/80">Code ist nur kurzzeitig gültig.</p>
+                                <div className="p-3 bg-black/30 rounded-xl">
+                                    <p className="text-xs text-gray-400 mb-2">Sende an @DailyvoiceManagerbot:</p>
+                                    <code className="text-lg font-mono font-bold text-blue-400">/start {linkCode}</code>
                                 </div>
                             )}
                         </div>
                     )}
                 </div>
 
-                {/* Google Calendar */}
-                <div className="space-y-3">
-                    <div className="flex items-center justify-between">
+                {/* Calendar Card */}
+                <div className="glass-card p-5 rounded-2xl">
+                    <div className="flex items-start justify-between">
                         <div className="flex items-center gap-3">
-                            <Calendar className="w-5 h-5 text-green-400" />
-                            <span className="text-gray-300">Google Calendar</span>
+                            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-green-400 to-emerald-600 flex items-center justify-center shadow-lg shadow-green-500/30">
+                                <Calendar className="w-6 h-6 text-white" />
+                            </div>
+                            <div>
+                                <h3 className="font-semibold text-white">Google Kalender</h3>
+                                <p className="text-xs text-gray-400">Termine im Briefing</p>
+                            </div>
                         </div>
-                        {calendarConnected ? (
-                            <span className="text-xs px-2 py-1 bg-green-500/20 text-green-400 rounded-full">Connected</span>
-                        ) : (
-                            <span className="text-xs px-2 py-1 bg-yellow-500/20 text-yellow-400 rounded-full">Not connected</span>
-                        )}
+                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${calendarConnected
+                                ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                                : 'bg-white/10 text-gray-400'
+                            }`}>
+                            {calendarConnected ? '✓ Verbunden' : 'Nicht verbunden'}
+                        </span>
                     </div>
-                    <div className="ml-8">
+                    <div className="mt-4">
                         {calendarConnected ? (
-                            <button onClick={disconnectCalendar} className="flex items-center gap-2 px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg transition-all text-sm">
+                            <button onClick={disconnectCalendar} className="w-full py-2.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2">
                                 <Unlink className="w-4 h-4" />
-                                Disconnect
+                                Trennen
                             </button>
                         ) : (
-                            <button onClick={connectCalendar} className="flex items-center gap-2 px-4 py-2 bg-green-500/20 hover:bg-green-500/30 text-green-400 rounded-lg transition-all text-sm">
+                            <button onClick={connectCalendar} className="w-full py-2.5 bg-green-500/20 hover:bg-green-500/30 text-green-400 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2">
                                 <Link className="w-4 h-4" />
-                                Connect Calendar
+                                Verbinden
                             </button>
                         )}
                     </div>
                 </div>
+            </div>
 
-                {/* Weather */}
-                <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <Cloud className="w-5 h-5 text-blue-400" />
-                            <span className="text-gray-300">Weather in Briefing</span>
+            {/* Location & Time */}
+            <div className="glass-card p-5 rounded-2xl">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* City */}
+                    <div>
+                        <div className="flex items-center gap-3 mb-3">
+                            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center">
+                                <Globe className="w-5 h-5 text-white" />
+                            </div>
+                            <div>
+                                <h3 className="font-medium text-white">Standort</h3>
+                                <p className="text-xs text-gray-500">Für Wetter & lokale News</p>
+                            </div>
                         </div>
-                        <button
-                            onClick={() => setWeatherEnabled(!weatherEnabled)}
-                            className={`relative w-12 h-6 rounded-full transition-colors ${weatherEnabled ? 'bg-blue-500' : 'bg-white/20'}`}
-                        >
-                            <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${weatherEnabled ? 'left-7' : 'left-1'}`} />
-                        </button>
+                        <div className="relative">
+                            <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
+                            <input
+                                type="text"
+                                value={city}
+                                onChange={(e) => setCity(e.target.value)}
+                                placeholder="z.B. Hamburg"
+                                className="input-field w-full pl-10"
+                            />
+                        </div>
                     </div>
-                    {weatherEnabled && (
-                        <div className="flex items-center gap-2 ml-8">
-                            <MapPin className="w-4 h-4 text-gray-500" />
-                            <input type="text" value={city} onChange={(e) => setCity(e.target.value)} placeholder="City (e.g. Berlin)" className="input-field flex-1 text-sm" />
-                        </div>
-                    )}
-                </div>
 
-                {/* Briefing Time */}
-                <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <Clock className="w-5 h-5 text-amber-400" />
-                            <span className="text-gray-300">Briefing Uhrzeit</span>
+                    {/* Briefing Time */}
+                    <div>
+                        <div className="flex items-center gap-3 mb-3">
+                            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center">
+                                <Clock className="w-5 h-5 text-white" />
+                            </div>
+                            <div>
+                                <h3 className="font-medium text-white">Briefing-Zeit</h3>
+                                <p className="text-xs text-gray-500">Tägliche Zustellung</p>
+                            </div>
                         </div>
                         <input
                             type="time"
                             value={briefingTime}
                             onChange={(e) => setBriefingTime(e.target.value)}
-                            className="input-field text-sm w-28 text-center"
+                            className="input-field w-full text-center text-lg font-mono"
                         />
                     </div>
-                    <p className="text-xs text-gray-500 ml-8">
-                        Dein tägliches Briefing wird um <strong>{briefingTime} Uhr</strong> generiert.
-                    </p>
                 </div>
 
-                {/* News Categories */}
-                <div className="space-y-3">
+                {/* Weather Toggle */}
+                <div className="mt-6 flex items-center justify-between p-4 bg-white/5 rounded-xl">
                     <div className="flex items-center gap-3">
-                        <Newspaper className="w-5 h-5 text-orange-400" />
-                        <span className="text-gray-300">News Kategorien</span>
+                        <Cloud className="w-5 h-5 text-blue-400" />
+                        <span className="text-gray-300">Wetter im Briefing</span>
                     </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 ml-8">
-                        {NEWS_CATEGORIES.map((cat) => {
-                            const isSelected = newsCategories[cat.key as keyof typeof newsCategories];
-                            return (
-                                <button
-                                    key={cat.key}
-                                    onClick={() => toggleNewsCategory(cat.key)}
-                                    className={`p-3 rounded-lg border-2 text-left transition-all relative ${isSelected
-                                        ? 'border-orange-500 bg-orange-500/30 ring-2 ring-orange-500/50 shadow-lg shadow-orange-500/20'
-                                        : 'border-white/10 hover:border-white/30 bg-white/5 opacity-60 hover:opacity-100'
-                                        }`}
-                                >
-                                    {/* Checkmark badge */}
-                                    {isSelected && (
-                                        <div className="absolute -top-2 -right-2 w-6 h-6 bg-orange-500 rounded-full flex items-center justify-center shadow-lg">
-                                            <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                                            </svg>
-                                        </div>
-                                    )}
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-lg">{cat.icon}</span>
-                                        <span className={`text-sm font-medium ${isSelected ? 'text-orange-300' : 'text-gray-400'}`}>
-                                            {cat.name}
-                                        </span>
-                                    </div>
-                                    <div className={`text-xs mt-1 ${isSelected ? 'text-orange-200/70' : 'text-gray-500'}`}>
-                                        {cat.description}
-                                    </div>
-                                </button>
-                            );
-                        })}
-                    </div>
-                    <p className="text-xs text-gray-500 ml-8">
-                        💡 Lokale News verwenden deine Wetter-Stadt: <strong>{city || 'nicht gesetzt'}</strong>
-                    </p>
+                    <button
+                        onClick={() => setWeatherEnabled(!weatherEnabled)}
+                        className={`relative w-14 h-7 rounded-full transition-all duration-300 ${weatherEnabled ? 'bg-gradient-to-r from-blue-500 to-cyan-500' : 'bg-white/20'
+                            }`}
+                    >
+                        <div className={`absolute top-1 w-5 h-5 rounded-full bg-white shadow-lg transition-all duration-300 ${weatherEnabled ? 'left-8' : 'left-1'
+                            }`} />
+                    </button>
                 </div>
+            </div>
 
-                {/* Voice Selection */}
-                <div className="space-y-3">
-                    <div className="flex items-center gap-3">
-                        <Volume2 className="w-5 h-5 text-purple-400" />
-                        <span className="text-gray-300">Briefing Voice</span>
+            {/* News Categories */}
+            <div className="glass-card p-5 rounded-2xl">
+                <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-orange-400 to-red-500 flex items-center justify-center">
+                        <Zap className="w-5 h-5 text-white" />
                     </div>
-                    <div className="grid grid-cols-2 gap-2 ml-8">
-                        {VOICES.map((voice) => (
+                    <div>
+                        <h3 className="font-medium text-white">News Kategorien</h3>
+                        <p className="text-xs text-gray-500">Was interessiert dich?</p>
+                    </div>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                    {NEWS_CATS.map((cat) => {
+                        const isActive = newsCategories[cat.key as keyof typeof newsCategories];
+                        return (
+                            <button
+                                key={cat.key}
+                                onClick={() => setNewsCategories(prev => ({ ...prev, [cat.key]: !isActive }))}
+                                className={`px-4 py-2.5 rounded-xl font-medium text-sm transition-all flex items-center gap-2 ${isActive
+                                        ? `${cat.color} text-white shadow-lg`
+                                        : 'bg-white/10 text-gray-400 hover:bg-white/20'
+                                    }`}
+                            >
+                                <span className="text-lg">{cat.icon}</span>
+                                {cat.name}
+                            </button>
+                        );
+                    })}
+                </div>
+            </div>
+
+            {/* Voice Selection */}
+            <div className="glass-card p-5 rounded-2xl">
+                <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-400 to-pink-500 flex items-center justify-center">
+                        <Volume2 className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                        <h3 className="font-medium text-white">Stimme wählen</h3>
+                        <p className="text-xs text-gray-500">Für dein Audio-Briefing</p>
+                    </div>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    {VOICES.map((voice) => {
+                        const isSelected = voiceId === voice.id;
+                        return (
                             <button
                                 key={voice.id}
                                 onClick={() => setVoiceId(voice.id)}
-                                className={`p-3 rounded-lg border-2 text-left transition-all relative ${voiceId === voice.id ? 'border-purple-500 bg-purple-500/30 ring-2 ring-purple-500/50' : 'border-white/10 hover:border-white/30 bg-white/5'}`}
+                                className={`relative p-4 rounded-xl text-left transition-all ${isSelected
+                                        ? `bg-gradient-to-br ${voice.color} shadow-lg scale-[1.02]`
+                                        : 'bg-white/5 hover:bg-white/10 border border-white/10'
+                                    }`}
                             >
-                                {voiceId === voice.id && (
-                                    <div className="absolute top-2 right-2 w-4 h-4 bg-purple-500 rounded-full flex items-center justify-center">
-                                        <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                                        </svg>
+                                {isSelected && (
+                                    <div className="absolute top-2 right-2 w-5 h-5 bg-white rounded-full flex items-center justify-center">
+                                        <CheckCircle className="w-4 h-4 text-gray-900" />
                                     </div>
                                 )}
-                                <div className={`font-medium text-sm ${voiceId === voice.id ? 'text-purple-300' : 'text-gray-300'}`}>{voice.name}</div>
-                                <div className="text-xs text-gray-500">{voice.description}</div>
+                                <span className="text-2xl mb-2 block">{voice.icon}</span>
+                                <div className={`font-medium ${isSelected ? 'text-white' : 'text-gray-300'}`}>
+                                    {voice.name}
+                                </div>
+                                <div className={`text-xs ${isSelected ? 'text-white/70' : 'text-gray-500'}`}>
+                                    {voice.desc}
+                                </div>
                             </button>
-                        ))}
-                    </div>
+                        );
+                    })}
                 </div>
-
-                <button onClick={saveSettings} disabled={saving} className="w-full py-2.5 px-4 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 rounded-xl font-medium transition-all disabled:opacity-50 flex items-center justify-center gap-2">
-                    <Save className="w-4 h-4" />
-                    {saving ? 'Saving...' : 'Save Settings'}
-                </button>
             </div>
         </div>
     );
