@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { API_BASE_URL } from '../config';
 import { supabase } from '../lib/supabase';
-import { Mic, Square, Upload, Check } from 'lucide-react';
+import { Mic, Square, Upload } from 'lucide-react';
 
 interface RecorderProps {
     onUploadComplete: () => void;
@@ -13,7 +13,7 @@ const Recorder: React.FC<RecorderProps> = ({ onUploadComplete }) => {
     const [recordingTime, setRecordingTime] = useState(0);
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const chunksRef = useRef<Blob[]>([]);
-    const timerRef = useRef<NodeJS.Timeout | null>(null);
+    const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
     const startRecording = async () => {
         try {
@@ -98,13 +98,13 @@ const Recorder: React.FC<RecorderProps> = ({ onUploadComplete }) => {
             <div className="relative">
                 {/* Outer ring */}
                 <div className={`w-32 h-32 rounded-full flex items-center justify-center transition-all duration-500 ${isRecording
-                        ? 'bg-gradient-to-br from-red-500/20 to-orange-500/20 border-2 border-red-500/50'
-                        : 'bg-gradient-to-br from-blue-500/20 to-cyan-500/20 border-2 border-blue-500/30'
+                    ? 'bg-gradient-to-br from-red-500/20 to-orange-500/20 border-2 border-red-500/50'
+                    : 'bg-gradient-to-br from-blue-500/20 to-cyan-500/20 border-2 border-blue-500/30'
                     }`}>
                     {/* Inner circle */}
                     <div className={`w-24 h-24 rounded-full flex items-center justify-center transition-all duration-300 ${isRecording
-                            ? 'bg-gradient-to-br from-red-500 to-orange-500 animate-pulse shadow-lg shadow-red-500/50'
-                            : 'bg-gradient-to-br from-blue-500 to-cyan-500 shadow-lg shadow-blue-500/30'
+                        ? 'bg-gradient-to-br from-red-500 to-orange-500 animate-pulse shadow-lg shadow-red-500/50'
+                        : 'bg-gradient-to-br from-blue-500 to-cyan-500 shadow-lg shadow-blue-500/30'
                         }`}>
                         {isRecording ? (
                             <Square className="w-8 h-8 text-white" />
@@ -153,8 +153,8 @@ const Recorder: React.FC<RecorderProps> = ({ onUploadComplete }) => {
                 onClick={isRecording ? stopRecording : startRecording}
                 disabled={isUploading}
                 className={`px-8 py-3 rounded-full font-semibold transition-all active:scale-95 flex items-center gap-2 ${isRecording
-                        ? 'bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-400 hover:to-orange-400 shadow-lg shadow-red-500/30'
-                        : 'bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-400 hover:to-cyan-400 shadow-lg shadow-blue-500/30'
+                    ? 'bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-400 hover:to-orange-400 shadow-lg shadow-red-500/30'
+                    : 'bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-400 hover:to-cyan-400 shadow-lg shadow-blue-500/30'
                     } disabled:opacity-50 disabled:cursor-not-allowed text-white`}
             >
                 {isUploading ? (
