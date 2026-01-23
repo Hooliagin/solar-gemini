@@ -106,7 +106,7 @@ def scheduled_briefing_job():
     now = datetime.now()
     current_time = now.strftime("%H:%M")
     
-    logger.debug(f"Scheduler check at {current_time}")
+    logger.info(f"Scheduler check at {current_time}")
     
     # Get users due for briefing
     users = get_users_due_for_briefing()
@@ -163,4 +163,9 @@ def start_scheduler():
     
     scheduler.start()
     logger.info("Briefing scheduler started - checking every minute for scheduled briefings")
+    
+    # Run immediately on startup to catch any missed briefings
+    import threading
+    threading.Thread(target=scheduled_briefing_job, daemon=True).start()
+    
     return scheduler

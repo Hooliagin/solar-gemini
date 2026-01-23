@@ -713,6 +713,50 @@ def telegram_status(session: Session = Depends(get_session)):
         "chat_id": user_settings.telegram_chat_id
     }
 
+@router.get("/scheduler-debug")
+def scheduler_debug(session: Session = Depends(get_session)):
+    """Debug endpoint to check scheduler status and eligible users."""
+    from datetime import datetime, timedelta
+    from services.scheduler import get_users_due_for_briefing
+    
+    now = datetime.now()
+    current_time = now.strftime("%H:%M")
+    
+    # Get all users with Telegram enabled
+    all_telegram_users = session.exec(
+        select(UserSettings).where(UserSettings.telegram_enabled == True)
+    ).all()
+    
+    # Get users due for briefing now
+    due_users = get_users_due_for_briefing()
+    
+    return {
+        "current_time": current_time,
+        "datetime_now": now.isoformat(),
+        "telegram_users_count": len(all_telegram_users),
+        "telegram_users": [
+            {
+                "user_id": u.user_id,
+                "name": u.name,
+                "briefing_time": u.briefing_time,
+                "telegram_chat_id": u.telegram_chat_id,
+                "telegram_enabled": u.telegram_enabled
+            } for u in all_telegram_users
+        ],
+        "due_for_briefing_count": len(due_users),
+        "due_users": [{"user_id": u.user_id, "briefing_time": u.briefing_time} for u in due_users]
+    }
+
+@router.post("/trigger-scheduler")
+def trigger_scheduler(session: Session = Depends(get_session)):
+    """Manually trigger the scheduler job for testing."""
+    from services.scheduler import scheduled_briefing_job
+    import threading
+    
+    threading.Thread(target=scheduled_briefing_job, daemon=True).start()
+    
+    return {"status": "triggered", "message": "Scheduler job triggered in background"}
+
 # --- Settings Commands ---
 
 async def settings_command(update: Update, context):

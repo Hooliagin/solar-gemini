@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
     Cloud, MapPin, Save, Volume2, Calendar, Link, Unlink,
-    Clock, MessageCircle, CheckCircle, Globe, Zap
+    Clock, MessageCircle, CheckCircle, Globe, Zap, User
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { API_BASE_URL } from '../config';
@@ -29,6 +29,7 @@ export default function SettingsPanel() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [saved, setSaved] = useState(false);
+    const [userName, setUserName] = useState('');
     const [city, setCity] = useState('');
     const [weatherEnabled, setWeatherEnabled] = useState(true);
     const [voiceId, setVoiceId] = useState('alloy');
@@ -63,6 +64,7 @@ export default function SettingsPanel() {
             });
             if (res.ok) {
                 const data = await res.json();
+                setUserName(data.name || '');
                 setCity(data.weather_city || '');
                 setWeatherEnabled(data.weather_enabled ?? true);
                 setVoiceId(data.voice_id || 'alloy');
@@ -145,6 +147,7 @@ export default function SettingsPanel() {
                     Authorization: `Bearer ${token}`
                 },
                 body: JSON.stringify({
+                    name: userName,
                     weather_enabled: weatherEnabled,
                     weather_city: city,
                     voice_id: voiceId,
@@ -267,6 +270,26 @@ export default function SettingsPanel() {
                         )}
                     </div>
                 </div>
+            </div>
+
+            {/* Name Input */}
+            <div className="glass-card p-5 rounded-2xl">
+                <div className="flex items-center gap-3 mb-3">
+                    <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-pink-400 to-rose-500 flex items-center justify-center">
+                        <User className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                        <h3 className="font-medium text-white">Dein Name</h3>
+                        <p className="text-xs text-gray-500">Für persönliche Ansprache</p>
+                    </div>
+                </div>
+                <input
+                    type="text"
+                    value={userName}
+                    onChange={(e) => setUserName(e.target.value)}
+                    placeholder="z.B. Max"
+                    className="input-field w-full"
+                />
             </div>
 
             {/* Location & Time */}

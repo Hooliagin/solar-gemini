@@ -11,6 +11,7 @@ import string
 router = APIRouter(prefix="/settings", tags=["settings"])
 
 class UserSettingsUpdate(BaseModel):
+    name: Optional[str] = None
     weather_enabled: Optional[bool] = None
     weather_city: Optional[str] = None
     voice_id: Optional[str] = None
