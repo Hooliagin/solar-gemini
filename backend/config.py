@@ -13,6 +13,8 @@ class Settings:
     GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
     # Telegram
     TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+    # Cron API Key (for external cron services)
+    CRON_API_KEY = os.getenv("CRON_API_KEY")
 
     # Supabase
     SUPABASE_URL = os.getenv("SUPABASE_URL")

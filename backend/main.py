@@ -71,6 +71,8 @@ from routers import google_auth
 app.include_router(google_auth.router)
 from routers import telegram_bot
 app.include_router(telegram_bot.router)
+from routers import cron
+app.include_router(cron.router)
 # Parse origins and ensure they have a scheme (https://) if provided by Render
 origins_raw = os.getenv("ALLOWED_ORIGINS", "*").split(",")
 origins = []
