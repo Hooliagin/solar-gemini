@@ -1,53 +1,166 @@
+"""
+Scheduler service for automated briefing generation and delivery.
+Checks each user's individual briefing_time and sends to Telegram.
+"""
 from apscheduler.schedulers.background import BackgroundScheduler
-from apscheduler.triggers.cron import CronTrigger
+from apscheduler.triggers.interval import IntervalTrigger
 from config import settings
+from datetime import datetime, timedelta
 import logging
+import asyncio
 
 logger = logging.getLogger(__name__)
 
-def generate_morning_briefing_job():
+def get_users_due_for_briefing():
     """
-    This function will be called by the scheduler.
-    It triggers the briefing generation process.
+    Get all users whose briefing time matches the current time (within 5 minute window).
     """
-    logger.info("Starting morning briefing generation job...")
-    from services.content_generator import generate_briefing_content
     from database import get_session
     from models import UserSettings
     from sqlmodel import select
     
     session = next(get_session())
     try:
-        # Get all users with enabled settings (or just all users)
-        # For now, let's just get all users who successfully set up the app.
-        users = session.exec(select(UserSettings)).all()
+        # Get current time in HH:MM format
+        now = datetime.now()
+        current_time = now.strftime("%H:%M")
         
-        logger.info(f"Found {len(users)} users for briefing generation.")
+        # Also check 1-4 minutes ago in case scheduler was slightly behind
+        time_window = []
+        for i in range(5):
+            check_time = (now - timedelta(minutes=i)).strftime("%H:%M")
+            time_window.append(check_time)
         
-        for user in users:
-            try:
-                generate_briefing_content(user.user_id)
-            except Exception as e:
-                logger.error(f"Failed to generate briefing for user {user.user_id}: {e}")
-                
+        # Get users with matching briefing_time who have Telegram enabled
+        users = session.exec(
+            select(UserSettings).where(
+                UserSettings.telegram_enabled == True,
+                UserSettings.telegram_chat_id != None,
+                UserSettings.briefing_time.in_(time_window)
+            )
+        ).all()
+        
+        return list(users)
     except Exception as e:
-        logger.error(f"Scheduler job failed: {e}")
+        logger.error(f"Error getting users due for briefing: {e}")
+        return []
     finally:
         session.close()
 
+def generate_and_send_briefing(user_id: str, chat_id: str):
+    """
+    Generate briefing for a user and send it via Telegram.
+    """
+    from services.content_generator import generate_briefing_content
+    from services.telegram_service import send_briefing_audio, send_text_message
+    from database import get_session
+    from models import Briefing
+    from sqlmodel import select
+    
+    try:
+        logger.info(f"Generating briefing for user {user_id}")
+        
+        # Generate the briefing
+        briefing = generate_briefing_content(user_id)
+        
+        if briefing and briefing.audio_path:
+            # Send via Telegram
+            async def send():
+                # Send a greeting first
+                await send_text_message(
+                    chat_id, 
+                    "☀️ **Guten Morgen!**\n\nHier ist dein persönliches Briefing:"
+                )
+                
+                # Send the audio
+                success = await send_briefing_audio(
+                    chat_id=chat_id,
+                    audio_path=briefing.audio_path,
+                    caption=f"📅 Briefing vom {datetime.now().strftime('%d.%m.%Y')}"
+                )
+                
+                if success:
+                    logger.info(f"Briefing sent successfully to chat {chat_id}")
+                else:
+                    logger.error(f"Failed to send briefing audio to chat {chat_id}")
+            
+            # Run async in event loop
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                loop.run_until_complete(send())
+            finally:
+                loop.close()
+                
+        else:
+            logger.error(f"No briefing generated for user {user_id}")
+            
+    except Exception as e:
+        logger.error(f"Failed to generate/send briefing for user {user_id}: {e}")
+
+def scheduled_briefing_job():
+    """
+    Main scheduler job that runs every minute.
+    Checks for users whose briefing time matches now and generates/sends their briefings.
+    """
+    now = datetime.now()
+    current_time = now.strftime("%H:%M")
+    
+    logger.debug(f"Scheduler check at {current_time}")
+    
+    # Get users due for briefing
+    users = get_users_due_for_briefing()
+    
+    if users:
+        logger.info(f"Found {len(users)} users due for briefing at {current_time}")
+        
+        for user in users:
+            try:
+                # Check if we already sent a briefing today
+                from database import get_session
+                from models import Briefing
+                from sqlmodel import select
+                
+                session = next(get_session())
+                try:
+                    # Check for briefing created today
+                    today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+                    existing = session.exec(
+                        select(Briefing).where(
+                            Briefing.user_id == user.user_id,
+                            Briefing.created_at >= today_start
+                        )
+                    ).first()
+                    
+                    if existing:
+                        logger.debug(f"User {user.user_id} already has a briefing today, skipping")
+                        continue
+                finally:
+                    session.close()
+                
+                # Generate and send
+                generate_and_send_briefing(user.user_id, user.telegram_chat_id)
+                
+            except Exception as e:
+                logger.error(f"Error processing user {user.user_id}: {e}")
+
 def start_scheduler():
+    """
+    Start the background scheduler.
+    Runs every minute to check for users due for briefing.
+    """
     scheduler = BackgroundScheduler()
     
-    # Schedule the job to run every day at the configured time
-    trigger = CronTrigger(hour=settings.BRIEFING_TIME_HOUR, minute=settings.BRIEFING_TIME_MINUTE)
+    # Run every minute
+    trigger = IntervalTrigger(minutes=1)
     
     scheduler.add_job(
-        generate_morning_briefing_job,
+        scheduled_briefing_job,
         trigger=trigger,
-        id="morning_briefing",
+        id="briefing_scheduler",
         replace_existing=True
     )
     
     scheduler.start()
-    logger.info(f"Scheduler started. Job scheduled for {settings.BRIEFING_TIME_HOUR}:{settings.BRIEFING_TIME_MINUTE:02d}")
+    logger.info("Briefing scheduler started - checking every minute for scheduled briefings")
     return scheduler

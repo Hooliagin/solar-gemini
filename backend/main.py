@@ -39,15 +39,21 @@ async def lifespan(app: FastAPI):
     # Startup
     create_db_and_tables()
     
-    # NOTE: Scheduler disabled for now - use /generate command in Telegram
-    # or set up Render Cron Jobs for automatic daily briefings
-    # global scheduler
-    # scheduler = start_scheduler()
-    print("App started. Use /generate in Telegram for briefings.")
+    # Start the briefing scheduler (per-user briefing times)
+    global scheduler
+    if should_run_scheduler():
+        scheduler = start_scheduler()
+        print("Briefing scheduler started - checking every minute for scheduled briefings.")
+    else:
+        print("Scheduler skipped on this worker (another worker is handling it).")
+    
+    print("App started. Use /generate in Telegram for manual briefings.")
     
     yield
     
     # Shutdown
+    if scheduler:
+        scheduler.shutdown(wait=False)
     print("App shutdown.")
 
 app = FastAPI(lifespan=lifespan, title="Audio Daily Manager")
