@@ -12,30 +12,36 @@ import { Sparkles, Mic, Play, LogOut, Sun, Moon } from 'lucide-react';
 import { API_BASE_URL } from './config';
 import { useSearchParams } from 'react-router-dom';
 
-// Animation variants
+// Animation variants - MORE VISIBLE
 const containerVariants = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
     transition: {
-      staggerChildren: 0.1,
-      delayChildren: 0.1
+      staggerChildren: 0.2,  // Increased from 0.1
+      delayChildren: 0.3     // Increased from 0.1
     }
   }
 };
 
 const itemVariants = {
-  hidden: { opacity: 0, y: 20 },
+  hidden: { opacity: 0, y: 40, scale: 0.95 },  // Bigger movement + scale
   visible: {
     opacity: 1,
     y: 0,
-    transition: { type: "spring" as const, stiffness: 300, damping: 24 }
+    scale: 1,
+    transition: {
+      type: "spring" as const,
+      stiffness: 200,  // Reduced for bouncier effect
+      damping: 20      // Reduced for more bounce
+    }
   }
 };
 
 const glowHover = {
-  scale: 1.02,
-  boxShadow: "0 0 20px rgba(0, 255, 136, 0.5)",
+  scale: 1.05,  // Increased from 1.02
+  y: -8,        // Lift effect
+  boxShadow: "0 0 30px rgba(0, 255, 136, 0.6), 0 10px 40px rgba(0, 255, 136, 0.3)",  // Stronger glow
   transition: { type: "spring" as const, stiffness: 400, damping: 10 }
 };
 
@@ -134,9 +140,9 @@ const Dashboard = () => {
         <div className="absolute top-3/4 left-1/2 w-64 h-64 bg-[var(--cyber-tertiary)]/10 rounded-full blur-[100px] animate-neon-pulse" style={{ animationDelay: '2s' }} />
       </div>
 
-      <div className="relative z-10 max-w-6xl mx-auto px-6 py-8">
+      <div className="relative z-10 max-w-7xl mx-auto px-8 py-12">
         {/* Header */}
-        <header className="flex justify-between items-center mb-12 animate-fade-in-up">
+        <header className="flex justify-between items-center mb-20 animate-fade-in-up">
           <div className="flex items-center gap-4">
             <div className="p-3 border-2 border-[var(--cyber-accent)] glow-neon" style={{ clipPath: 'polygon(0 8px, 8px 0, calc(100% - 8px) 0, 100% 8px, 100% calc(100% - 8px), calc(100% - 8px) 100%, 8px 100%, 0 calc(100% - 8px))' }}>
               <Sparkles className="w-7 h-7 text-[var(--cyber-accent)]" />
@@ -165,7 +171,7 @@ const Dashboard = () => {
           transition={{ type: "spring", stiffness: 100, damping: 20, delay: 0.1 }}
         >
           <motion.div
-            className="glass-card p-8 flex items-center gap-6"
+            className="glass-card p-10 flex items-center gap-8"
             whileHover={glowHover}
           >
             <motion.div
@@ -193,20 +199,20 @@ const Dashboard = () => {
 
         {/* Main Content Grid */}
         <motion.main
-          className="grid grid-cols-1 lg:grid-cols-2 gap-8"
+          className="grid grid-cols-1 lg:grid-cols-2 gap-12"
           variants={containerVariants}
           initial="hidden"
           animate="visible"
         >
           {/* Left Column: Briefing */}
-          <div className="space-y-8">
+          <div className="space-y-12">
             <motion.section variants={itemVariants}>
               <div className="section-title">
                 <Play className="w-4 h-4 text-[var(--cyber-accent)]" />
                 <span>MORGEN_BRIEFING</span>
               </div>
               <motion.div
-                className="glass-card p-6"
+                className="glass-card p-8"
                 whileHover={glowHover}
               >
                 <Player />
@@ -219,7 +225,7 @@ const Dashboard = () => {
                 <span>TAGEBUCH</span>
               </div>
               <motion.div
-                className="glass-card p-6"
+                className="glass-card p-8"
                 whileHover={glowHover}
               >
                 <Recorder onUploadComplete={() => window.location.reload()} />
@@ -228,7 +234,7 @@ const Dashboard = () => {
           </div>
 
           {/* Right Column: Settings & Interests */}
-          <div className="space-y-8">
+          <div className="space-y-12">
             <motion.section variants={itemVariants}>
               <InterestManager />
             </motion.section>
@@ -241,7 +247,7 @@ const Dashboard = () => {
 
         {/* Footer */}
         <motion.footer
-          className="mt-16 text-center text-[var(--cyber-text-muted)] text-sm font-mono"
+          className="mt-24 text-center text-[var(--cyber-text-muted)] text-sm font-mono"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.8 }}
