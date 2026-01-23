@@ -6,6 +6,7 @@ from services.news_service import fetch_ai_news_summary
 from services.weather_service import get_weather_briefing
 from services.tts_service import generate_speech
 from database import get_session
+from sqlmodel import select
 from models import Entry, Briefing, UserSettings
 from datetime import datetime
 import logging
