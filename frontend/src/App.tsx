@@ -1,6 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import AuthPage from './pages/Auth';
 import Onboarding from './pages/Onboarding';
@@ -8,6 +8,7 @@ import Recorder from './components/Recorder';
 import Player from './components/Player';
 import InterestManager from './components/InterestManager';
 import SettingsPanel from './components/SettingsPanel';
+import LoadingScreen from './components/LoadingScreen';
 import { Sparkles, Mic, Play, LogOut, Sun, Moon } from 'lucide-react';
 import { API_BASE_URL } from './config';
 import { useSearchParams } from 'react-router-dom';
@@ -67,6 +68,7 @@ const Dashboard = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const claimCode = searchParams.get('claim_code');
   const [userName, setUserName] = React.useState<string>('');
+  const [isLoading, setIsLoading] = React.useState(true);
 
   React.useEffect(() => {
     if (claimCode && session?.access_token) {
@@ -79,7 +81,10 @@ const Dashboard = () => {
     const fetchUserName = async () => {
       try {
         const token = session?.access_token;
-        if (!token) return;
+        if (!token) {
+          setIsLoading(false);
+          return;
+        }
         const res = await fetch(`${API_BASE_URL}/settings/`, {
           headers: { Authorization: `Bearer ${token}` }
         });
@@ -89,6 +94,9 @@ const Dashboard = () => {
         }
       } catch (error) {
         console.error('Failed to fetch user name', error);
+      } finally {
+        // Minimum loading time of 1.5s for smooth animation
+        setTimeout(() => setIsLoading(false), 1500);
       }
     };
     fetchUserName();
@@ -131,130 +139,138 @@ const Dashboard = () => {
   const TimeIcon = timeInfo.icon;
 
   return (
-    <div className="min-h-screen text-white">
-      {/* Decorative Background Elements */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-1/4 -left-32 w-96 h-96 bg-[var(--cyber-accent)]/10 rounded-full blur-[128px] animate-neon-pulse" />
-        <div className="absolute bottom-1/4 -right-32 w-96 h-96 bg-[var(--cyber-secondary)]/10 rounded-full blur-[128px] animate-neon-pulse" style={{ animationDelay: '1s' }} />
-        <div className="absolute top-3/4 left-1/2 w-64 h-64 bg-[var(--cyber-tertiary)]/10 rounded-full blur-[100px] animate-neon-pulse" style={{ animationDelay: '2s' }} />
-      </div>
+    <>
+      <AnimatePresence mode="wait">
+        {isLoading && <LoadingScreen key="loading" />}
+      </AnimatePresence>
 
-      <div className="relative z-10 max-w-7xl mx-auto px-8 py-12">
-        {/* Header */}
-        <header className="flex justify-between items-center mb-20 animate-fade-in-up">
-          <div className="flex items-center gap-4">
-            <div className="p-3 border-2 border-[var(--cyber-accent)] glow-neon" style={{ clipPath: 'polygon(0 8px, 8px 0, calc(100% - 8px) 0, 100% 8px, 100% calc(100% - 8px), calc(100% - 8px) 100%, 8px 100%, 0 calc(100% - 8px))' }}>
-              <Sparkles className="w-7 h-7 text-[var(--cyber-accent)]" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold gradient-text tracking-widest cyber-glitch" data-text="DAILY MANAGER">
-                DAILY MANAGER
-              </h1>
-              <p className="text-xs text-[var(--cyber-text-muted)] font-mono tracking-wider">&gt; KI_MORGENASSISTENT.exe</p>
-            </div>
+      {!isLoading && (
+        <div className="min-h-screen text-white">
+          {/* Decorative Background Elements */}
+          <div className="fixed inset-0 pointer-events-none overflow-hidden">
+            <div className="absolute top-1/4 -left-32 w-96 h-96 bg-[var(--cyber-accent)]/10 rounded-full blur-[128px] animate-neon-pulse" />
+            <div className="absolute bottom-1/4 -right-32 w-96 h-96 bg-[var(--cyber-secondary)]/10 rounded-full blur-[128px] animate-neon-pulse" style={{ animationDelay: '1s' }} />
+            <div className="absolute top-3/4 left-1/2 w-64 h-64 bg-[var(--cyber-tertiary)]/10 rounded-full blur-[100px] animate-neon-pulse" style={{ animationDelay: '2s' }} />
           </div>
-          <button
-            onClick={signOut}
-            className="btn-icon"
-            title="Abmelden"
-          >
-            <LogOut className="w-5 h-5" />
-          </button>
-        </header>
 
-        {/* Welcome Section */}
-        <motion.section
-          className="mb-12"
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ type: "spring", stiffness: 100, damping: 20, delay: 0.1 }}
-        >
-          <motion.div
-            className="glass-card p-10 flex items-center gap-8"
-            whileHover={glowHover}
-          >
-            <motion.div
-              className="p-4 border-2 border-[var(--cyber-accent)] glow-neon"
-              style={{ clipPath: 'polygon(0 8px, 8px 0, calc(100% - 8px) 0, 100% 8px, 100% calc(100% - 8px), calc(100% - 8px) 100%, 8px 100%, 0 calc(100% - 8px))' }}
-              whileHover={{ scale: 1.1, rotate: 5 }}
-              transition={{ type: "spring", stiffness: 400, damping: 10 }}
+          <div className="relative z-10 max-w-7xl mx-auto px-8 py-12">
+            {/* Header */}
+            <header className="flex justify-between items-center mb-20 animate-fade-in-up">
+              <div className="flex items-center gap-4">
+                <div className="p-3 border-2 border-[var(--cyber-accent)] glow-neon" style={{ clipPath: 'polygon(0 8px, 8px 0, calc(100% - 8px) 0, 100% 8px, 100% calc(100% - 8px), calc(100% - 8px) 100%, 8px 100%, 0 calc(100% - 8px))' }}>
+                  <Sparkles className="w-7 h-7 text-[var(--cyber-accent)]" />
+                </div>
+                <div>
+                  <h1 className="text-2xl font-bold gradient-text tracking-widest cyber-glitch" data-text="DAILY MANAGER">
+                    DAILY MANAGER
+                  </h1>
+                  <p className="text-xs text-[var(--cyber-text-muted)] font-mono tracking-wider">&gt; KI_MORGENASSISTENT.exe</p>
+                </div>
+              </div>
+              <button
+                onClick={signOut}
+                className="btn-icon"
+                title="Abmelden"
+              >
+                <LogOut className="w-5 h-5" />
+              </button>
+            </header>
+
+            {/* Welcome Section */}
+            <motion.section
+              className="mb-12"
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ type: "spring", stiffness: 100, damping: 20, delay: 0.1 }}
             >
-              <TimeIcon className="w-8 h-8 text-[var(--cyber-accent)]" />
-            </motion.div>
-            <div>
-              <h2 className="text-2xl font-bold text-[var(--cyber-accent)] mb-1 tracking-wide">
-                {timeInfo.greeting.toUpperCase()}{userName ? `, ${userName.toUpperCase()}` : ''} <span className="animate-blink">_</span>
-              </h2>
-              <p className="text-[var(--cyber-text-muted)] font-mono text-sm">
-                {timeInfo.period === 'morning'
-                  ? '> Bereit für dein personalisiertes Morgen-Briefing?'
-                  : timeInfo.period === 'afternoon'
-                    ? '> Zeit für ein Update? Hör dir dein Briefing an.'
-                    : '> Vergiss nicht, dein Tagebuch für heute einzusprechen!'}
-              </p>
-            </div>
-          </motion.div>
-        </motion.section>
-
-        {/* Main Content Grid */}
-        <motion.main
-          className="grid grid-cols-1 lg:grid-cols-2 gap-12"
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-        >
-          {/* Left Column: Briefing */}
-          <div className="space-y-12">
-            <motion.section variants={itemVariants}>
-              <div className="section-title">
-                <Play className="w-4 h-4 text-[var(--cyber-accent)]" />
-                <span>MORGEN_BRIEFING</span>
-              </div>
               <motion.div
-                className="glass-card p-8"
+                className="glass-card p-10 flex items-center gap-8"
                 whileHover={glowHover}
               >
-                <Player />
+                <motion.div
+                  className="p-4 border-2 border-[var(--cyber-accent)] glow-neon"
+                  style={{ clipPath: 'polygon(0 8px, 8px 0, calc(100% - 8px) 0, 100% 8px, 100% calc(100% - 8px), calc(100% - 8px) 100%, 8px 100%, 0 calc(100% - 8px))' }}
+                  whileHover={{ scale: 1.1, rotate: 5 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 10 }}
+                >
+                  <TimeIcon className="w-8 h-8 text-[var(--cyber-accent)]" />
+                </motion.div>
+                <div>
+                  <h2 className="text-2xl font-bold text-[var(--cyber-accent)] mb-1 tracking-wide">
+                    {timeInfo.greeting.toUpperCase()}{userName ? `, ${userName.toUpperCase()}` : ''} <span className="animate-blink">_</span>
+                  </h2>
+                  <p className="text-[var(--cyber-text-muted)] font-mono text-sm">
+                    {timeInfo.period === 'morning'
+                      ? '> Bereit für dein personalisiertes Morgen-Briefing?'
+                      : timeInfo.period === 'afternoon'
+                        ? '> Zeit für ein Update? Hör dir dein Briefing an.'
+                        : '> Vergiss nicht, dein Tagebuch für heute einzusprechen!'}
+                  </p>
+                </div>
               </motion.div>
             </motion.section>
 
-            <motion.section variants={itemVariants}>
-              <div className="section-title">
-                <Mic className="w-4 h-4 text-[var(--cyber-secondary)]" />
-                <span>TAGEBUCH</span>
+            {/* Main Content Grid */}
+            <motion.main
+              className="grid grid-cols-1 lg:grid-cols-2 gap-12"
+              variants={containerVariants}
+              initial="hidden"
+              animate="visible"
+            >
+              {/* Left Column: Briefing */}
+              <div className="space-y-12">
+                <motion.section variants={itemVariants}>
+                  <div className="section-title">
+                    <Play className="w-4 h-4 text-[var(--cyber-accent)]" />
+                    <span>MORGEN_BRIEFING</span>
+                  </div>
+                  <motion.div
+                    className="glass-card p-8"
+                    whileHover={glowHover}
+                  >
+                    <Player />
+                  </motion.div>
+                </motion.section>
+
+                <motion.section variants={itemVariants}>
+                  <div className="section-title">
+                    <Mic className="w-4 h-4 text-[var(--cyber-secondary)]" />
+                    <span>TAGEBUCH</span>
+                  </div>
+                  <motion.div
+                    className="glass-card p-8"
+                    whileHover={glowHover}
+                  >
+                    <Recorder onUploadComplete={() => window.location.reload()} />
+                  </motion.div>
+                </motion.section>
               </div>
-              <motion.div
-                className="glass-card p-8"
-                whileHover={glowHover}
-              >
-                <Recorder onUploadComplete={() => window.location.reload()} />
-              </motion.div>
-            </motion.section>
+
+              {/* Right Column: Settings & Interests */}
+              <div className="space-y-12">
+                <motion.section variants={itemVariants}>
+                  <InterestManager />
+                </motion.section>
+
+                <motion.section variants={itemVariants}>
+                  <SettingsPanel />
+                </motion.section>
+              </div>
+            </motion.main>
+
+            {/* Footer */}
+            <motion.footer
+              className="mt-24 text-center text-[var(--cyber-text-muted)] text-sm font-mono"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.8 }}
+            >
+              <p>&gt; MADE_WITH_<span className="text-[var(--cyber-accent)]">❤</span>_FOR_BETTER_MORNINGS</p>
+            </motion.footer>
           </div>
-
-          {/* Right Column: Settings & Interests */}
-          <div className="space-y-12">
-            <motion.section variants={itemVariants}>
-              <InterestManager />
-            </motion.section>
-
-            <motion.section variants={itemVariants}>
-              <SettingsPanel />
-            </motion.section>
-          </div>
-        </motion.main>
-
-        {/* Footer */}
-        <motion.footer
-          className="mt-24 text-center text-[var(--cyber-text-muted)] text-sm font-mono"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.8 }}
-        >
-          <p>&gt; MADE_WITH_<span className="text-[var(--cyber-accent)]">❤</span>_FOR_BETTER_MORNINGS</p>
-        </motion.footer>
-      </div>
-    </div>
+        </div>
+      )}
+    </>
   );
 };
 
