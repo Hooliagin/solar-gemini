@@ -101,28 +101,45 @@ export default function InterestManager() {
                 </div>
             </div>
 
-            {/* Interest Tags */}
-            <div className="flex flex-wrap gap-2 mb-6 min-h-[3rem]">
-                {interests.map(interest => (
-                    <div
-                        key={interest.id}
-                        className="group flex items-center gap-2 px-3 py-1.5 rounded-full bg-gradient-to-r from-pink-500/20 to-purple-500/20 border border-pink-500/30 hover:border-pink-400 transition-all"
-                    >
-                        <span className="text-sm text-pink-200">#{interest.topic}</span>
-                        <button
-                            onClick={() => deleteInterest(interest.id)}
-                            className="opacity-50 group-hover:opacity-100 p-0.5 hover:bg-white/10 rounded-full transition-all text-pink-200 hover:text-red-400"
+            {/* Interest Tags - Horizontal Scroll */}
+            <div className="relative mb-6">
+                {/* Fade masks */}
+                <div className="absolute left-0 top-0 bottom-0 w-12 bg-gradient-to-r from-[var(--cyber-card)] to-transparent pointer-events-none z-10" />
+                <div className="absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-[var(--cyber-card)] to-transparent pointer-events-none z-10" />
+
+                {/* Scrollable container */}
+                <div
+                    className="flex gap-3 overflow-x-auto scrollbar-hide pb-2 px-1 min-h-[3rem] scroll-smooth"
+                    style={{
+                        scrollSnapType: 'x proximity',
+                        WebkitOverflowScrolling: 'touch'
+                    }}
+                >
+                    {interests.map(interest => (
+                        <div
+                            key={interest.id}
+                            className="group flex items-center gap-2 px-4 py-2 shrink-0 border border-[var(--cyber-accent)] bg-[var(--cyber-accent)]/10 text-[var(--cyber-accent)] font-mono text-xs uppercase tracking-wider hover:bg-[var(--cyber-accent)]/20 hover:shadow-[0_0_15px_rgba(0,255,136,0.4)] transition-all cursor-pointer"
+                            style={{
+                                clipPath: 'polygon(0 4px, 4px 0, calc(100% - 4px) 0, 100% 4px, 100% calc(100% - 4px), calc(100% - 4px) 100%, 4px 100%, 0 calc(100% - 4px))',
+                                scrollSnapAlign: 'start'
+                            }}
                         >
-                            <X className="w-3 h-3" />
-                        </button>
-                    </div>
-                ))}
-                {interests.length === 0 && (
-                    <div className="flex items-center gap-2 text-sm text-gray-500 italic">
-                        <Sparkles className="w-4 h-4" />
-                        Füge Themen hinzu für personalisierte News
-                    </div>
-                )}
+                            <span>#{interest.topic}</span>
+                            <button
+                                onClick={() => deleteInterest(interest.id)}
+                                className="opacity-60 group-hover:opacity-100 p-0.5 hover:bg-white/10 transition-all hover:text-[var(--cyber-danger)]"
+                            >
+                                <X className="w-3 h-3" />
+                            </button>
+                        </div>
+                    ))}
+                    {interests.length === 0 && (
+                        <div className="flex items-center gap-2 text-sm text-[var(--cyber-text-muted)] italic">
+                            <Sparkles className="w-4 h-4" />
+                            Füge Themen hinzu für personalisierte News
+                        </div>
+                    )}
+                </div>
             </div>
 
             {/* Quick Suggestions */}
