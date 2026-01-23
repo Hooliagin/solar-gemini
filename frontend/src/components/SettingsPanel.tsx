@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
     Cloud, MapPin, Save, Volume2, Calendar, Link, Unlink,
-    Clock, MessageCircle, CheckCircle, Sparkles, Globe, Zap
+    Clock, MessageCircle, CheckCircle, Globe, Zap
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { API_BASE_URL } from '../config';
@@ -211,8 +211,8 @@ export default function SettingsPanel() {
                             </div>
                         </div>
                         <span className={`px-3 py-1 rounded-full text-xs font-medium ${telegramConnected
-                                ? 'bg-green-500/20 text-green-400 border border-green-500/30'
-                                : 'bg-white/10 text-gray-400'
+                            ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                            : 'bg-white/10 text-gray-400'
                             }`}>
                             {telegramConnected ? '✓ Verbunden' : 'Nicht verbunden'}
                         </span>
@@ -247,8 +247,8 @@ export default function SettingsPanel() {
                             </div>
                         </div>
                         <span className={`px-3 py-1 rounded-full text-xs font-medium ${calendarConnected
-                                ? 'bg-green-500/20 text-green-400 border border-green-500/30'
-                                : 'bg-white/10 text-gray-400'
+                            ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                            : 'bg-white/10 text-gray-400'
                             }`}>
                             {calendarConnected ? '✓ Verbunden' : 'Nicht verbunden'}
                         </span>
@@ -351,8 +351,8 @@ export default function SettingsPanel() {
                                 key={cat.key}
                                 onClick={() => setNewsCategories(prev => ({ ...prev, [cat.key]: !isActive }))}
                                 className={`px-4 py-2.5 rounded-xl font-medium text-sm transition-all flex items-center gap-2 ${isActive
-                                        ? `${cat.color} text-white shadow-lg`
-                                        : 'bg-white/10 text-gray-400 hover:bg-white/20'
+                                    ? `${cat.color} text-white shadow-lg`
+                                    : 'bg-white/10 text-gray-400 hover:bg-white/20'
                                     }`}
                             >
                                 <span className="text-lg">{cat.icon}</span>
@@ -382,8 +382,8 @@ export default function SettingsPanel() {
                                 key={voice.id}
                                 onClick={() => setVoiceId(voice.id)}
                                 className={`relative p-4 rounded-xl text-left transition-all ${isSelected
-                                        ? `bg-gradient-to-br ${voice.color} shadow-lg scale-[1.02]`
-                                        : 'bg-white/5 hover:bg-white/10 border border-white/10'
+                                    ? `bg-gradient-to-br ${voice.color} shadow-lg scale-[1.02]`
+                                    : 'bg-white/5 hover:bg-white/10 border border-white/10'
                                     }`}
                             >
                                 {isSelected && (
