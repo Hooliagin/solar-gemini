@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
     Cloud, MapPin, Save, Volume2, Calendar, Link, Unlink,
-    Clock, MessageCircle, CheckCircle, Globe, Zap, User
+    MessageCircle, CheckCircle, Globe, Zap, User
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { API_BASE_URL } from '../config';
@@ -316,25 +316,6 @@ export default function SettingsPanel() {
                                 className="input-field w-full pl-10"
                             />
                         </div>
-                    </div>
-
-                    {/* Briefing Time */}
-                    <div>
-                        <div className="flex items-center gap-3 mb-3">
-                            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center">
-                                <Clock className="w-5 h-5 text-white" />
-                            </div>
-                            <div>
-                                <h3 className="font-medium text-white">Briefing-Zeit</h3>
-                                <p className="text-xs text-gray-500">Tägliche Zustellung</p>
-                            </div>
-                        </div>
-                        <input
-                            type="time"
-                            value={briefingTime}
-                            onChange={(e) => setBriefingTime(e.target.value)}
-                            className="input-field w-full text-center text-lg font-mono"
-                        />
                     </div>
                 </div>
 

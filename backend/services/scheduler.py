@@ -13,7 +13,8 @@ logger = logging.getLogger(__name__)
 
 def get_users_due_for_briefing():
     """
-    Get all users whose briefing time matches the current time (within 5 minute window).
+    Get all users who have Telegram enabled.
+    This is called by the cron service, so all users get their briefing at the same time.
     """
     from database import get_session
     from models import UserSettings
@@ -21,24 +22,15 @@ def get_users_due_for_briefing():
     
     session = next(get_session())
     try:
-        # Get current time in HH:MM format
-        now = datetime.now()
-        current_time = now.strftime("%H:%M")
-        
-        # Also check 1-4 minutes ago in case scheduler was slightly behind
-        time_window = []
-        for i in range(5):
-            check_time = (now - timedelta(minutes=i)).strftime("%H:%M")
-            time_window.append(check_time)
-        
-        # Get users with matching briefing_time who have Telegram enabled
+        # Get ALL users with Telegram enabled (no time filtering)
         users = session.exec(
             select(UserSettings).where(
                 UserSettings.telegram_enabled == True,
-                UserSettings.telegram_chat_id != None,
-                UserSettings.briefing_time.in_(time_window)
+                UserSettings.telegram_chat_id != None
             )
         ).all()
+        
+        logger.info(f"Found {len(users)} users with Telegram enabled for briefing")
         
         return list(users)
     except Exception as e:
