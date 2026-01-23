@@ -166,36 +166,27 @@ export default function SettingsPanel() {
         }
     };
 
-    if (loading) {
-        return (
-            <div className="glass-card rounded-2xl p-8 animate-pulse">
-                <div className="h-6 bg-white/10 rounded w-1/3 mb-6" />
-                <div className="space-y-4">
-                    <div className="h-16 bg-white/5 rounded-xl" />
-                    <div className="h-16 bg-white/5 rounded-xl" />
-                </div>
-            </div>
-        );
-    }
-
     return (
-        <div className="space-y-6">
+        <div className={`space-y-6 ${loading ? 'opacity-70' : ''}`}>
             {/* Header */}
             <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold gradient-text">Einstellungen</h2>
+                <div className="flex items-center gap-3">
+                    <span className="text-[var(--cyber-accent)] font-mono text-sm opacity-60">&gt;_</span>
+                    <h2 className="text-xl font-bold gradient-text tracking-wider">EINSTELLUNGEN</h2>
+                </div>
                 <button
                     onClick={saveSettings}
-                    disabled={saving}
-                    className={`btn-primary flex items-center gap-2 ${saved ? 'bg-green-500' : ''}`}
+                    disabled={saving || loading}
+                    className={`btn-primary flex items-center gap-2 text-sm ${saved ? '!border-green-500 !text-green-500' : ''}`}
                 >
                     {saving ? (
-                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
                     ) : saved ? (
-                        <CheckCircle className="w-5 h-5" />
+                        <CheckCircle className="w-4 h-4" />
                     ) : (
-                        <Save className="w-5 h-5" />
+                        <Save className="w-4 h-4" />
                     )}
-                    {saving ? 'Speichern...' : saved ? 'Gespeichert!' : 'Speichern'}
+                    {saving ? 'SAVING...' : saved ? 'SAVED' : 'SAVE'}
                 </button>
             </div>
 

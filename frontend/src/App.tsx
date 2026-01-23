@@ -101,22 +101,23 @@ const Dashboard = () => {
     <div className="min-h-screen text-white">
       {/* Decorative Background Elements */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-1/4 -left-32 w-96 h-96 bg-purple-500/20 rounded-full blur-[128px] animate-pulse-slow" />
-        <div className="absolute bottom-1/4 -right-32 w-96 h-96 bg-blue-500/20 rounded-full blur-[128px] animate-pulse-slow" style={{ animationDelay: '2s' }} />
+        <div className="absolute top-1/4 -left-32 w-96 h-96 bg-[var(--cyber-accent)]/10 rounded-full blur-[128px] animate-neon-pulse" />
+        <div className="absolute bottom-1/4 -right-32 w-96 h-96 bg-[var(--cyber-secondary)]/10 rounded-full blur-[128px] animate-neon-pulse" style={{ animationDelay: '1s' }} />
+        <div className="absolute top-3/4 left-1/2 w-64 h-64 bg-[var(--cyber-tertiary)]/10 rounded-full blur-[100px] animate-neon-pulse" style={{ animationDelay: '2s' }} />
       </div>
 
       <div className="relative z-10 max-w-6xl mx-auto px-6 py-8">
         {/* Header */}
         <header className="flex justify-between items-center mb-12 animate-fade-in-up">
           <div className="flex items-center gap-4">
-            <div className="p-3 bg-gradient-to-br from-purple-500 to-blue-600 rounded-2xl shadow-lg shadow-purple-500/25 glow-purple">
-              <Sparkles className="w-7 h-7 text-white" />
+            <div className="p-3 border-2 border-[var(--cyber-accent)] glow-neon" style={{ clipPath: 'polygon(0 8px, 8px 0, calc(100% - 8px) 0, 100% 8px, 100% calc(100% - 8px), calc(100% - 8px) 100%, 8px 100%, 0 calc(100% - 8px))' }}>
+              <Sparkles className="w-7 h-7 text-[var(--cyber-accent)]" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold gradient-text">
-                Daily Manager
+              <h1 className="text-2xl font-bold gradient-text tracking-widest cyber-glitch" data-text="DAILY MANAGER">
+                DAILY MANAGER
               </h1>
-              <p className="text-sm text-gray-500">Dein KI-Morgenassistent</p>
+              <p className="text-xs text-[var(--cyber-text-muted)] font-mono tracking-wider">&gt; KI_MORGENASSISTENT.exe</p>
             </div>
           </div>
           <button
@@ -131,19 +132,19 @@ const Dashboard = () => {
         {/* Welcome Section */}
         <section className="mb-12 animate-fade-in-up stagger-1">
           <div className="glass-card p-8 flex items-center gap-6">
-            <div className="p-4 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 shadow-lg">
-              <TimeIcon className="w-8 h-8 text-white" />
+            <div className="p-4 border-2 border-[var(--cyber-accent)] glow-neon" style={{ clipPath: 'polygon(0 8px, 8px 0, calc(100% - 8px) 0, 100% 8px, 100% calc(100% - 8px), calc(100% - 8px) 100%, 8px 100%, 0 calc(100% - 8px))' }}>
+              <TimeIcon className="w-8 h-8 text-[var(--cyber-accent)]" />
             </div>
             <div>
-              <h2 className="text-3xl font-bold text-white mb-1">
-                {timeInfo.greeting}{userName ? `, ${userName}` : ''}! 👋
+              <h2 className="text-2xl font-bold text-[var(--cyber-accent)] mb-1 tracking-wide">
+                {timeInfo.greeting.toUpperCase()}{userName ? `, ${userName.toUpperCase()}` : ''} <span className="animate-blink">_</span>
               </h2>
-              <p className="text-gray-400">
+              <p className="text-[var(--cyber-text-muted)] font-mono text-sm">
                 {timeInfo.period === 'morning'
-                  ? 'Bereit für dein personalisiertes Morgen-Briefing?'
+                  ? '> Bereit für dein personalisiertes Morgen-Briefing?'
                   : timeInfo.period === 'afternoon'
-                    ? 'Zeit für ein Update? Hör dir dein Briefing an.'
-                    : 'Vergiss nicht, dein Tagebuch für heute einzusprechen!'}
+                    ? '> Zeit für ein Update? Hör dir dein Briefing an.'
+                    : '> Vergiss nicht, dein Tagebuch für heute einzusprechen!'}
               </p>
             </div>
           </div>

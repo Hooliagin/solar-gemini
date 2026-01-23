@@ -138,11 +138,14 @@ def generate_briefing_content(target_user_id: str):
            - Pick ONE key emotion or achievement
            - One short, punchy question for today (e.g., "Nimmst du diesen Schwung mit?")
         
-        3. **NEWS & TOPICS** (2 minutes - COMPACT)
-           - Go through news topics efficiently
-           - For each topic: 1-2 sentenes MAXIMUM
-           - Focus on the "headline" and why it matters
-           - Keep it fast-paced and interesting
+        3. **NEWS & TOPICS** (2-3 minutes - SCHLAGZEILEN & RELEVANZ)
+           - Go through news topics efficiently but with SUBSTANCE
+           - FILTER: Only mention topics that are actually interesting/significant
+           - For each topic:
+             * Clear, punchy "Headline"
+             * 2-3 sentences explaining the core "News Value"
+             * Skip boring filler news
+           - Style: Professional, informative, but fast-paced
         
         4. **TODAY'S APPOINTMENTS** (1-2 minutes - IMPULSE DRIVEN)
            - Mention the appointments clearly with spoken times
