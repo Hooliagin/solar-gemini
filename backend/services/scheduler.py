@@ -2,8 +2,6 @@
 Scheduler service for automated briefing generation and delivery.
 Checks each user's individual briefing_time and sends to Telegram.
 """
-from apscheduler.schedulers.background import BackgroundScheduler
-from apscheduler.triggers.interval import IntervalTrigger
 from config import settings
 from datetime import datetime, timedelta
 import logging
@@ -142,28 +140,4 @@ def scheduled_briefing_job():
     except Exception as e:
         logger.error(f"Critical error in scheduled_briefing_job: {e}")
 
-def start_scheduler():
-    """
-    Start the background scheduler.
-    Runs every minute to check for users due for briefing.
-    """
-    scheduler = BackgroundScheduler()
-    
-    # Run every minute
-    trigger = IntervalTrigger(minutes=1)
-    
-    scheduler.add_job(
-        scheduled_briefing_job,
-        trigger=trigger,
-        id="briefing_scheduler",
-        replace_existing=True
-    )
-    
-    scheduler.start()
-    logger.info("Briefing scheduler started - checking every minute for scheduled briefings")
-    
-    # Run immediately on startup to catch any missed briefings
-    import threading
-    threading.Thread(target=scheduled_briefing_job, daemon=True).start()
-    
-    return scheduler
+
