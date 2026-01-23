@@ -39,8 +39,7 @@ const itemVariants = {
 };
 
 const glowHover = {
-  scale: 1.05,  // Increased from 1.02
-  y: -8,        // Lift effect
+  y: -8,        // Lift effect only
   boxShadow: "0 0 30px rgba(0, 255, 136, 0.6), 0 10px 40px rgba(0, 255, 136, 0.3)",  // Stronger glow
   transition: { type: "spring" as const, stiffness: 400, damping: 10 }
 };
