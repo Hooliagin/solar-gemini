@@ -138,11 +138,62 @@ NAME, AGE, CITY, VOICE, NEWS, INTERESTS = range(6)
 async def start_onboarding(update: Update, context):
     """Entry point for the conversation."""
     chat_id = str(update.effective_chat.id)
+    message_text = update.message.text if update.message else ""
     
-    # Check/Create User
+    # Check if this is a /start with a link code (from web app)
+    link_code = None
+    if message_text.startswith('/start '):
+        link_code = message_text.replace('/start ', '').strip()
+    
     session = next(get_session())
+    
+    # First check if user is connecting from web via link code
+    if link_code:
+        stmt = select(UserSettings).where(UserSettings.telegram_link_token == link_code)
+        web_user = session.exec(stmt).first()
+        
+        if web_user:
+            # Link this Telegram chat to the existing web user
+            web_user.telegram_chat_id = chat_id
+            web_user.telegram_enabled = True
+            web_user.telegram_link_token = None  # Clear the used code
+            web_user.onboarding_step = STEP_DONE  # Mark as done
+            session.add(web_user)
+            session.commit()
+            session.close()
+            
+            # Welcome message for web-connected user
+            await update.message.reply_text(
+                f"🎉 **Willkommen, {web_user.name or 'Freund'}!**\n\n"
+                "Dein Web-Account wurde erfolgreich mit Telegram verbunden! ✅\n\n"
+                f"📍 Stadt: **{web_user.weather_city}**\n"
+                f"🎙️ Stimme: **{web_user.voice_id}**\n"
+                f"⏰ Briefing: **{web_user.briefing_time or '07:00'} Uhr**\n\n"
+                "Du kannst jetzt:\n"
+                "🎤 Mir Sprachnachrichten schicken → Tagebuch\n"
+                "🌅 `/generate` tippen → Dein persönliches Briefing\n"
+                "⚙️ `/settings` → Deine Einstellungen anzeigen",
+                parse_mode='Markdown'
+            )
+            return ConversationHandler.END
+    
+    # Check if user already exists and has completed setup (from web or previous Telegram setup)
     stmt = select(UserSettings).where(UserSettings.telegram_chat_id == chat_id)
     user = session.exec(stmt).first()
+    
+    if user and user.onboarding_step == STEP_DONE:
+        # User already completed onboarding - just welcome back
+        session.close()
+        await update.message.reply_text(
+            f"👋 **Willkommen zurück{', ' + user.name if user.name else ''}!**\n\n"
+            "Du hast bereits alles eingerichtet. ✅\n\n"
+            "Befehle:\n"
+            "🌅 `/generate` - Briefing generieren\n"
+            "⚙️ `/settings` - Einstellungen anzeigen\n"
+            "🔄 `/setup` - Setup neu starten (überschreibt alles)",
+            parse_mode='Markdown'
+        )
+        return ConversationHandler.END
     
     if not user:
         import uuid
@@ -151,13 +202,13 @@ async def start_onboarding(update: Update, context):
             user_id=new_id,
             telegram_chat_id=chat_id,
             telegram_enabled=True,
-            onboarding_step=STEP_NAME,  # Set initial state
+            onboarding_step=STEP_NAME,
             updated_at=datetime.utcnow()
         )
         session.add(user)
         session.commit()
     else:
-        # Reset onboarding for existing user
+        # Reset onboarding for existing user who hasn't completed
         user.onboarding_step = STEP_NAME
         session.add(user)
         session.commit()
