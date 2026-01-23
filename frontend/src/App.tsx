@@ -1,5 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import AuthPage from './pages/Auth';
 import Onboarding from './pages/Onboarding';
@@ -10,6 +11,33 @@ import SettingsPanel from './components/SettingsPanel';
 import { Sparkles, Mic, Play, LogOut, Sun, Moon } from 'lucide-react';
 import { API_BASE_URL } from './config';
 import { useSearchParams } from 'react-router-dom';
+
+// Animation variants
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+      delayChildren: 0.1
+    }
+  }
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { type: "spring" as const, stiffness: 300, damping: 24 }
+  }
+};
+
+const glowHover = {
+  scale: 1.02,
+  boxShadow: "0 0 20px rgba(0, 255, 136, 0.5)",
+  transition: { type: "spring" as const, stiffness: 400, damping: 10 }
+};
 
 // Protected Route Component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -130,11 +158,24 @@ const Dashboard = () => {
         </header>
 
         {/* Welcome Section */}
-        <section className="mb-12 animate-fade-in-up stagger-1">
-          <div className="glass-card p-8 flex items-center gap-6">
-            <div className="p-4 border-2 border-[var(--cyber-accent)] glow-neon" style={{ clipPath: 'polygon(0 8px, 8px 0, calc(100% - 8px) 0, 100% 8px, 100% calc(100% - 8px), calc(100% - 8px) 100%, 8px 100%, 0 calc(100% - 8px))' }}>
+        <motion.section
+          className="mb-12"
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ type: "spring", stiffness: 100, damping: 20, delay: 0.1 }}
+        >
+          <motion.div
+            className="glass-card p-8 flex items-center gap-6"
+            whileHover={glowHover}
+          >
+            <motion.div
+              className="p-4 border-2 border-[var(--cyber-accent)] glow-neon"
+              style={{ clipPath: 'polygon(0 8px, 8px 0, calc(100% - 8px) 0, 100% 8px, 100% calc(100% - 8px), calc(100% - 8px) 100%, 8px 100%, 0 calc(100% - 8px))' }}
+              whileHover={{ scale: 1.1, rotate: 5 }}
+              transition={{ type: "spring", stiffness: 400, damping: 10 }}
+            >
               <TimeIcon className="w-8 h-8 text-[var(--cyber-accent)]" />
-            </div>
+            </motion.div>
             <div>
               <h2 className="text-2xl font-bold text-[var(--cyber-accent)] mb-1 tracking-wide">
                 {timeInfo.greeting.toUpperCase()}{userName ? `, ${userName.toUpperCase()}` : ''} <span className="animate-blink">_</span>
@@ -147,50 +188,66 @@ const Dashboard = () => {
                     : '> Vergiss nicht, dein Tagebuch für heute einzusprechen!'}
               </p>
             </div>
-          </div>
-        </section>
+          </motion.div>
+        </motion.section>
 
         {/* Main Content Grid */}
-        <main className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <motion.main
+          className="grid grid-cols-1 lg:grid-cols-2 gap-8"
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+        >
           {/* Left Column: Briefing */}
           <div className="space-y-8">
-            <section className="animate-fade-in-up stagger-2">
+            <motion.section variants={itemVariants}>
               <div className="section-title">
-                <Play className="w-4 h-4 text-purple-400" />
-                <span>Morgen-Briefing</span>
+                <Play className="w-4 h-4 text-[var(--cyber-accent)]" />
+                <span>MORGEN_BRIEFING</span>
               </div>
-              <div className="glass-card p-6">
+              <motion.div
+                className="glass-card p-6"
+                whileHover={glowHover}
+              >
                 <Player />
-              </div>
-            </section>
+              </motion.div>
+            </motion.section>
 
-            <section className="animate-fade-in-up stagger-3">
+            <motion.section variants={itemVariants}>
               <div className="section-title">
-                <Mic className="w-4 h-4 text-blue-400" />
-                <span>Tagebuch</span>
+                <Mic className="w-4 h-4 text-[var(--cyber-secondary)]" />
+                <span>TAGEBUCH</span>
               </div>
-              <div className="glass-card p-6">
+              <motion.div
+                className="glass-card p-6"
+                whileHover={glowHover}
+              >
                 <Recorder onUploadComplete={() => window.location.reload()} />
-              </div>
-            </section>
+              </motion.div>
+            </motion.section>
           </div>
 
           {/* Right Column: Settings & Interests */}
           <div className="space-y-8">
-            <section className="animate-fade-in-up stagger-3">
+            <motion.section variants={itemVariants}>
               <InterestManager />
-            </section>
+            </motion.section>
 
-            <section className="animate-fade-in-up stagger-4">
+            <motion.section variants={itemVariants}>
               <SettingsPanel />
-            </section>
+            </motion.section>
           </div>
-        </main>
+        </motion.main>
 
         {/* Footer */}
-        <footer className="mt-16 text-center text-gray-600 text-sm animate-fade-in stagger-4">
-          <p>Made with ❤️ for better mornings</p>
-        </footer>
+        <motion.footer
+          className="mt-16 text-center text-[var(--cyber-text-muted)] text-sm font-mono"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.8 }}
+        >
+          <p>&gt; MADE_WITH_<span className="text-[var(--cyber-accent)]">❤</span>_FOR_BETTER_MORNINGS</p>
+        </motion.footer>
       </div>
     </div>
   );
