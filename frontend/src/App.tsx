@@ -7,9 +7,11 @@ import Onboarding from './pages/Onboarding';
 import Recorder from './components/Recorder';
 import Player from './components/Player';
 import InterestManager from './components/InterestManager';
+import InterestManager from './components/InterestManager';
 import SettingsPanel from './components/SettingsPanel';
+import DiaryList from './components/DiaryList';
 import LoadingScreen from './components/LoadingScreen';
-import { Sparkles, Mic, Play, LogOut, Sun, Moon } from 'lucide-react';
+import { Sparkles, Mic, Play, LogOut, Sun, Moon, FileText } from 'lucide-react';
 import { API_BASE_URL } from './config';
 import { useSearchParams } from 'react-router-dom';
 
@@ -243,6 +245,16 @@ const Dashboard = () => {
                   >
                     <Recorder onUploadComplete={() => window.location.reload()} />
                   </motion.div>
+                </motion.section>
+
+                <motion.section variants={itemVariants}>
+                  <div className="section-title">
+                    <FileText className="w-4 h-4 text-gray-400" />
+                    <span>VERLAUF</span>
+                  </div>
+                  <div className="glass-card p-6 max-h-[400px] overflow-y-auto scrollbar-hide">
+                    <DiaryList />
+                  </div>
                 </motion.section>
               </div>
 
