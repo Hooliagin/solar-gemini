@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { API_BASE_URL } from '../config';
-import { Calendar, FileText, Globe } from 'lucide-react';
+import { Calendar, Globe } from 'lucide-react';
 
 interface Entry {
     id: number;

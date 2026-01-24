@@ -7,7 +7,6 @@ import Onboarding from './pages/Onboarding';
 import Recorder from './components/Recorder';
 import Player from './components/Player';
 import InterestManager from './components/InterestManager';
-import InterestManager from './components/InterestManager';
 import SettingsPanel from './components/SettingsPanel';
 import DiaryList from './components/DiaryList';
 import LoadingScreen from './components/LoadingScreen';
