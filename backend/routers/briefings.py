@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+import logging
 from fastapi.responses import FileResponse
 from sqlmodel import Session, select
 from database import get_session
@@ -41,21 +42,33 @@ async def get_briefing_audio(briefing_id: int, session: Session = Depends(get_se
         
     return FileResponse(briefing.audio_path, media_type="audio/mpeg")
 
+logger = logging.getLogger(__name__)
+
 @router.post("/generate")
 async def trigger_briefing_generation(
+    background_tasks: BackgroundTasks,
     session: Session = Depends(get_session),
     user_id: str = Depends(get_current_user_id)
 ):
     """
-    Manually triggers the generation of a morning briefing.
-    Useful for testing or on-demand updates.
+    Manually triggers the generation of a morning briefing (Async).
     """
     from services.content_generator import generate_briefing_content
-    try:
-        # We need to pass the current user_id.
-        return {"status": "error", "message": "Endpoint logic incomplete, fixing..."}
+    
+    def run_generation(uid: str):
+        try:
+            logger.info(f"Background generation started for user {uid}")
+            generate_briefing_content(target_user_id=uid)
+            logger.info(f"Background generation finished for user {uid}")
+        except Exception as e:
+            logger.error(f"Background generation failed: {e}")
+            import traceback
+            traceback.print_exc()
 
+    try:
+        logger.info(f"Queuing briefing generation for user {user_id}")
+        background_tasks.add_task(run_generation, user_id)
+        return {"status": "success", "message": "Briefing generation started in background"}
     except Exception as e:
-        import traceback
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+        logger.error(f"Failed to queue task: {e}")
+        raise HTTPException(status_code=500, detail=f"Queue failed: {str(e)}")
