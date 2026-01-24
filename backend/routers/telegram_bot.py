@@ -414,11 +414,15 @@ async def news_state(update: Update, context):
         except Exception as e:
             logger.error(f"Error saving news: {e}")
         
+        
         await query.message.reply_text(
             "6️⃣ **Hast du spezielle Interessen?**\n\n"
-            "Schreibe mir Themen, die dich interessieren, getrennt durch Kommas.\n"
-            "Beispiel: _Künstliche Intelligenz, FC Bayern, Vegan Kochen_\n\n"
-            "(Schreibe 'keine', um zu überspringen)",
+            "Schreibe mir Themen, die dich interessieren.\n\n"
+            "**Befehle:**\n"
+            "`+ Thema` zum Hinzufügen (z.B. `+ KI`, `+ Bitcoin`)\n"
+            "`- Thema` zum Entfernen (z.B. `- Fußball`)\n"
+            "_Ohne Vorzeichen wird die Liste überschrieben!_\n\n"
+            "(Schreibe 'weiter', um fertig zu sein)",
             parse_mode='Markdown'
         )
         return INTERESTS
@@ -446,19 +450,55 @@ async def interests_state(update: Update, context):
         user = session.exec(stmt).first()
         
         if user:
-            if text.lower() != 'keine':
+        if user:
+            from models import Interest
+            
+            # Fetch existing
+            stmt_exist = select(Interest).where(Interest.user_id == user.user_id)
+            existing_interests = session.exec(stmt_exist).all()
+            current_topics = {i.topic for i in existing_interests}
+
+            text_cleaned = text.strip()
+            
+            if text_cleaned.lower() == 'weiter' or text_cleaned.lower() == 'keine':
+                pass # Just finish
+            
+            elif text_cleaned.startswith('+'):
+                # Add mode
+                new_topics = [t.strip() for t in text_cleaned[1:].split(',') if t.strip()]
+                for topic in new_topics:
+                    if topic not in current_topics:
+                        session.add(Interest(topic=topic, user_id=user.user_id))
+                        current_topics.add(topic)
+                session.commit()
+                await update.message.reply_text(f"✅ Hinzugefügt. Aktuell: {', '.join(current_topics)}")
+                return INTERESTS # Stay in loop
+                
+            elif text_cleaned.startswith('-'):
+                # Remove mode
+                rem_topics = [t.strip().lower() for t in text_cleaned[1:].split(',') if t.strip()]
+                for i in existing_interests:
+                    if i.topic.lower() in rem_topics:
+                        session.delete(i)
+                        if i.topic in current_topics:
+                            current_topics.remove(i.topic)
+                session.commit()
+                await update.message.reply_text(f"🗑️ Entfernt. Aktuell: {', '.join(current_topics)}")
+                return INTERESTS # Stay in loop
+
+            else:
+                # Overwrite mode (default behavior)
                 topics = [t.strip() for t in text.split(',') if t.strip()]
                 
-                # Clear existing interests
-                from models import Interest
-                stmt_del = select(Interest).where(Interest.user_id == user.user_id)
-                existing_interests = session.exec(stmt_del).all()
+                # Delete all old
                 for i in existing_interests:
                     session.delete(i)
-                    
+                
                 # Add new
                 for topic in topics:
                     session.add(Interest(topic=topic, user_id=user.user_id))
+                session.commit()
+                # Continue below to finish
             
             # Mark onboarding as done
             user.onboarding_step = STEP_DONE
