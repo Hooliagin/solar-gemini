@@ -43,7 +43,7 @@ const Player: React.FC = () => {
             const token = (await supabase.auth.getSession()).data.session?.access_token;
             if (!token) {
                 setBriefing(null);
-                return;
+                return false;
             }
 
             const res = await fetch(`${API_BASE_URL}/briefings/latest`, {
@@ -51,12 +51,19 @@ const Player: React.FC = () => {
             });
             if (res.ok) {
                 const data = await res.json();
+                // Optional: Check if it's actually new (by date) if we had previous data
+                // For now just checking if we got ANY data
                 setBriefing(data);
+                return true;
             } else {
-                setBriefing(null);
+                // Keep old briefing if 404? Or clear? 
+                // If 404, it means NO briefing exists.
+                // setBriefing(null); // Don't clear immediately while polling or we flicker
+                return false;
             }
         } catch (err) {
             console.error(err);
+            return false;
         } finally {
             setLoading(false);
         }
@@ -76,13 +83,29 @@ const Player: React.FC = () => {
                 throw new Error(data.detail || 'Fehler beim Generieren');
             }
 
-            // Success feedback
-            alert("Briefing wird generiert! Das dauert ca. 10-20 Sekunden.");
-            setTimeout(fetchLatestBriefing, 5000); // Poll after 5s
+            alert("Briefing wird generiert! Dies dauert ca. 30 Sekunden...");
+
+            // Start Polling
+            let attempts = 0;
+            const maxAttempts = 20; // 20 * 3s = 60s max
+
+            const pollInterval = setInterval(async () => {
+                attempts++;
+                const success = await fetchLatestBriefing(); // Reuse existing fetch logic
+
+                // If we found a briefing OR max attempts reached
+                if (success || attempts >= maxAttempts) {
+                    clearInterval(pollInterval);
+                    setGenerating(false);
+                    if (!success) {
+                        alert("Zeitüberschreitung: Briefing wird noch verarbeitet. Bitte lade die Seite in Kürze neu.");
+                    }
+                }
+            }, 3000);
+
         } catch (error) {
             console.error("Failed to generate", error);
             alert(`Fehler: ${(error as Error).message}`);
-        } finally {
             setGenerating(false);
         }
     };
