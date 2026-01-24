@@ -3,16 +3,20 @@ from fastapi.responses import FileResponse
 from sqlmodel import Session, select
 from database import get_session
 from models import Briefing
+from auth import get_current_user_id
 import os
 
 router = APIRouter(prefix="/briefings", tags=["briefings"])
 
 @router.get("/latest")
-async def get_latest_briefing(session: Session = Depends(get_session)):
+async def get_latest_briefing(
+    session: Session = Depends(get_session),
+    user_id: str = Depends(get_current_user_id)
+):
     """
-    Returns the most recent briefing metadata.
+    Returns the most recent briefing metadata for the current user.
     """
-    statement = select(Briefing).order_by(Briefing.created_at.desc()).limit(1)
+    statement = select(Briefing).where(Briefing.user_id == user_id).order_by(Briefing.created_at.desc()).limit(1)
     briefing = session.exec(statement).first()
     
     if not briefing:

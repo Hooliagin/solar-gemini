@@ -135,6 +135,33 @@ export default function SettingsPanel() {
         }
     };
 
+    const disconnectTelegram = async () => {
+        try {
+            const token = (await supabase.auth.getSession()).data.session?.access_token;
+            if (!token) return;
+
+            const res = await fetch(`${API_BASE_URL}/settings/`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    telegram_enabled: false,
+                    telegram_chat_id: null
+                })
+            });
+
+            if (res.ok) {
+                setTelegramConnected(false);
+                setLinkCode(null);
+            }
+        } catch (error) {
+            console.error('Failed to disconnect Telegram', error);
+            alert("Fehler beim Trennen der Verbindung.");
+        }
+    };
+
     const saveSettings = async () => {
         setSaving(true);
         setSaved(false);
@@ -211,7 +238,14 @@ export default function SettingsPanel() {
                             {telegramConnected ? '✓ Verbunden' : 'Nicht verbunden'}
                         </span>
                     </div>
-                    {!telegramConnected && (
+                    {telegramConnected ? (
+                        <div className="mt-4">
+                            <button onClick={disconnectTelegram} className="w-full py-2.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2">
+                                <Unlink className="w-4 h-4" />
+                                Trennen
+                            </button>
+                        </div>
+                    ) : (
                         <div className="mt-4">
                             {!linkCode ? (
                                 <button onClick={generateLinkCode} className="w-full py-2.5 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2">

@@ -2,7 +2,7 @@
 Cron endpoints for external scheduling services (e.g., cron-job.org)
 These endpoints can be called by free cron services to trigger scheduled tasks.
 """
-from fastapi import APIRouter, Header, HTTPException
+from fastapi import APIRouter, Header, HTTPException, BackgroundTasks
 from config import settings
 from services.scheduler import scheduled_briefing_job
 import logging
@@ -12,6 +12,7 @@ router = APIRouter(prefix="/cron", tags=["cron"])
 
 @router.post("/morning-briefings")
 def trigger_morning_briefings(
+    background_tasks: BackgroundTasks,
     x_api_key: str = Header(None, alias="X-API-Key")
 ):
     """
@@ -53,26 +54,15 @@ def trigger_morning_briefings(
         )
     
     print("Authentication successful!", flush=True)
-    logger.info("Cron trigger received - running morning briefing job")
+    logger.info("Cron trigger received - queuing morning briefing job")
     
-    try:
-        print("About to call scheduled_briefing_job()...", flush=True)
-        # Run the scheduler job synchronously
-        scheduled_briefing_job()
-        print("scheduled_briefing_job() completed!", flush=True)
-        return {
-            "status": "success",
-            "message": "Morning briefing job completed"
-        }
-    except Exception as e:
-        print(f"ERROR in scheduled_briefing_job: {e}", flush=True)
-        import traceback
-        traceback.print_exc()
-        logger.error(f"Cron job failed: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Job failed: {str(e)}"
-        )
+    # Run in background to avoid timeout
+    background_tasks.add_task(scheduled_briefing_job)
+    
+    return {
+        "status": "success",
+        "message": "Morning briefing job queued in background"
+    }
 
 @router.get("/health")
 async def cron_health():

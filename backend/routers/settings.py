@@ -22,6 +22,9 @@ class UserSettingsUpdate(BaseModel):
     news_economy: Optional[bool] = None
     news_tech: Optional[bool] = None
     news_sports: Optional[bool] = None
+    # Telegram settings
+    telegram_enabled: Optional[bool] = None
+    telegram_chat_id: Optional[str] = None
 
 @router.get("/")
 def get_settings(session: Session = Depends(get_session), user_id: str = Depends(get_current_user_id)):

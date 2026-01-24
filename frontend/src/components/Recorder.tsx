@@ -75,11 +75,13 @@ const Recorder: React.FC<RecorderProps> = ({ onUploadComplete }) => {
             if (response.ok) {
                 onUploadComplete();
             } else {
-                alert("Fehler beim Hochladen.");
+                const errorData = await response.json();
+                console.error("Upload failed:", errorData);
+                alert(`Fehler beim Hochladen: ${errorData.detail || 'Unbekannter Fehler'}`);
             }
         } catch (error) {
             console.error("Upload error:", error);
-            alert("Fehler beim Hochladen.");
+            alert(`Netzwerk- oder Serverfehler: ${(error as Error).message}`);
         } finally {
             setIsUploading(false);
             setRecordingTime(0);

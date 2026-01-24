@@ -36,6 +36,10 @@ export default function InterestManager() {
 
     const addInterest = async (topic: string) => {
         if (!topic.trim()) return;
+        if (interests.length >= 10) {
+            alert("Maximal 10 Interessen erlaubt.");
+            return;
+        }
 
         setLoading(true);
         try {
@@ -95,7 +99,7 @@ export default function InterestManager() {
                 </div>
                 <div>
                     <h2 className="text-lg font-semibold text-white">
-                        Deine Interessen
+                        Deine Interessen <span className="text-xs text-gray-400 ml-2">({interests.length}/10)</span>
                     </h2>
                     <p className="text-xs text-gray-500">Personalisiere dein Briefing</p>
                 </div>

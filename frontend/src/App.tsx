@@ -153,9 +153,9 @@ const Dashboard = () => {
             <div className="absolute top-3/4 left-1/2 w-64 h-64 bg-[var(--cyber-tertiary)]/10 rounded-full blur-[100px] animate-neon-pulse" style={{ animationDelay: '2s' }} />
           </div>
 
-          <div className="relative z-10 max-w-7xl mx-auto px-8 py-12">
+          <div className="relative z-10 max-w-7xl mx-auto px-4 py-8 md:px-8 md:py-12">
             {/* Header */}
-            <header className="flex justify-between items-center mb-20 animate-fade-in-up">
+            <header className="flex justify-between items-center mb-10 md:mb-20 animate-fade-in-up">
               <div className="flex items-center gap-4">
                 <div className="p-3 border-2 border-[var(--cyber-accent)] glow-neon" style={{ clipPath: 'polygon(0 8px, 8px 0, calc(100% - 8px) 0, 100% 8px, 100% calc(100% - 8px), calc(100% - 8px) 100%, 8px 100%, 0 calc(100% - 8px))' }}>
                   <Sparkles className="w-7 h-7 text-[var(--cyber-accent)]" />
@@ -212,7 +212,7 @@ const Dashboard = () => {
 
             {/* Main Content Grid */}
             <motion.main
-              className="grid grid-cols-1 lg:grid-cols-2 gap-12"
+              className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-12"
               variants={containerVariants}
               initial="hidden"
               animate="visible"
