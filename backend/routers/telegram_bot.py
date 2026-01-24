@@ -450,7 +450,6 @@ async def interests_state(update: Update, context):
         user = session.exec(stmt).first()
         
         if user:
-        if user:
             from models import Interest
             
             # Fetch existing
