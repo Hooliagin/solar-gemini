@@ -11,13 +11,13 @@ interface Entry {
     summary?: string;
 }
 
-export default function DiaryList() {
+export default function DiaryList({ refreshTrigger }: { refreshTrigger?: number }) {
     const [entries, setEntries] = useState<Entry[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         fetchEntries();
-    }, []);
+    }, [refreshTrigger]);
 
     const fetchEntries = async () => {
         try {

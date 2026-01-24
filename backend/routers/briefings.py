@@ -42,14 +42,20 @@ async def get_briefing_audio(briefing_id: int, session: Session = Depends(get_se
     return FileResponse(briefing.audio_path, media_type="audio/mpeg")
 
 @router.post("/generate")
-async def trigger_briefing_generation(session: Session = Depends(get_session)):
+async def trigger_briefing_generation(
+    session: Session = Depends(get_session),
+    user_id: str = Depends(get_current_user_id)
+):
     """
     Manually triggers the generation of a morning briefing.
     Useful for testing or on-demand updates.
     """
     from services.content_generator import generate_briefing_content
     try:
-        generate_briefing_content()
-        return {"status": "success", "message": "Briefing generation started"}
+        # We need to pass the current user_id.
+        return {"status": "error", "message": "Endpoint logic incomplete, fixing..."}
+
     except Exception as e:
-         raise HTTPException(status_code=500, detail=str(e))
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")

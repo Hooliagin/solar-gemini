@@ -70,6 +70,11 @@ const Dashboard = () => {
   const claimCode = searchParams.get('claim_code');
   const [userName, setUserName] = React.useState<string>('');
   const [isLoading, setIsLoading] = React.useState(true);
+  const [refreshTrigger, setRefreshTrigger] = React.useState(0);
+
+  const handleUploadComplete = () => {
+    setRefreshTrigger(prev => prev + 1);
+  };
 
   React.useEffect(() => {
     if (claimCode && session?.access_token) {
@@ -242,7 +247,7 @@ const Dashboard = () => {
                     className="glass-card p-8"
                     whileHover={glowHover}
                   >
-                    <Recorder onUploadComplete={() => window.location.reload()} />
+                    <Recorder onUploadComplete={handleUploadComplete} />
                   </motion.div>
                 </motion.section>
 
@@ -252,7 +257,7 @@ const Dashboard = () => {
                     <span>VERLAUF</span>
                   </div>
                   <div className="glass-card p-6 max-h-[400px] overflow-y-auto scrollbar-hide">
-                    <DiaryList />
+                    <DiaryList refreshTrigger={refreshTrigger} />
                   </div>
                 </motion.section>
               </div>

@@ -574,12 +574,26 @@ async def handle_voice_message(update: Update, context):
         transcript = transcription_result.get("text", "") if isinstance(transcription_result, dict) else transcription_result
         language = transcription_result.get("language", "de") if isinstance(transcription_result, dict) else "de"
         
-        # Save as entry
         session = next(get_session())
+        
+        # Verify user mapping
+        chat_id = str(update.effective_chat.id)
+        stmt = select(UserSettings).where(UserSettings.telegram_chat_id == chat_id)
+        user = session.exec(stmt).first()
+        
+        if not user:
+             logger.error(f"Telegram user {chat_id} not found/linked during voice upload.")
+             await update.message.reply_text("❌ Fehler: Dein Account ist nicht verknüpft.")
+             session.close()
+             return
+
+        logger.info(f"Processing voice for Telegram User {chat_id} -> App User {user.user_id}")
+
         entry = Entry(
             audio_path=temp_path,
             transcript=transcript,
-            language=language
+            language=language,
+            user_id=user.user_id
         )
         session.add(entry)
         session.commit()
