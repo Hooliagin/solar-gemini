@@ -66,13 +66,22 @@ const Player: React.FC = () => {
         setGenerating(true);
         try {
             const token = (await supabase.auth.getSession()).data.session?.access_token;
-            await fetch(`${API_BASE_URL}/briefings/generate`, {
+            const res = await fetch(`${API_BASE_URL}/briefings/generate`, {
                 method: 'POST',
                 headers: { Authorization: `Bearer ${token}` }
             });
-            setTimeout(fetchLatestBriefing, 3000);
+
+            if (!res.ok) {
+                const data = await res.json();
+                throw new Error(data.detail || 'Fehler beim Generieren');
+            }
+
+            // Success feedback
+            alert("Briefing wird generiert! Das dauert ca. 10-20 Sekunden.");
+            setTimeout(fetchLatestBriefing, 5000); // Poll after 5s
         } catch (error) {
             console.error("Failed to generate", error);
+            alert(`Fehler: ${(error as Error).message}`);
         } finally {
             setGenerating(false);
         }

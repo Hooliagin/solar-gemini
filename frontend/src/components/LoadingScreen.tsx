@@ -48,7 +48,7 @@ export default function LoadingScreen() {
                 </p>
 
                 {/* Progress Bar */}
-                <div className="w-80 mx-auto">
+                <div className="w-full max-w-xs mx-auto px-4">
                     <div
                         className="h-2 bg-[var(--cyber-border)] relative overflow-hidden"
                         style={{
