@@ -119,12 +119,17 @@ def check_reminders(current_time: str):
 
 def run_scheduler_checks():
     """Called every minute by the main loop."""
-    now = datetime.now()
+    import pytz
+    
+    # Use Berlin time for all users for now (MVP simplification)
+    # Ideally, we store user timezone, but user is explicitly German.
+    berlin_tz = pytz.timezone('Europe/Berlin')
+    now = datetime.now(berlin_tz)
     current_time = now.strftime("%H:%M")
     
     # Log heartbeat every 15 mins
     if now.minute % 15 == 0:
-        logger.info(f"Scheduler tick: {current_time}")
+        logger.info(f"Scheduler tick: {current_time} (Berlin Time)")
         
     check_briefings(current_time)
     check_reminders(current_time)

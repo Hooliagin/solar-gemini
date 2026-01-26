@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/audio", tags=["audio"])
 
 @router.get("/preview/{voice_id}")
-async def get_voice_preview(
+def get_voice_preview(
     voice_id: str,
     user_id: str = Depends(get_current_user_id)
 ):
