@@ -27,19 +27,43 @@ def get_voice_preview(
         os.makedirs(settings.AUDIO_DIR, exist_ok=True)
         preview_path = os.path.join(settings.AUDIO_DIR, preview_filename)
         
-        # Check if already exists to cache it implicitly (optional, but good for speed)
-        # For now, we regenerate to allow easy testing of voice changes if params change
-        # But actually, voice previews are static per voice_id + generic text.
-        if not os.path.exists(preview_path):
-            generate_speech(
-                text=preview_text,
-                output_path=preview_path,
-                language="de",
-                voice_override=voice_id
-            )
-            
-        return FileResponse(preview_path, media_type="audio/mpeg")
+        # Check if exists AND is not empty
+        if os.path.exists(preview_path):
+            if os.path.getsize(preview_path) == 0:
+                 logger.warning(f"Preview file {preview_filename} was empty. Deleting.")
+                 try:
+                     os.remove(preview_path)
+                 except: 
+                     pass
         
+        if not os.path.exists(preview_path):
+            try:
+                generate_speech(
+                    text=preview_text,
+                    output_path=preview_path,
+                    language="de",
+                    voice_override=voice_id
+                )
+            except Exception as e:
+                logger.error(f"Failed to generate speech: {e}")
+                # Ensure we don't return partial junk
+                if os.path.exists(preview_path):
+                     os.remove(preview_path)
+                raise HTTPException(status_code=500, detail=str(e))
+            
+        # Verify size again
+        if not os.path.exists(preview_path) or os.path.getsize(preview_path) == 0:
+             raise HTTPException(status_code=500, detail="Generated audio file is empty")
+
+        # Explicitly set headers to avoid "not suitable" error
+        return FileResponse(
+            preview_path, 
+            media_type="audio/mpeg", 
+            headers={"Accept-Ranges": "bytes"}
+        )
+        
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error generating preview: {e}")
         raise HTTPException(status_code=500, detail="Failed to generate preview")
