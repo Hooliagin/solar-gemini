@@ -172,8 +172,10 @@ def generate_briefing_content(target_user_id: str):
            - Based on yesterday, formulate 1-2 clear intentions/mottos for today.
            - Example: "Yesterday was stressful, so today we focus on potential."
         4. **The Plan (Calendar & Todos)**:
-           - Weave the [USER TODOS] and [TODAY'S CALENDAR] naturally into the narrative.
-           - Don't just list them. Connect them to the resolutions (e.g. "To get that done, you have a meeting at 10...").
+           - **Step A (The Hard Landscape)**: Mention the fixed appointments clearly (Time + Event). Don't skip them.
+           - **Step B (The Gaps)**: Look for free slots between appointments.
+           - **Step C (Integration)**: Suggest when to do the [USER TODOS] in those gaps.
+           - Example: "You have meetings until 2 PM, but a free block afterwards—perfect to finally call Mom (from your todos)."
         5. **News (The Meat)**: 2-3 topics, transitioned smoothly.
         6. **Weather**: Quick check.
         7. **Creative Closing**: END with a unique Quote/Wisdom.
