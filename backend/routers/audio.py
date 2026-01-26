@@ -22,7 +22,7 @@ def get_voice_preview(
         preview_text = "Hallo! Dies ist eine kurze Vorschau meiner Stimme. Ich hoffe, ich gefalle dir."
         
         # Temp file for preview
-        preview_filename = f"preview_{voice_id}.mp3"
+        preview_filename = f"preview_{voice_id}.wav"
         os.makedirs(settings.AUDIO_DIR, exist_ok=True)
         preview_path = os.path.join(settings.AUDIO_DIR, preview_filename)
         
@@ -57,7 +57,7 @@ def get_voice_preview(
         # Explicitly set headers to avoid "not suitable" error
         return FileResponse(
             preview_path, 
-            media_type="audio/mpeg", 
+            media_type="audio/wav", 
             headers={"Accept-Ranges": "bytes"}
         )
         

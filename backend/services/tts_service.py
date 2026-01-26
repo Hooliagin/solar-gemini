@@ -78,21 +78,21 @@ def generate_speech(text: str, output_path: str, language: str = "de", voice_ove
         audio_bytes = base64.b64decode(audio_data_b64)
         
         # Gemini returns raw PCM (24kHz, 1 channel, 16-bit usually).
-        # We must convert this to MP3 for the browser/Telegram to understand it.
+        # We must package this as a WAV file so browsers accept it.
+        # MP3 conversion requires ffmpeg which might be missing on Render.
+        import wave
+        
         try:
-            audio_segment = AudioSegment(
-                data=audio_bytes,
-                sample_width=2,  # 16-bit
-                frame_rate=24000, # 24kHz
-                channels=1
-            )
-            audio_segment.export(output_path, format="mp3")
-            logger.info(f"Audio converted and saved to {output_path}")
-        except Exception as conversion_error:
-            logger.error(f"Failed to convert PCM to MP3: {conversion_error}")
-            # Fallback: Just save bytes (might be broken but better than crash)
-            with open(output_path, "wb") as f:
-                f.write(audio_bytes)
+            with wave.open(output_path, "wb") as wav_file:
+                wav_file.setnchannels(1)       # Mono
+                wav_file.setsampwidth(2)       # 16-bit
+                wav_file.setframerate(24000)   # 24kHz
+                wav_file.writeframes(audio_bytes)
+                
+            logger.info(f"Audio saved to {output_path} (WAV format)")
+        except Exception as e:
+            logger.error(f"Failed to write WAV file: {e}")
+            raise e
             
         return output_path
 
