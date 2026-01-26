@@ -9,8 +9,8 @@ import json
 
 logger = logging.getLogger(__name__)
 
-# Initialize Gemini Client
-client = genai.Client(api_key=settings.GOOGLE_API_KEY)
+# Initialize Gemini Client lazily inside functions
+# client = genai.Client(api_key=settings.GOOGLE_API_KEY)
 
 def extract_todos_from_transcript(user_id: str, transcript: str, entry_id: int, session: Session):
     """
@@ -18,6 +18,7 @@ def extract_todos_from_transcript(user_id: str, transcript: str, entry_id: int, 
     Saves them to the database.
     """
     try:
+        client = genai.Client(api_key=settings.GOOGLE_API_KEY)
         # 1. Prompt Gemini to extract tasks AND research
         prompt = f"""
         Analyze the following user diary entry/transcript.

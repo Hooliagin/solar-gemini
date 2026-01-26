@@ -4,7 +4,7 @@ from config import settings
 import logging
 
 logger = logging.getLogger(__name__)
-client = genai.Client(api_key=settings.GOOGLE_API_KEY)
+# client = genai.Client(api_key=settings.GOOGLE_API_KEY)
 
 def perform_research_grounding(query: str) -> str:
     """
@@ -12,6 +12,7 @@ def perform_research_grounding(query: str) -> str:
     Returns a concise summary.
     """
     try:
+        client = genai.Client(api_key=settings.GOOGLE_API_KEY)
         logger.info(f"Researching: {query}")
         
         prompt = f"""
