@@ -31,6 +31,16 @@ def run_migrations():
                 conn.rollback() 
                 conn.execute(text("ALTER TABLE usersettings ADD COLUMN reflection_reminder_enabled BOOLEAN DEFAULT TRUE"))
                 conn.commit()
+
+            try:
+                conn.execute(text("SELECT updated_at FROM usersettings LIMIT 1"))
+            except Exception:
+                logger.info("Applying migration: Adding updated_at column")
+                conn.rollback()
+                # Create as NULLable first, populate, then set NOT NULL? 
+                # Or just default to NOW()
+                conn.execute(text("ALTER TABLE usersettings ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"))
+                conn.commit()
                 
             logger.info("Migrations completed successfully.")
             

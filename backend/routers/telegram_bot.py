@@ -142,7 +142,7 @@ async def unlink_command(update: Update, context):
         # Unlink
         user.telegram_chat_id = None
         user.telegram_enabled = False
-        # user.updated_at = datetime.utcnow() # Removed: Column does not exist
+        user.updated_at = datetime.utcnow()
         session.add(user)
         session.commit()
         session.close()
