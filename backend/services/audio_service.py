@@ -1,11 +1,14 @@
 import os
 import shutil
 from fastapi import UploadFile
-from openai import OpenAI
+from google import genai
+from google.genai import types
 from config import settings
 from uuid import uuid4
+import json
 
-client = OpenAI(api_key=settings.OPENAI_API_KEY)
+# Initialize Gemini Client
+client = genai.Client(api_key=settings.GOOGLE_API_KEY)
 
 def save_audio_file(file: UploadFile) -> str:
     """
@@ -34,21 +37,51 @@ def save_audio_file(file: UploadFile) -> str:
 
 def transcribe_audio(file_path: str) -> dict:
     """
-    Transcribes the audio file using OpenAI Whisper.
+    Transcribes the audio file using Gemini 2.5 Flash.
     Returns dict with 'text' and 'language'.
     """
     # Verify file exists
     if not os.path.exists(file_path):
         raise FileNotFoundError(f"File not found: {file_path}")
         
-    with open(file_path, "rb") as audio_file:
-        transcription = client.audio.transcriptions.create(
-            model="whisper-1",
-            file=audio_file,
-            response_format="verbose_json"  # Get language info
+    try:
+        # Prompt for transcription and language detection
+        prompt = (
+            "Listen to this audio file. "
+            "1. Transcribe the spoken content exactly (in the original language). "
+            "2. Detect the language code (e.g. 'de', 'en'). "
+            "Output valid JSON only: {\"text\": \"...\", \"language\": \"...\"} "
         )
-    
-    return {
-        "text": transcription.text,
-        "language": getattr(transcription, 'language', 'en')  # Default to 'en' if not detected
-    }
+
+        with open(file_path, "rb") as f:
+            audio_bytes = f.read()
+
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=[
+                types.Content(
+                    parts=[
+                        types.Part.from_bytes(
+                            data=audio_bytes,
+                            mime_type="audio/mp3"  # Generic mime assumption, Gemini is analyzing bytes
+                        ),
+                        types.Part(text=prompt)
+                    ]
+                )
+            ],
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json"
+            )
+        )
+        
+        # Parse JSON response
+        result = json.loads(response.text)
+        return {
+            "text": result.get("text", ""),
+            "language": result.get("language", "en")
+        }
+
+    except Exception as e:
+        print(f"STT Error (Gemini): {e}")
+        # Fallback empty
+        return {"text": "", "language": "en"}
