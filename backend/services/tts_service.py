@@ -75,6 +75,13 @@ def generate_speech(text: str, output_path: str, language: str = "de", voice_ove
             raise Exception("No audio content returned from Gemini API")
             
         audio_data_b64 = response.candidates[0].content.parts[0].inline_data.data
+        
+        # Fix Padding if necessary
+        # Base64 length should be multiple of 4.
+        missing_padding = len(audio_data_b64) % 4
+        if missing_padding:
+            audio_data_b64 += '=' * (4 - missing_padding)
+            
         audio_bytes = base64.b64decode(audio_data_b64)
         
         # Gemini returns raw PCM (24kHz, 1 channel, 16-bit usually).
