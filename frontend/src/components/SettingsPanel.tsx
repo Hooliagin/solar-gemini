@@ -488,21 +488,19 @@ export default function SettingsPanel() {
                                         onClick={(e) => {
                                             e.stopPropagation();
                                             try {
-                                                e.stopPropagation();
-                                                try {
-                                                    const timestamp = new Date().getTime();
-                                                    const url = `${API_BASE_URL}/audio/preview/${voice.id}?t=${timestamp}`;
-                                                    console.log(`Playing preview: ${url}`);
-                                                    const audio = new Audio(url);
-                                                    audio.volume = 1.0;
-                                                    audio.play().catch(err => {
-                                                        console.error("Play failed:", err);
-                                                        alert("Fehler beim Abspielen: " + err.message);
-                                                    });
-                                                } catch (err) {
-                                                    console.error("Audio init failed:", err);
-                                                }
-                                            }}
+                                                const timestamp = new Date().getTime();
+                                                const url = `${API_BASE_URL}/audio/preview/${voice.id}?t=${timestamp}`;
+                                                console.log(`Playing preview: ${url}`);
+                                                const audio = new Audio(url);
+                                                audio.volume = 1.0;
+                                                audio.play().catch(err => {
+                                                    console.error("Play failed:", err);
+                                                    alert("Fehler beim Abspielen: " + err.message);
+                                                });
+                                            } catch (err) {
+                                                console.error("Audio init failed:", err);
+                                            }
+                                        }}
                                         className={`p-1.5 rounded-full hover:bg-white/20 cursor-pointer transition-colors ${isSelected ? 'text-white' : 'text-gray-400 hover:text-white'}`}
                                         title="Vorschau anhören"
                                     >
