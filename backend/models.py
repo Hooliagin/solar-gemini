@@ -66,4 +66,11 @@ class UserTodo(SQLModel, table=True):
     due_date: Optional[datetime] = None # If user says "tomorrow"
     is_completed: bool = Field(default=False)
     created_at: datetime = Field(default_factory=datetime.utcnow)
-    source_entry_id: Optional[int] = None # ID of the diary entry where this was found
+class ResearchTask(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: str = Field(index=True)
+    query: str # The search query/topic (e.g. "Solar ETF Performance")
+    status: str = Field(default="pending") # pending, done
+    result_summary: Optional[str] = None # The summary found by the agent
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    source_entry_id: Optional[int] = None

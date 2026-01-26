@@ -101,12 +101,35 @@ def generate_briefing_content(target_user_id: str):
         
         # 3b. Fetch Pending Todos
         print("DEBUG: Fetching Pending Todos...", flush=True)
-        from services.todo_service import get_pending_todos
+        from services.todo_service import get_pending_todos, get_pending_research
         todos = get_pending_todos(target_user_id, session)
         todo_list_text = "\n".join([f"- {t.task} (Due: {t.due_date.strftime('%Y-%m-%d') if t.due_date else 'Anytime'})" for t in todos])
         if not todo_list_text:
             todo_list_text = "No pending tasks."
-        print(f"DEBUG: Found {len(todos)} todos.", flush=True)
+            
+        # 3c. Perform Pending Research (JIT)
+        print("DEBUG: Checking for Research Tasks...", flush=True)
+        research_tasks = get_pending_research(target_user_id, session)
+        research_results_text = ""
+        
+        if research_tasks:
+            from services.research_service import perform_research_grounding
+            print(f"DEBUG: Found {len(research_tasks)} research tasks. Executing...", flush=True)
+            
+            for task in research_tasks:
+                print(f"DEBUG: Researching '{task.query}'...", flush=True)
+                summary = perform_research_grounding(task.query)
+                
+                research_results_text += f"\n[REQUEST: {task.query}]\nRESULT: {summary}\n"
+                
+                # Mark as done
+                task.status = "done"
+                task.result_summary = summary
+                session.add(task)
+            
+            session.commit()
+        else:
+            research_results_text = "No research requests."
 
         prompt = f"""
         You are a friendly, professional personal assistant. It is morning.
@@ -132,6 +155,9 @@ def generate_briefing_content(target_user_id: str):
 
         [USER TODOS / REMINDERS]
         {todo_list_text}
+        
+        [RESEARCH RESULTS (ANSWERS TO USER QUESTIONS)]
+        {research_results_text}
         
         [TODAY'S CALENDAR]
         {calendar_text}
@@ -160,9 +186,13 @@ def generate_briefing_content(target_user_id: str):
            - **Step B (The Gaps)**: Look for free slots between appointments.
            - **Step C (Integration)**: Suggest when to do the [USER TODOS] in those gaps.
            - Example: "You have meetings until 2 PM, but a free block afterwards—perfect to finally call Mom (from your todos)."
-        5. **News (The Meat)**: 2-3 topics, transitioned smoothly.
-        6. **Weather**: Quick check.
-        7. **Creative Closing**: END with a unique Quote/Wisdom.
+        5. **Research Answers (If any)**:
+           - If there are [RESEARCH RESULTS], present them now.
+           - Say: "You asked me to look up X. Here is what I found..."
+        6. **News (The Meat)**: 2-3 topics, transitioned smoothly.
+        7. **Weather**: Quick check.
+        8. **Creative Closing**: END with a unique Quote/Wisdom.
+
         
         **STYLE**: Energetic but thoughtful. Like a mentor and a friend.
         """

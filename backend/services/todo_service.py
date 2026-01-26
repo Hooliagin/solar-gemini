@@ -2,40 +2,40 @@ from google import genai
 from google.genai import types
 from config import settings
 from sqlmodel import Session, select
-from models import UserTodo
-from datetime import datetime, timedelta
-import logging
-import json
+from models import UserTodo, ResearchTask
 
-logger = logging.getLogger(__name__)
-
-# Initialize Gemini Client
-client = genai.Client(api_key=settings.GOOGLE_API_KEY)
+# ... imports ...
 
 def extract_todos_from_transcript(user_id: str, transcript: str, entry_id: int, session: Session):
     """
-    Analyzes the transcript to find actionable tasks.
+    Analyzes the transcript to find actionable tasks AND research requests.
     Saves them to the database.
     """
     try:
-        # 1. Prompt Gemini to extract tasks
+        # 1. Prompt Gemini to extract tasks AND research
         prompt = f"""
         Analyze the following user diary entry/transcript.
-        Identify any specific tasks, todos, or reminders the user mentions.
+        Identify:
+        1. Specific tasks/todos (Actionable items for the user).
+        2. Research/Information requests (Things the user wants YOU/The AI to find out).
+        
         Examples: 
-        - "Remind me to call Mom tomorrow" -> Task: "Call Mom", Due: Tomorrow
-        - "I need to buy milk" -> Task: "Buy milk"
-        - "I went to the gym" -> NO TASK (just a statement)
+        - "Remind me to call Mom tomorrow" -> Todo: "Call Mom", Due: Tomorrow
+        - "I wonder what the stock price of Apple is" -> Research: "Current Apple stock price"
+        - "Find out who won the game last night" -> Research: "Winner of game last night"
+        - "I need to buy milk" -> Todo: "Buy milk"
         
         Transcript: "{transcript}"
         
         Output JSON ONLY:
         {{
             "todos": [
-                {{ "task": "...", "due_in_days": 0 or 1 etc (optional, 0=today, 1=tomorrow) }}
+                {{ "task": "...", "due_in_days": 0 or 1 etc (optional) }}
+            ],
+            "research": [
+                {{ "query": "..." }}
             ]
         }}
-        If no todos, return {{ "todos": [] }}
         """
         
         response = client.models.generate_content(
@@ -49,40 +49,40 @@ def extract_todos_from_transcript(user_id: str, transcript: str, entry_id: int, 
         # 2. Parse Response
         data = json.loads(response.text)
         todos = data.get("todos", [])
+        research = data.get("research", [])
         
         extracted_count = 0
+        
+        # Save Todos
         for item in todos:
             task_text = item.get("task")
-            if not task_text:
-                continue
-                
+            if not task_text: continue
             due_in_days = item.get("due_in_days")
-            due_date = None
-            if due_in_days is not None:
-                due_date = datetime.now() + timedelta(days=due_in_days)
+            due_date = datetime.now() + timedelta(days=due_in_days) if due_in_days is not None else None
             
-            # 3. Save to DB
-            todo = UserTodo(
-                user_id=user_id,
-                task=task_text,
-                due_date=due_date,
-                source_entry_id=entry_id
-            )
-            session.add(todo)
+            session.add(UserTodo(user_id=user_id, task=task_text, due_date=due_date, source_entry_id=entry_id))
+            extracted_count += 1
+            
+        # Save Research Tasks
+        for item in research:
+            query = item.get("query")
+            if not query: continue
+            
+            session.add(ResearchTask(user_id=user_id, query=query, source_entry_id=entry_id))
             extracted_count += 1
             
         session.commit()
-        logger.info(f"Extracted {extracted_count} todos for user {user_id}")
+        logger.info(f"Extracted {extracted_count} items (Todos+Research) for user {user_id}")
         return extracted_count
 
     except Exception as e:
-        logger.error(f"Error extracting todos: {e}")
+        logger.error(f"Error extracting items: {e}")
         return 0
 
 def get_pending_todos(user_id: str, session: Session) -> list[UserTodo]:
-    """Get uncompleted todos for the briefing."""
-    statement = select(UserTodo).where(
-        UserTodo.user_id == user_id,
-        UserTodo.is_completed == False
-    )
-    return session.exec(statement).all()
+    """Get uncompleted todos."""
+    return session.exec(select(UserTodo).where(UserTodo.user_id == user_id, UserTodo.is_completed == False)).all()
+
+def get_pending_research(user_id: str, session: Session) -> list[ResearchTask]:
+    """Get pending research tasks."""
+    return session.exec(select(ResearchTask).where(ResearchTask.user_id == user_id, ResearchTask.status == "pending")).all()
