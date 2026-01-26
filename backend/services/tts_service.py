@@ -70,19 +70,14 @@ def generate_speech(text: str, output_path: str, language: str = "de", voice_ove
         )
 
         # Extract Audio Data
-        # Response structure: candidates[0].content.parts[0].inline_data.data (base64 string)
+        # Extract Audio Data
+        # Response structure: candidates[0].content.parts[0].inline_data.data (already raw bytes in Python SDK)
         if not response.candidates or not response.candidates[0].content.parts:
             raise Exception("No audio content returned from Gemini API")
             
-        audio_data_b64 = response.candidates[0].content.parts[0].inline_data.data
-        
-        # Fix Padding if necessary
-        # Base64 length should be multiple of 4.
-        missing_padding = len(audio_data_b64) % 4
-        if missing_padding:
-            audio_data_b64 += b'=' * (4 - missing_padding)
-            
-        audio_bytes = base64.b64decode(audio_data_b64)
+        # The Python SDK handles base64 decoding automatically for us. 
+        # This is already raw PCM data (bytes).
+        audio_bytes = response.candidates[0].content.parts[0].inline_data.data
         
         # Gemini returns raw PCM (24kHz, 1 channel, 16-bit usually).
         # We must package this as a WAV file so browsers accept it.
