@@ -49,6 +49,8 @@ from routers import cron
 app.include_router(cron.router)
 from routers import audio
 app.include_router(audio.router)
+from routers import debug
+app.include_router(debug.router)
 # Parse origins and ensure they have a scheme (https://) if provided by Render
 origins_raw = os.getenv("ALLOWED_ORIGINS", "*").split(",")
 origins = []
