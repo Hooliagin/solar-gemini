@@ -99,6 +99,15 @@ def generate_briefing_content(target_user_id: str):
         user_name = user_settings.name if user_settings.name else ""
         greeting_instruction = f"Address the user by name: '{user_name}'" if user_name else "Use a friendly greeting"
         
+        # 3b. Fetch Pending Todos
+        print("DEBUG: Fetching Pending Todos...", flush=True)
+        from services.todo_service import get_pending_todos
+        todos = get_pending_todos(target_user_id, session)
+        todo_list_text = "\n".join([f"- {t.task} (Due: {t.due_date.strftime('%Y-%m-%d') if t.due_date else 'Anytime'})" for t in todos])
+        if not todo_list_text:
+            todo_list_text = "No pending tasks."
+        print(f"DEBUG: Found {len(todos)} todos.", flush=True)
+
         prompt = f"""
         You are a friendly, professional personal assistant. It is morning.
         Create a DETAILED morning briefing script for the user.
@@ -114,32 +123,6 @@ def generate_briefing_content(target_user_id: str):
         - Use natural pauses with punctuation (commas, periods)
         - Write dates in full spoken form (e.g., "dreiundzwanzigster Januar" not "23.01.")
         - **GRAMMAR CHECK**: Ensure perfect German grammar. Do NOT make mistakes like 'bist geschlafen'. Use 'hast geschlafen'.
-        
-        # 3b. Fetch Pending Todos
-        print("DEBUG: Fetching Pending Todos...", flush=True)
-        from services.todo_service import get_pending_todos
-        todos = get_pending_todos(target_user_id, session)
-        todo_list_text = "\n".join([f"- {t.task} (Due: {t.due_date.strftime('%Y-%m-%d') if t.due_date else 'Anytime'})" for t in todos])
-        if not todo_list_text:
-            todo_list_text = "No pending tasks."
-        print(f"DEBUG: Found {len(todos)} todos.", flush=True)
-
-        # ... (rest of fetch logic)
-        
-        # 4. Generate Script using Gemini
-        # ...
-        
-        prompt = f"""
-        You are a friendly, professional personal assistant. It is morning.
-        Create a DETAILED morning briefing script for the user.
-        
-        **IMPORTANT: {language_instruction}**
-        
-        **CRITICAL TTS OPTIMIZATION RULES:**
-        - NEVER use Markdown formatting (no **, -, #, _, `, etc.)
-        - Write EVERYTHING as natural spoken text
-        - Spell out ALL numbers as words (e.g., "fünf" not "5", "zehn Uhr" not "10:00")
-        - Use full words, NEVER abbreviations.
         
         Here is the context:
         
@@ -181,13 +164,6 @@ def generate_briefing_content(target_user_id: str):
         7. **Creative Closing**: END with a unique Quote/Wisdom.
         
         **STYLE**: Energetic but thoughtful. Like a mentor and a friend.
-        """
-        
-        **CRITICAL REMINDERS:**
-        - **STYLE**: Energetic, punchy, like a professional radio host. 
-        - **GRAMMAR**: Perfect German grammar (e.g., "Du hast geschlafen").
-        - **FORMAT**: No Markdown. No Bullet Points. Write numbers as words ("fünf").
-        - **LENGTH**: Keep it tight (~3-5 minutes spoken).
         """
         
         print("DEBUG: Generating Content with Gemini...", flush=True)
