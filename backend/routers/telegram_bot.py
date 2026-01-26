@@ -153,6 +153,8 @@ async def unlink_command(update: Update, context):
     Disconnects the current Telegram chat from ANY linked user.
     """
     chat_id = str(update.effective_chat.id)
+    await update.message.reply_text("⏳ Trenne Verbindung...", parse_mode='Markdown')
+    logger.info(f"Unlinking chat_id: {chat_id}")
     
     try:
         session = next(get_session())
@@ -161,6 +163,7 @@ async def unlink_command(update: Update, context):
         user = session.exec(statement).first()
         
         if not user:
+            logger.info(f"No user found to unlink for chat_id {chat_id}")
             await update.message.reply_text(
                 "ℹ️ Dein Account ist momentan gar nicht verknüpft.\n"
                 "Sende /start <code_aus_web_app> um ihn zu verbinden."
@@ -168,6 +171,7 @@ async def unlink_command(update: Update, context):
             session.close()
             return
 
+        logger.info(f"Unlinking user {user.user_id}")
         # Unlink
         user.telegram_chat_id = None
         user.telegram_enabled = False
@@ -175,6 +179,7 @@ async def unlink_command(update: Update, context):
         session.add(user)
         session.commit()
         session.close()
+        logger.info("Unlink success")
         
         await update.message.reply_text(
             "✅ **Verbindung gelöscht.**\n\n"
