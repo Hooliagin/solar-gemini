@@ -2,7 +2,7 @@
 Telegram Bot router - handles webhook and commands.
 """
 from fastapi import APIRouter, Request, HTTPException, Depends, BackgroundTasks
-from sqlmodel import Session, select
+from sqlmodel import Session, select, text
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters
 from database import get_session
@@ -98,17 +98,46 @@ async def start_command(update: Update, context):
             session.close()
             return
             
+        # Check if chat_id is already linked to ANOTHER user (Shadow User)
+        # This happens if user started with Telegram (creating a user_id) but then linked a Web Account (different user_id)
+        stmt_shadow = select(UserSettings).where(UserSettings.telegram_chat_id == chat_id)
+        shadow_user = session.exec(stmt_shadow).first()
+        
+        target_user_id = user_settings.user_id
+        
+        if shadow_user and shadow_user.user_id != target_user_id:
+            logger.info(f"Merging Shadow User {shadow_user.user_id} into Target User {target_user_id}")
+            
+            # Migrate Data
+            # Move Entries
+            session.exec(text(f"UPDATE entry SET user_id = '{target_user_id}' WHERE user_id = '{shadow_user.user_id}'"))
+            # Move Briefings
+            session.exec(text(f"UPDATE briefing SET user_id = '{target_user_id}' WHERE user_id = '{shadow_user.user_id}'"))
+            # Move Todos
+            session.exec(text(f"UPDATE usertodo SET user_id = '{target_user_id}' WHERE user_id = '{shadow_user.user_id}'"))
+            # Move ResearchTasks
+            session.exec(text(f"UPDATE researchtask SET user_id = '{target_user_id}' WHERE user_id = '{shadow_user.user_id}'"))
+            
+            # Move Interests (Handle duplicates? For now just overwrite)
+            session.exec(text(f"UPDATE interest SET user_id = '{target_user_id}' WHERE user_id = '{shadow_user.user_id}'"))
+            
+            # Delete Shadow User Settings
+            session.delete(shadow_user)
+            session.flush() # Commit delete first to free up the unique telegram_chat_id constraint
+            
         # Link accounts
         user_settings.telegram_chat_id = chat_id
         user_settings.telegram_enabled = True
         user_settings.telegram_link_token = None # Invalidate token after use
-        # user_settings.updated_at = datetime.utcnow() # Removed: Column does not exist
+        user_settings.updated_at = datetime.utcnow()
         session.add(user_settings)
         session.commit()
         session.close()
         
         await update.message.reply_text(
-            "✅ Erfolgreich verbunden! Du bekommst ab jetzt dein Morgen-Briefing hier.\n\n"
+            f"✅ **Erfolgreich verbunden!**\n"
+            f"Deine Accounts wurden zusammengeführt.\n"
+            f"Du findest alle deine bisherigen Telegram-Daten jetzt auch im Web.\n\n"
             "Befehle:\n"
             "/generate - Briefing sofort erstellen\n"
             "Sprachnachricht senden - Als Tagebuch-Eintrag speichern"
