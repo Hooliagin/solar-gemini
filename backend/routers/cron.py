@@ -4,7 +4,7 @@ These endpoints can be called by free cron services to trigger scheduled tasks.
 """
 from fastapi import APIRouter, Header, HTTPException, BackgroundTasks
 from config import settings
-from services.scheduler import scheduled_briefing_job
+from services.scheduler import run_scheduler_checks
 import logging
 
 logger = logging.getLogger(__name__)
@@ -17,15 +17,10 @@ def trigger_morning_briefings(
 ):
     """
     Endpoint to be called by external cron services (e.g., cron-job.org).
-    Triggers the morning briefing generation for all eligible users.
+    Triggers the scheduler check immediately (useful for debugging or backup).
     
     Requires X-API-Key header for authentication.
     Set CRON_API_KEY in environment variables.
-    
-    Example cron-job.org setup:
-    - URL: https://your-app.onrender.com/cron/morning-briefings
-    - Schedule: Every day at 07:00
-    - Custom header: X-API-Key: your-secret-key
     """
     import sys
     print("=" * 50, flush=True)
@@ -54,10 +49,10 @@ def trigger_morning_briefings(
         )
     
     print("Authentication successful!", flush=True)
-    logger.info("Cron trigger received - queuing morning briefing job")
+    logger.info("Cron trigger received - triggering scheduler check")
     
     # Run in background to avoid timeout
-    background_tasks.add_task(scheduled_briefing_job)
+    background_tasks.add_task(run_scheduler_checks)
     
     return {
         "status": "success",
