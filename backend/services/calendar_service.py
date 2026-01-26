@@ -11,12 +11,12 @@ logger = logging.getLogger(__name__)
 
 SCOPES = ['https://www.googleapis.com/auth/calendar.readonly']
 
-def get_calendar_events():
+def get_calendar_events(user_id: str):
     """
     Fetches events from ALL calendars for today using DB-stored OAuth tokens.
     """
     session = next(get_session())
-    user_settings = session.query(UserSettings).first()
+    user_settings = session.query(UserSettings).filter(UserSettings.user_id == user_id).first()
     
     if not user_settings or not user_settings.google_access_token:
         return "Calendar: Not connected. Please connect your Google Calendar in Settings."

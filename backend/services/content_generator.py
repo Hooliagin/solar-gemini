@@ -51,7 +51,7 @@ def generate_briefing_content(target_user_id: str):
         # 1. Fetch Calendar
         print("DEBUG: Fetching Calendar...", flush=True)
         # TODO: Pass user tokens to calendar service
-        calendar_text = get_calendar_events() 
+        calendar_text = get_calendar_events(target_user_id) 
         print(f"DEBUG: Calendar Fetched ({len(calendar_text)} chars).", flush=True)
         
         # 2. Fetch User Interests & News

@@ -4,7 +4,7 @@ import { Sparkles } from 'lucide-react';
 export default function LoadingScreen() {
     return (
         <motion.div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--cyber-bg)]"
+            className="fixed top-0 left-0 w-screen h-screen z-50 flex items-center justify-center bg-[var(--cyber-bg)]"
             initial={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.5 }}
