@@ -80,7 +80,7 @@ def generate_speech(text: str, output_path: str, language: str = "de", voice_ove
         # Base64 length should be multiple of 4.
         missing_padding = len(audio_data_b64) % 4
         if missing_padding:
-            audio_data_b64 += '=' * (4 - missing_padding)
+            audio_data_b64 += b'=' * (4 - missing_padding)
             
         audio_bytes = base64.b64decode(audio_data_b64)
         
