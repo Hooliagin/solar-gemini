@@ -136,16 +136,17 @@ def generate_briefing_content(target_user_id: str):
         2. **YESTERDAY'S REFLECTION** (1-2 minutes)
            - Briefly reflect on yesterday's diary entry
            - Pick ONE key emotion or achievement
-           - One short, punchy question for today (e.g., "Nimmst du diesen Schwung mit?")
+           - **IMPORTANT**: Do NOT ask generic questions like "Nimmst du diesen Schwung mit?".
+           - Instead, make a specific observation or offer a short perspective based on what they actually said.
         
         3. **NEWS & TOPICS** (2-3 minutes - SCHLAGZEILEN & RELEVANZ)
            - Go through news topics efficiently but with SUBSTANCE
-           - FILTER: Only mention topics that are actually interesting/significant
+           - FILTER: Only mention topics that are actually interesting/significant and **CURRENT (last 24h)**.
+           - If a news item says "Keine Updates" or seems old, SKIP IT completely.
            - For each topic:
              * Clear, punchy "Headline"
              * 2-3 sentences explaining the core "News Value"
-             * Skip boring filler news
-           - Style: Professional, informative, but fast-paced
+           - Style: Professional, informative, but fast-paced (Radio News Anchor style)
         
         4. **TODAY'S APPOINTMENTS** (1-2 minutes - IMPULSE DRIVEN)
            - Mention the appointments clearly with spoken times
@@ -156,12 +157,15 @@ def generate_briefing_content(target_user_id: str):
         5. **WEATHER** (20 seconds)
            - Very brief status update
         
-        6. **MOTIVATIONAL CLOSING**
-           - One strong sentence to start the day
+        6. **CREATIVE CLOSING**
+           - Do NOT end with a question.
+           - End with a unique **Quote** (Zitata), a **Wisdom**, or a **Fun Fact** that loosely relates to their diary entry or just offers a fresh perspective for the day.
+           - Mention the author of the quote if applicable.
+           - Keep it diverse each day.
         
         **CRITICAL REMINDERS:**
         - **KEEP IT SHORT**: Total briefing should be ~5 minutes maximum
-        - **STYLE**: Energetic, punchy, like a smart radio moderator
+        - **STYLE**: Energetic, punchy, like a smart radio moderator. NOT repetitive.
         - **Appointments**: No deep coaching questions, just quick strategic tips
         - NO LISTS of questions, just single thought-starters
         - NO MARKDOWN, only natural spoken text suitable for text-to-speech

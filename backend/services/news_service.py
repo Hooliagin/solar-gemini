@@ -6,6 +6,7 @@ from google import genai
 from google.genai import types
 from config import settings
 import logging
+from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
 
@@ -57,11 +58,16 @@ def fetch_category_news(category_key: str, city: str = None) -> str:
         grounding_tool = types.Tool(google_search=types.GoogleSearch())
         config = types.GenerateContentConfig(tools=[grounding_tool])
         
+        today_str = datetime.now().strftime("%d.%m.%Y")
+        
         prompt = (
-            f"Suche nach den neuesten Entwicklungen zu: {topic}\n\n"
+            f"Suche nach den neuesten Entwicklungen zu: {topic}\n"
+            f"DATUM: {today_str}.\n"
             f"Fokus auf die letzten 24 Stunden.\n"
+            f"WICHTIG: Ignoriere alles was älter ist.\n"
             f"Erstelle eine Zusammenfassung mit 3-4 Sätzen im Briefing-Stil. "
-            f"Nenne konkrete Ereignisse, Namen und Fakten."
+            f"Nenne konkrete Ereignisse, Namen und Fakten. "
+            f"Wenn keine aktuellen News (letzte 24h) vorliegen, antworte NUR mit 'Keine aktuellen News'."
         )
         
         response = client.models.generate_content(
@@ -94,10 +100,14 @@ def fetch_detailed_news_per_topic(topics: list[str]) -> str:
     
     for topic in topics:
         try:
+            today_str = datetime.now().strftime("%d.%m.%Y")
+            
             prompt = (
-                f"Suche nach den neuesten Entwicklungen und News zu '{topic}' der letzten 24 Stunden. "
+                f"Suche nach den neuesten Entwicklungen und News zu '{topic}' vom {today_str} (oder letzte 24h). "
                 f"Was ist NEU passiert? Wichtige Ereignisse oder Durchbrüche?\n\n"
-                f"Erstelle eine Zusammenfassung mit 3-4 Sätzen im Briefing-Stil."
+                f"Ignoriere alte News.\n"
+                f"Erstelle eine Zusammenfassung mit 3-4 Sätzen im Briefing-Stil. "
+                f"Wenn keine aktuellen News vorliegen, antworte NUR mit 'Keine Updates'."
             )
             
             response = client.models.generate_content(
