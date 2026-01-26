@@ -76,8 +76,9 @@ def generate_telegram_link_code(session: Session = Depends(get_session), user_id
         settings = UserSettings(user_id=user_id)
         session.add(settings)
     
-    # Generate 6-digit code
-    code = ''.join(random.choices(string.digits, k=6))
+    # Generate secure 12-char token
+    import uuid
+    code = uuid.uuid4().hex[:12]
     settings.telegram_link_token = code
     session.add(settings)
     session.commit()

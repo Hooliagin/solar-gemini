@@ -44,6 +44,11 @@ def transcribe_audio(file_path: str) -> dict:
     if not os.path.exists(file_path):
         raise FileNotFoundError(f"File not found: {file_path}")
         
+    # Check size (Gemini/Whisper limit ~25MB, Keep safe margin 23MB)
+    file_size_mb = os.path.getsize(file_path) / (1024 * 1024)
+    if file_size_mb > 23:
+        raise ValueError(f"File too large ({file_size_mb:.1f}MB). Max 23MB allowed.")
+
     try:
         # Prompt for transcription and language detection
         prompt = (
