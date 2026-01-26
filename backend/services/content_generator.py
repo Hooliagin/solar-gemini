@@ -113,6 +113,7 @@ def generate_briefing_content(target_user_id: str):
         - Write times in spoken format (e.g., "zehn Uhr dreißig" not "10:30")
         - Use natural pauses with punctuation (commas, periods)
         - Write dates in full spoken form (e.g., "dreiundzwanzigster Januar" not "23.01.")
+        - **GRAMMAR CHECK**: Ensure perfect German grammar. Do NOT make mistakes like 'bist geschlafen'. Use 'hast geschlafen'.
         
         Here is the context:
         

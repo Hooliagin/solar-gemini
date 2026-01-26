@@ -80,7 +80,7 @@ def generate_speech(text: str, output_path: str, language: str = "de", voice_ove
         if len(chunks) == 1:
             # Single chunk, simple case
             response = client.audio.speech.create(
-                model="tts-1",
+                model="tts-1-hd",
                 voice=voice,
                 input=chunks[0]
             )

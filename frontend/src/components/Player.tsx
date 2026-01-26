@@ -46,7 +46,7 @@ const Player: React.FC = () => {
                 return false;
             }
 
-            const res = await fetch(`${API_BASE_URL}/briefings/latest`, {
+            const res = await fetch(`${API_BASE_URL}/briefings/latest?t=${Date.now()}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             if (res.ok) {
