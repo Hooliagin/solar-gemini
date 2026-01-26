@@ -29,6 +29,8 @@ def get_application():
         # Register command handlers
         application.add_handler(CommandHandler("start", start_command))
         application.add_handler(CommandHandler("generate", generate_command))
+        application.add_handler(CommandHandler("unlink", unlink_command))
+        application.add_handler(CommandHandler("reset", unlink_command))
         application.add_handler(MessageHandler(filters.VOICE, handle_voice_message))
     
     return application
@@ -115,6 +117,47 @@ async def start_command(update: Update, context):
     except Exception as e:
         logger.error(f"Error in /start command: {e}")
         await update.message.reply_text("❌ Fehler beim Verbinden.")
+
+async def unlink_command(update: Update, context):
+    """
+    Handle /unlink or /reset command.
+    Disconnects the current Telegram chat from ANY linked user.
+    """
+    chat_id = str(update.effective_chat.id)
+    
+    try:
+        session = next(get_session())
+        # Find ANY user with this chat_id
+        statement = select(UserSettings).where(UserSettings.telegram_chat_id == chat_id)
+        user = session.exec(statement).first()
+        
+        if not user:
+            await update.message.reply_text(
+                "ℹ️ Dein Account ist momentan gar nicht verknüpft.\n"
+                "Sende /start <code_aus_web_app> um ihn zu verbinden."
+            )
+            session.close()
+            return
+
+        # Unlink
+        user.telegram_chat_id = None
+        user.telegram_enabled = False
+        user.updated_at = datetime.utcnow()
+        session.add(user)
+        session.commit()
+        session.close()
+        
+        await update.message.reply_text(
+            "✅ **Verbindung gelöscht.**\n\n"
+            "Dein Telegram-Account wurde von deinem Daily-Manager-Profil getrennt.\n"
+            "Du kannst ihn jetzt mit einem neuen Profil verknüpfen.\n\n"
+            "Nutze dazu im neuen Profil den Code und sende:\n"
+            "/start <code_aus_web_app>"
+        )
+        
+    except Exception as e:
+        logger.error(f"Error in /unlink command: {e}")
+        await update.message.reply_text("❌ Fehler beim Trennen der Verbindung.")
 
 
 
@@ -723,6 +766,9 @@ async def telegram_webhook(request: Request, background_tasks: BackgroundTasks):
         app.add_handler(CommandHandler("generate", generate_wrapper))
         app.add_handler(CommandHandler("login", login_command))
         app.add_handler(CommandHandler("cancel", cancel_onboarding))
+        app.add_handler(CommandHandler("cancel", cancel_onboarding))
+        app.add_handler(CommandHandler("unlink", unlink_command))
+        app.add_handler(CommandHandler("reset", unlink_command))
         app.add_handler(CommandHandler("settings", settings_command))
         app.add_handler(CommandHandler("set_city", set_city_command))
         app.add_handler(CommandHandler("set_voice", set_voice_command))
