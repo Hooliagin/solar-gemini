@@ -12,8 +12,7 @@ router = APIRouter(prefix="/audio", tags=["audio"])
 
 @router.get("/preview/{voice_id}")
 def get_voice_preview(
-    voice_id: str,
-    user_id: str = Depends(get_current_user_id)
+    voice_id: str
 ):
     """
     Generates a short preview audio for the selected voice.
