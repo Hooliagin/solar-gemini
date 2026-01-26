@@ -40,13 +40,16 @@ def generate_speech(text: str, output_path: str, language: str = "de", voice_ove
 
         logger.info(f"TTS: Generating speech with Voice='{gemini_voice}' (mapped from '{voice_override}')")
 
-        # Construct Director's Prompt
-        # This is where the magic happens for the "German News Anchor" style.
+        # Construct Director's Prompt for Podcast Style
         prompt = (
+            "### AUDIO PROFILE: Dein Daily Host\n"
+            "## THE SCENE: Ein gemütliches Podcast-Studio\n"
+            "Der Sprecher sitzt entspannt vor dem Mikrofon und spricht direkt zu einem guten Freund.\n\n"
             "### DIRECTOR'S NOTES\n"
-            "Style: Professional, energetic, and engaging German News Anchor. "
-            "Confidence is high but approachable. Clear 'Hochdeutsch' pronunciation. "
-            "No American accent.\n\n"
+            "Style: Warm, persönlich, nahbar und locker (Conversational Podcast Style). "
+            "Nicht abgelesen oder steif. Wie ein interessantes Gespräch. "
+            "Nutze 'Du'-Ansprache. Variiere das Tempo für Spannung.\n"
+            "Accent: Klares, natürliches Hochdeutsch.\n\n"
             "### TRANSCRIPT\n"
             f"{text}"
         )
