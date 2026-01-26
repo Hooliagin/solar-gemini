@@ -6,6 +6,10 @@ from database import create_db_and_tables
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Run Migrations (Add missing columns if any)
+    from migrations import run_migrations
+    run_migrations()
+
     # Startup
     create_db_and_tables()
     
