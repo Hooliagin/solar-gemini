@@ -3,8 +3,14 @@ from google.genai import types
 from config import settings
 from sqlmodel import Session, select
 from models import UserTodo, ResearchTask
+from datetime import datetime, timedelta
+import logging
+import json
 
-# ... imports ...
+logger = logging.getLogger(__name__)
+
+# Initialize Gemini Client
+client = genai.Client(api_key=settings.GOOGLE_API_KEY)
 
 def extract_todos_from_transcript(user_id: str, transcript: str, entry_id: int, session: Session):
     """
