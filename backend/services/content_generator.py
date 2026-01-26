@@ -129,48 +129,29 @@ def generate_briefing_content(target_user_id: str):
         [NEWS & TOPICS]
         {all_news}
         
-        **NEW BRIEFING STRUCTURE - FOLLOW THIS ORDER EXACTLY:**
+        **CRITICAL: FLOW TEXT ONLY (FLIESSTEXT)**
+        - **ABSOLUTELY NO HEADLINES** (Keine "Erstens", "Zweitens", "Thema: X").
+        - **NO SECTIONS** or labels.
+        - The text must sound like a continuous, coherent radio moderation.
+        - Use **smooth transitions** between topics (e.g., "Kommen wir zu den Nachrichten...", "Ein Blick auf heute zeigt...", "Apropos Wetter...").
+        - Do not list topics. Weave them into a narrative.
         
-        1. **PERSONAL GREETING**
-           - Warm, personalized good morning. {greeting_instruction}.
-        
-        2. **YESTERDAY'S REFLECTION** (1-2 minutes)
-           - Briefly reflect on yesterday's diary entry
-           - Pick ONE key emotion or achievement
-           - **IMPORTANT**: Do NOT ask generic questions like "Nimmst du diesen Schwung mit?".
-           - Instead, make a specific observation or offer a short perspective based on what they actually said.
-        
-        3. **NEWS & TOPICS** (2-3 minutes - SCHLAGZEILEN & RELEVANZ)
-           - Go through news topics efficiently but with SUBSTANCE
-           - FILTER: Only mention topics that are actually interesting/significant and **CURRENT (last 24h)**.
-           - If a news item says "Keine Updates" or seems old, SKIP IT completely.
-           - For each topic:
-             * Clear, punchy "Headline"
-             * 2-3 sentences explaining the core "News Value"
-           - Style: Professional, informative, but fast-paced (Radio News Anchor style)
-        
-        4. **TODAY'S APPOINTMENTS** (1-2 minutes - IMPULSE DRIVEN)
-           - Mention the appointments clearly with spoken times
-           - instead of deep analysis, give MAX ONE SHORT IMPULSE per appointment
-           - Only if it fits! If it's a routine blocker, just mention it
-           - Example: "Meeting mit Team X - vielleicht eine gute Chance, Thema Y kurz anzusprechen."
-        
-        5. **WEATHER** (20 seconds)
-           - Very brief status update
-        
-        6. **CREATIVE CLOSING**
-           - Do NOT end with a question.
-           - End with a unique **Quote** (Zitata), a **Wisdom**, or a **Fun Fact** that loosely relates to their diary entry or just offers a fresh perspective for the day.
-           - Mention the author of the quote if applicable.
-           - Keep it diverse each day.
+        **STRUCTURE (Internal Guide - DO NOT READ ALOUD):**
+        1. **Warm Greeting**: Personal and friendly.
+        2. **Yesterday's Reflection**: 1-2 sentences on the diary emotion to build connection.
+        3. **News (The Meat)**: 
+           - Pick the most important 2-3 topics.
+           - Explain them naturally as if telling a friend. 
+           - **FILTER**: ONLY news from the last 24h. Ignore old stuff.
+        4. **Today's Impulse**: Mention appointments briefly and give one quick strategic thought.
+        5. **Weather**: Quick check.
+        6. **Creative Closing**: END with a unique Quote, Wisdom, or Fun Fact.
         
         **CRITICAL REMINDERS:**
-        - **KEEP IT SHORT**: Total briefing should be ~5 minutes maximum
-        - **STYLE**: Energetic, punchy, like a smart radio moderator. NOT repetitive.
-        - **Appointments**: No deep coaching questions, just quick strategic tips
-        - NO LISTS of questions, just single thought-starters
-        - NO MARKDOWN, only natural spoken text suitable for text-to-speech
-        - All numbers, times, and dates MUST be written as words
+        - **STYLE**: Energetic, punchy, like a professional radio host. 
+        - **GRAMMAR**: Perfect German grammar (e.g., "Du hast geschlafen").
+        - **FORMAT**: No Markdown. No Bullet Points. Write numbers as words ("fünf").
+        - **LENGTH**: Keep it tight (~3-5 minutes spoken).
         """
         
         print("DEBUG: Generating Content with Gemini...", flush=True)

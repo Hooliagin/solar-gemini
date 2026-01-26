@@ -427,8 +427,18 @@ export default function SettingsPanel() {
                                     <div
                                         onClick={(e) => {
                                             e.stopPropagation();
-                                            const audio = new Audio(`${API_BASE_URL}/audio/preview/${voice.id}`);
-                                            audio.play();
+                                            try {
+                                                const url = `${API_BASE_URL}/audio/preview/${voice.id}`;
+                                                console.log(`Playing preview: ${url}`);
+                                                const audio = new Audio(url);
+                                                audio.volume = 1.0;
+                                                audio.play().catch(err => {
+                                                    console.error("Play failed:", err);
+                                                    alert("Fehler beim Abspielen: " + err.message);
+                                                });
+                                            } catch (err) {
+                                                console.error("Audio init failed:", err);
+                                            }
                                         }}
                                         className={`p-1.5 rounded-full hover:bg-white/20 cursor-pointer transition-colors ${isSelected ? 'text-white' : 'text-gray-400 hover:text-white'}`}
                                         title="Vorschau anhören"

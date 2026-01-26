@@ -233,6 +233,7 @@ async def start_onboarding(update: Update, context):
             "Befehle:\n"
             "🌅 `/generate` - Briefing generieren\n"
             "⚙️ `/settings` - Einstellungen anzeigen\n"
+            "🔗 `/unlink` - Account trennen\n"
             "🔄 `/setup` - Setup neu starten (überschreibt alles)",
             parse_mode='Markdown'
         )
