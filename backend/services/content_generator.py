@@ -228,6 +228,7 @@ def generate_briefing_content(target_user_id: str):
         )
         session.add(briefing)
         session.commit()
+        session.refresh(briefing)
         
         logger.info(f"Briefing generated successfully: {audio_path_abs}")
         print("DEBUG: Briefing saved to DB.", flush=True)
