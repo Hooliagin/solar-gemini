@@ -113,6 +113,7 @@ def generate_briefing_content(target_user_id: str):
         Create a DETAILED morning briefing script for the user.
         
         **IMPORTANT: {language_instruction}**
+        **GREETING: {greeting_instruction}**
         
         **CRITICAL TTS OPTIMIZATION RULES:**
         - NEVER use Markdown formatting (no **, -, #, _, `, etc.)
