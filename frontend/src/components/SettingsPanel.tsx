@@ -7,13 +7,14 @@ import { supabase } from '../lib/supabase';
 import { API_BASE_URL } from '../config';
 
 // Voice options mapped to Gemini Personalities
+// Voice options mapped to Gemini Personalities
 const VOICES = [
-    { id: 'alloy', name: 'Zephyr', desc: 'Hell & Klar', color: 'from-gray-400 to-gray-600', icon: '🍃' }, // Was Neutral
-    { id: 'echo', name: 'Fenrir', desc: 'Energetisch', color: 'from-amber-400 to-orange-500', icon: '🔥' }, // Was Warm -> News Anchor
-    { id: 'fable', name: 'Puck', desc: 'Erzählerisch', color: 'from-purple-400 to-pink-500', icon: '📖' }, // Was Storyteller
-    { id: 'onyx', name: 'Kore', desc: 'Seriös & Tief', color: 'from-slate-600 to-slate-800', icon: '⚓' }, // Was Deep
-    { id: 'nova', name: 'Leda', desc: 'Jugendlich', color: 'from-cyan-400 to-blue-500', icon: '✨' }, // Was Friendly
-    { id: 'shimmer', name: 'Aoede', desc: 'Sanft & Ruhig', color: 'from-emerald-400 to-teal-500', icon: '🌊' }, // Was Clear
+    { id: 'alloy', name: 'Zephyr', color: 'from-gray-400 to-gray-600', icon: '🍃' },
+    { id: 'echo', name: 'Fenrir', color: 'from-amber-400 to-orange-500', icon: '🔥' },
+    { id: 'fable', name: 'Puck', color: 'from-purple-400 to-pink-500', icon: '📖' },
+    { id: 'onyx', name: 'Kore', color: 'from-slate-600 to-slate-800', icon: '⚓' },
+    { id: 'nova', name: 'Leda', color: 'from-cyan-400 to-blue-500', icon: '✨' },
+    { id: 'shimmer', name: 'Aoede', color: 'from-emerald-400 to-teal-500', icon: '🌊' },
 ];
 
 // News categories with colors
@@ -566,9 +567,6 @@ export default function SettingsPanel() {
 
                                 <div className={`font-medium ${isSelected ? 'text-white' : 'text-gray-300'}`}>
                                     {voice.name}
-                                </div>
-                                <div className={`text-xs ${isSelected ? 'text-white/70' : 'text-gray-500'}`}>
-                                    {voice.desc}
                                 </div>
                             </button>
                         );
