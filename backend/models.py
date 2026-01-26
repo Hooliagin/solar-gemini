@@ -55,5 +55,8 @@ class UserSettings(SQLModel, table=True):
     telegram_chat_id: Optional[str] = Field(default=None)
     telegram_enabled: bool = Field(default=False)
     telegram_link_token: Optional[str] = Field(default=None, index=True) # Code to link via /start <code>
+    # Reflection Reminder settings
+    reflection_time: str = Field(default="19:00") # Time for reflection reminder (HH:MM)
+    reflection_reminder_enabled: bool = Field(default=True)
     onboarding_step: Optional[str] = Field(default=None)  # Current step in onboarding flow: name, age, city, voice, news, interests
     updated_at: datetime = Field(default_factory=datetime.utcnow)

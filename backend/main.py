@@ -9,11 +9,21 @@ async def lifespan(app: FastAPI):
     # Startup
     create_db_and_tables()
     
-    print("App started. Use /generate in Telegram for manual briefings.")
+    # Initialize Scheduler
+    from apscheduler.schedulers.background import BackgroundScheduler
+    from services.scheduler import run_scheduler_checks
+    
+    scheduler = BackgroundScheduler()
+    # Run every minute
+    scheduler.add_job(run_scheduler_checks, 'interval', minutes=1)
+    scheduler.start()
+    
+    print("App started. Scheduler running (Interval: 1 min).")
     
     yield
     
     # Shutdown
+    scheduler.shutdown()
     print("App shutdown.")
 
 app = FastAPI(lifespan=lifespan, title="Audio Daily Manager")

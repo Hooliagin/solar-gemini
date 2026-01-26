@@ -44,6 +44,8 @@ export default function SettingsPanel() {
         news_tech: false,
         news_sports: false,
     });
+    const [reflectionTime, setReflectionTime] = useState('19:00');
+    const [reflectionReminderEnabled, setReflectionReminderEnabled] = useState(true);
 
     useEffect(() => {
         fetchSettings();
@@ -77,6 +79,8 @@ export default function SettingsPanel() {
                     news_tech: data.news_tech ?? false,
                     news_sports: data.news_sports ?? false,
                 });
+                setReflectionTime(data.reflection_time || '19:00');
+                setReflectionReminderEnabled(data.reflection_reminder_enabled ?? true);
             }
         } catch (error) {
             console.error('Failed to fetch settings', error);
@@ -179,6 +183,8 @@ export default function SettingsPanel() {
                     weather_city: city,
                     voice_id: voiceId,
                     briefing_time: briefingTime,
+                    reflection_time: reflectionTime,
+                    reflection_reminder_enabled: reflectionReminderEnabled,
                     ...newsCategories
                 })
             });
@@ -359,6 +365,41 @@ export default function SettingsPanel() {
                             }`} />
                     </button>
                 </div>
+            </div>
+
+            {/* Reflection Settings */}
+            <div className="glass-card p-5 rounded-2xl">
+                <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-indigo-400 to-violet-500 flex items-center justify-center">
+                            <Cloud className="w-5 h-5 text-white" /> {/* Using Cloud as generic icon or similar */}
+                        </div>
+                        <div>
+                            <h3 className="font-medium text-white">Tages-Reflektion</h3>
+                            <p className="text-xs text-gray-500">Erinnerung zum Journaling</p>
+                        </div>
+                    </div>
+                    <button
+                        onClick={() => setReflectionReminderEnabled(!reflectionReminderEnabled)}
+                        className={`relative w-14 h-7 rounded-full transition-all duration-300 ${reflectionReminderEnabled ? 'bg-gradient-to-r from-indigo-500 to-violet-500' : 'bg-white/20'
+                            }`}
+                    >
+                        <div className={`absolute top-1 w-5 h-5 rounded-full bg-white shadow-lg transition-all duration-300 ${reflectionReminderEnabled ? 'left-8' : 'left-1'
+                            }`} />
+                    </button>
+                </div>
+
+                {reflectionReminderEnabled && (
+                    <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/5">
+                        <span className="text-gray-300 text-sm">Uhrzeit der Erinnerung</span>
+                        <input
+                            type="time"
+                            value={reflectionTime}
+                            onChange={(e) => setReflectionTime(e.target.value)}
+                            className="bg-black/30 border border-white/10 rounded-lg px-3 py-1.5 text-white outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/50 transition-all font-mono"
+                        />
+                    </div>
+                )}
             </div>
 
             {/* News Categories */}

@@ -21,7 +21,11 @@ class UserSettingsUpdate(BaseModel):
     news_local: Optional[bool] = None
     news_economy: Optional[bool] = None
     news_tech: Optional[bool] = None
+    news_tech: Optional[bool] = None
     news_sports: Optional[bool] = None
+    # Reflection Settings
+    reflection_time: Optional[str] = None
+    reflection_reminder_enabled: Optional[bool] = None
     # Telegram settings
     telegram_enabled: Optional[bool] = None
     telegram_chat_id: Optional[str] = None
