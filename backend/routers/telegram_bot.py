@@ -382,6 +382,13 @@ async def telegram_webhook(request: Request, background_tasks: BackgroundTasks):
         raise HTTPException(status_code=503, detail="Telegram bot not configured")
     
     try:
+        # Read and log raw body
+        body = await request.body()
+        logger.info(f"Telegram Webhook received: {body.decode('utf-8')}")
+        
+        # Parse update manually first to ensure we don't depend on App build for logging
+        update_data = await request.json()
+        
         app = Application.builder().token(settings.TELEGRAM_BOT_TOKEN).build()
         
         async def generate_wrapper(update: Update, context):
@@ -393,8 +400,7 @@ async def telegram_webhook(request: Request, background_tasks: BackgroundTasks):
         app.add_handler(CommandHandler("setup", start_onboarding))
         app.add_handler(CommandHandler("generate", generate_wrapper))
         app.add_handler(CommandHandler("login", login_command))
-        app.add_handler(CommandHandler("cancel", cancel_onboarding))
-        app.add_handler(CommandHandler("cancel", cancel_onboarding))
+        app.add_handler(CommandHandler("cancel", cancel_onboarding)) # Singular
         app.add_handler(CommandHandler("unlink", unlink_command))
         app.add_handler(CommandHandler("reset", unlink_command))
         app.add_handler(CommandHandler("settings", settings_command))
@@ -414,7 +420,6 @@ async def telegram_webhook(request: Request, background_tasks: BackgroundTasks):
         await app.initialize()
         await app.start()
         
-        update_data = await request.json()
         update = Update.de_json(update_data, app.bot)
         await app.process_update(update)
         
@@ -424,8 +429,9 @@ async def telegram_webhook(request: Request, background_tasks: BackgroundTasks):
         return {"ok": True}
         
     except Exception as e:
-        logger.error(f"Webhook error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Webhook CRITICAL ERROR: {e}", exc_info=True)
+        # Even if error, return 200 to stop Telegram retries if it's a code error
+        return {"ok": True}
 
 @router.get("/status")
 def telegram_status(session: Session = Depends(get_session)):
