@@ -23,9 +23,9 @@ async def get_current_user_id(credentials: HTTPAuthorizationCredentials = Depend
     """
     token = credentials.credentials
     try:
-        # Decode without verification for now to get the 'sub'.
-        # In production, verify signature using settings.SUPABASE_JWT_SECRET
-        payload = decode(token, options={"verify_signature": False})
+        # Decode WITH verification.
+        # We use the HMAC algorithm (HS256) which Supabase uses for signed tokens.
+        payload = decode(token, settings.SUPABASE_JWT_SECRET, algorithms=["HS256"])
         user_id: str = payload.get("sub")
         if user_id is None:
             raise HTTPException(

@@ -52,7 +52,7 @@ class UserSettings(SQLModel, table=True):
     news_tech: bool = Field(default=False)
     news_sports: bool = Field(default=False)
     # Telegram settings
-    telegram_chat_id: Optional[str] = Field(default=None)
+    telegram_chat_id: Optional[str] = Field(default=None, sa_column_kwargs={"unique": True})
     telegram_enabled: bool = Field(default=False)
     telegram_link_token: Optional[str] = Field(default=None, index=True) # Code to link via /start <code>
     # Reflection Reminder settings
