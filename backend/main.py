@@ -33,6 +33,8 @@ from routers import telegram_bot
 app.include_router(telegram_bot.router)
 from routers import cron
 app.include_router(cron.router)
+from routers import audio
+app.include_router(audio.router)
 # Parse origins and ensure they have a scheme (https://) if provided by Render
 origins_raw = os.getenv("ALLOWED_ORIGINS", "*").split(",")
 origins = []

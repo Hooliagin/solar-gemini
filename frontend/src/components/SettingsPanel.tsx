@@ -421,7 +421,22 @@ export default function SettingsPanel() {
                                         <CheckCircle className="w-4 h-4 text-gray-900" />
                                     </div>
                                 )}
-                                <span className="text-2xl mb-2 block">{voice.icon}</span>
+
+                                <div className="flex justify-between items-start mb-2">
+                                    <span className="text-2xl">{voice.icon}</span>
+                                    <div
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            const audio = new Audio(`${API_BASE_URL}/audio/preview/${voice.id}`);
+                                            audio.play();
+                                        }}
+                                        className={`p-1.5 rounded-full hover:bg-white/20 cursor-pointer transition-colors ${isSelected ? 'text-white' : 'text-gray-400 hover:text-white'}`}
+                                        title="Vorschau anhören"
+                                    >
+                                        <Volume2 className="w-4 h-4" />
+                                    </div>
+                                </div>
+
                                 <div className={`font-medium ${isSelected ? 'text-white' : 'text-gray-300'}`}>
                                     {voice.name}
                                 </div>
