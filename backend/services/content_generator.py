@@ -115,10 +115,39 @@ def generate_briefing_content(target_user_id: str):
         - Write dates in full spoken form (e.g., "dreiundzwanzigster Januar" not "23.01.")
         - **GRAMMAR CHECK**: Ensure perfect German grammar. Do NOT make mistakes like 'bist geschlafen'. Use 'hast geschlafen'.
         
+        # 3b. Fetch Pending Todos
+        print("DEBUG: Fetching Pending Todos...", flush=True)
+        from services.todo_service import get_pending_todos
+        todos = get_pending_todos(target_user_id, session)
+        todo_list_text = "\n".join([f"- {t.task} (Due: {t.due_date.strftime('%Y-%m-%d') if t.due_date else 'Anytime'})" for t in todos])
+        if not todo_list_text:
+            todo_list_text = "No pending tasks."
+        print(f"DEBUG: Found {len(todos)} todos.", flush=True)
+
+        # ... (rest of fetch logic)
+        
+        # 4. Generate Script using Gemini
+        # ...
+        
+        prompt = f"""
+        You are a friendly, professional personal assistant. It is morning.
+        Create a DETAILED morning briefing script for the user.
+        
+        **IMPORTANT: {language_instruction}**
+        
+        **CRITICAL TTS OPTIMIZATION RULES:**
+        - NEVER use Markdown formatting (no **, -, #, _, `, etc.)
+        - Write EVERYTHING as natural spoken text
+        - Spell out ALL numbers as words (e.g., "fünf" not "5", "zehn Uhr" not "10:00")
+        - Use full words, NEVER abbreviations.
+        
         Here is the context:
         
         [YESTERDAY'S DIARY/THOUGHTS]
         {diary_transcript}
+
+        [USER TODOS / REMINDERS]
+        {todo_list_text}
         
         [TODAY'S CALENDAR]
         {calendar_text}
@@ -130,22 +159,20 @@ def generate_briefing_content(target_user_id: str):
         {all_news}
         
         **CRITICAL: FLOW TEXT ONLY (FLIESSTEXT)**
-        - **ABSOLUTELY NO HEADLINES** (Keine "Erstens", "Zweitens", "Thema: X").
-        - **NO SECTIONS** or labels.
+        - **ABSOLUTELY NO HEADLINES**.
         - The text must sound like a continuous, coherent radio moderation.
-        - Use **smooth transitions** between topics (e.g., "Kommen wir zu den Nachrichten...", "Ein Blick auf heute zeigt...", "Apropos Wetter...").
-        - Do not list topics. Weave them into a narrative.
         
-        **STRUCTURE (Internal Guide - DO NOT READ ALOUD):**
+        **STRUCTURE (Internal Guide):**
         1. **Warm Greeting**: Personal and friendly.
-        2. **Yesterday's Reflection**: 1-2 sentences on the diary emotion to build connection.
-        3. **News (The Meat)**: 
-           - Pick the most important 2-3 topics.
-           - Explain them naturally as if telling a friend. 
-           - **FILTER**: ONLY news from the last 24h. Ignore old stuff.
-        4. **Today's Impulse**: Mention appointments briefly and give one quick strategic thought.
-        5. **Weather**: Quick check.
-        6. **Creative Closing**: END with a unique Quote, Wisdom, or Fun Fact.
+        2. **Yesterday's Reflection**: 1-2 sentences.
+        3. **Reminder Check (IMPORTANT)**: If there are [USER TODOS], explicitly mention them! e.g. "Du wolltest heute übrigens [Task] erledigen."
+        4. **News (The Meat)**: 2-3 topics.
+        5. **Today's Impulse**: Appointments + Strategy.
+        6. **Weather**: Quick check.
+        7. **Creative Closing**: END with a unique Quote.
+        
+        **STYLE**: Energetic, punchy, like a professional radio host (Podcast Style).
+        """
         
         **CRITICAL REMINDERS:**
         - **STYLE**: Energetic, punchy, like a professional radio host. 

@@ -59,4 +59,11 @@ class UserSettings(SQLModel, table=True):
     reflection_time: str = Field(default="19:00") # Time for reflection reminder (HH:MM)
     reflection_reminder_enabled: bool = Field(default=True)
     onboarding_step: Optional[str] = Field(default=None)  # Current step in onboarding flow: name, age, city, voice, news, interests
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+class UserTodo(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: str = Field(index=True)
+    task: str  # The actual todo text
+    due_date: Optional[datetime] = None # If user says "tomorrow"
+    is_completed: bool = Field(default=False)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    source_entry_id: Optional[int] = None # ID of the diary entry where this was found

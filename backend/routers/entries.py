@@ -40,8 +40,19 @@ async def upload_entry(file: UploadFile = File(...), session: Session = Depends(
         session.add(entry)
         session.commit()
         session.refresh(entry)
+
+        # 4. Extract Todos (Async/Sync)
+        # We do this synchronously for now to keep it simple, but could be background task
+        from services.todo_service import extract_todos_from_transcript
+        todo_count = extract_todos_from_transcript(user_id, transcript, entry.id, session)
         
-        return {"status": "success", "entry_id": entry.id, "transcript": transcript, "language": language}
+        return {
+            "status": "success", 
+            "entry_id": entry.id, 
+            "transcript": transcript, 
+            "language": language,
+            "todos_created": todo_count
+        }
 
     except Exception as e:
         logger.error(f"Error processing upload: {e}")

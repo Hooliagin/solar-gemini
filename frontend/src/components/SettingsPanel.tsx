@@ -6,15 +6,130 @@ import {
 import { supabase } from '../lib/supabase';
 import { API_BASE_URL } from '../config';
 
-// Voice options with colors
+// Voice options mapped to Gemini Personalities
 const VOICES = [
-    { id: 'alloy', name: 'Alloy', desc: 'Neutral', color: 'from-gray-400 to-gray-600', icon: '🎭' },
-    { id: 'echo', name: 'Echo', desc: 'Warm', color: 'from-amber-400 to-orange-500', icon: '🌅' },
-    { id: 'fable', name: 'Fable', desc: 'Storyteller', color: 'from-purple-400 to-pink-500', icon: '📖' },
-    { id: 'onyx', name: 'Onyx', desc: 'Deep', color: 'from-slate-600 to-slate-800', icon: '🎸' },
-    { id: 'nova', name: 'Nova', desc: 'Friendly', color: 'from-cyan-400 to-blue-500', icon: '✨' },
-    { id: 'shimmer', name: 'Shimmer', desc: 'Clear', color: 'from-emerald-400 to-teal-500', icon: '💎' },
+    { id: 'alloy', name: 'Zephyr', desc: 'Hell & Klar', color: 'from-gray-400 to-gray-600', icon: '🍃' }, // Was Neutral
+    { id: 'echo', name: 'Fenrir', desc: 'Energetisch', color: 'from-amber-400 to-orange-500', icon: '🔥' }, // Was Warm -> News Anchor
+    { id: 'fable', name: 'Puck', desc: 'Erzählerisch', color: 'from-purple-400 to-pink-500', icon: '📖' }, // Was Storyteller
+    { id: 'onyx', name: 'Kore', desc: 'Seriös & Tief', color: 'from-slate-600 to-slate-800', icon: '⚓' }, // Was Deep
+    { id: 'nova', name: 'Leda', desc: 'Jugendlich', color: 'from-cyan-400 to-blue-500', icon: '✨' }, // Was Friendly
+    { id: 'shimmer', name: 'Aoede', desc: 'Sanft & Ruhig', color: 'from-emerald-400 to-teal-500', icon: '🌊' }, // Was Clear
 ];
+
+// ... (existing code)
+
+// Audio Playback State
+const [playingVoice, setPlayingVoice] = useState<string | null>(null);
+const [audioLoading, setAudioLoading] = useState<string | null>(null);
+const [currentAudio, setCurrentAudio] = useState<HTMLAudioElement | null>(null);
+
+const playPreview = async (voiceId: string) => {
+    // Stop current if playing
+    if (currentAudio) {
+        currentAudio.pause();
+        setCurrentAudio(null);
+        setPlayingVoice(null);
+
+        // If clicking the same voice, just stop (toggle behavior)
+        if (playingVoice === voiceId) {
+            return;
+        }
+    }
+
+    try {
+        setAudioLoading(voiceId);
+        const timestamp = new Date().getTime();
+        const url = `${API_BASE_URL}/audio/preview/${voiceId}?t=${timestamp}`;
+        console.log(`Loading preview: ${url}`);
+
+        const audio = new Audio(url);
+
+        audio.addEventListener('canplaythrough', () => {
+            setAudioLoading(null);
+            setPlayingVoice(voiceId);
+            audio.play().catch(e => {
+                console.error("Play error:", e);
+                setPlayingVoice(null);
+            });
+        });
+
+        audio.addEventListener('ended', () => {
+            setPlayingVoice(null);
+            setCurrentAudio(null);
+        });
+
+        audio.addEventListener('error', (e) => {
+            console.error("Audio Load Error:", e);
+            setAudioLoading(null);
+            setPlayingVoice(null);
+            alert("Fehler beim Laden der Vorschau.");
+        });
+
+        setCurrentAudio(audio);
+        // Trigger load
+        audio.load();
+
+    } catch (err) {
+        console.error("Audio init failed:", err);
+        setAudioLoading(null);
+    }
+};
+
+// ... (inside render)
+
+<div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+    {VOICES.map((voice) => {
+        const isSelected = voiceId === voice.id;
+        const isPlaying = playingVoice === voice.id;
+        const isLoading = audioLoading === voice.id;
+
+        return (
+            <button
+                key={voice.id}
+                onClick={() => setVoiceId(voice.id)}
+                className={`relative p-4 rounded-xl text-left transition-all ${isSelected
+                    ? `bg-gradient-to-br ${voice.color} shadow-lg scale-[1.02]`
+                    : 'bg-white/5 hover:bg-white/10 border border-white/10'
+                    }`}
+            >
+                {isSelected && (
+                    <div className="absolute top-2 right-2 w-5 h-5 bg-white rounded-full flex items-center justify-center">
+                        <CheckCircle className="w-4 h-4 text-gray-900" />
+                    </div>
+                )}
+
+                <div className="flex justify-between items-start mb-2">
+                    <span className="text-2xl">{voice.icon}</span>
+                    <div
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            playPreview(voice.id);
+                        }}
+                        className={`p-1.5 rounded-full hover:bg-white/20 cursor-pointer transition-colors ${isSelected ? 'text-white' : 'text-gray-400 hover:text-white'}`}
+                        title={isPlaying ? "Pause" : "Vorschau anhören"}
+                    >
+                        {isLoading ? (
+                            <div className="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin" />
+                        ) : isPlaying ? (
+                            <div className="w-4 h-4 flex items-center justify-center">
+                                <div className="w-3 h-3 bg-white rounded-sm" /> {/* Stop/Pause Icon */}
+                            </div>
+                        ) : (
+                            <Volume2 className="w-4 h-4" />
+                        )}
+                    </div>
+                </div>
+
+                <div className={`font-medium ${isSelected ? 'text-white' : 'text-gray-300'}`}>
+                    {voice.name}
+                </div>
+                <div className={`text-xs ${isSelected ? 'text-white/70' : 'text-gray-500'}`}>
+                    {voice.desc}
+                </div>
+            </button>
+        );
+    })}
+</div>
 
 // News categories with colors
 const NEWS_CATS = [
