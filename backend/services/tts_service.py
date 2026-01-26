@@ -1,122 +1,92 @@
-from openai import OpenAI
+from google import genai
+from google.genai import types
 from config import settings
 import logging
 import os
-from pydub import AudioSegment
-import tempfile
+import base64
 
 logger = logging.getLogger(__name__)
 
-client = OpenAI(api_key=settings.OPENAI_API_KEY)
+# Initialize Gemini Client
+client = genai.Client(api_key=settings.GOOGLE_API_KEY)
 
-# Voice recommendations per language
-LANGUAGE_VOICES = {
-    "de": "onyx",
-    "en": "alloy",
-    "default": "alloy"
+# Map OpenAI voice IDs (frontend) to Gemini Voice Names
+# We choose Gemini voices that match the "Vibe" of the original ID
+VOICE_MAPPING = {
+    "alloy": "Zephyr",   # Neutral -> Bright/Even
+    "echo": "Fenrir",    # Warm -> Excitable (Good for News)
+    "fable": "Puck",     # Storyteller -> Upbeat
+    "onyx": "Kore",      # Deep -> Firm
+    "nova": "Leda",      # Friendly -> Youthful
+    "shimmer": "Aoede",  # Clear -> Breezy
+    "default": "Zephyr"
 }
-
-MAX_TTS_LENGTH = 4000  # OpenAI limit is 4096, leave margin
-
-def split_text_for_tts(text: str) -> list[str]:
-    """
-    Split long text into chunks suitable for TTS (max 4000 chars each).
-    Tries to split at sentence boundaries for natural speech.
-    """
-    if len(text) <= MAX_TTS_LENGTH:
-        return [text]
-    
-    chunks = []
-    current_chunk = ""
-    
-    # Split by sentences (periods, exclamation marks, question marks)
-    sentences = []
-    current_sentence = ""
-    for char in text:
-        current_sentence += char
-        if char in '.!?' and len(current_sentence.strip()) > 0:
-            sentences.append(current_sentence)
-            current_sentence = ""
-    if current_sentence.strip():
-        sentences.append(current_sentence)
-    
-    for sentence in sentences:
-        if len(current_chunk) + len(sentence) <= MAX_TTS_LENGTH:
-            current_chunk += sentence
-        else:
-            if current_chunk:
-                chunks.append(current_chunk.strip())
-            # If single sentence is too long, split by words
-            if len(sentence) > MAX_TTS_LENGTH:
-                words = sentence.split()
-                current_chunk = ""
-                for word in words:
-                    if len(current_chunk) + len(word) + 1 <= MAX_TTS_LENGTH:
-                        current_chunk += word + " "
-                    else:
-                        if current_chunk:
-                            chunks.append(current_chunk.strip())
-                        current_chunk = word + " "
-            else:
-                current_chunk = sentence
-    
-    if current_chunk.strip():
-        chunks.append(current_chunk.strip())
-    
-    return chunks
-
 
 def generate_speech(text: str, output_path: str, language: str = "de", voice_override: str = None):
     """
-    Generates audio from text using OpenAI TTS model.
-    Handles long texts by splitting and concatenating audio chunks.
+    Generates audio using Gemini 2.5 Flash Native TTS.
+    Leverages the 32k token context window (no chunking needed usually).
     """
     try:
-        voice = voice_override if voice_override else LANGUAGE_VOICES.get(language, LANGUAGE_VOICES["default"])
-        
-        chunks = split_text_for_tts(text)
-        logger.info(f"TTS: Processing {len(chunks)} chunk(s)")
-        
-        if len(chunks) == 1:
-            # Single chunk, simple case
-            response = client.audio.speech.create(
-                model="tts-1-hd",
-                voice=voice,
-                input=chunks[0]
-            )
-            response.stream_to_file(output_path)
+        # Determine Voice
+        # If voice_override is a Gemini name (starts with capital usually), use it.
+        # If it's an OpenAI id (lowercase), map it.
+        if voice_override and voice_override in VOICE_MAPPING:
+             gemini_voice = VOICE_MAPPING[voice_override]
+        elif voice_override:
+             gemini_voice = voice_override # Assume direct Gemini name if not in map
         else:
-            # Multiple chunks - generate each and concatenate
-            temp_files = []
-            try:
-                for i, chunk in enumerate(chunks):
-                    temp_path = os.path.join(tempfile.gettempdir(), f"tts_chunk_{i}.mp3")
-                    response = client.audio.speech.create(
-                        model="tts-1",
-                        voice=voice,
-                        input=chunk
+             gemini_voice = VOICE_MAPPING["default"]
+
+        logger.info(f"TTS: Generating speech with Voice='{gemini_voice}' (mapped from '{voice_override}')")
+
+        # Construct Director's Prompt
+        # This is where the magic happens for the "German News Anchor" style.
+        prompt = (
+            "### DIRECTOR'S NOTES\n"
+            "Style: Professional, energetic, and engaging German News Anchor. "
+            "Confidence is high but approachable. Clear 'Hochdeutsch' pronunciation. "
+            "No American accent.\n\n"
+            "### TRANSCRIPT\n"
+            f"{text}"
+        )
+
+        response = client.models.generate_content(
+            model="gemini-2.5-flash-preview-tts",
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                response_modalities=["AUDIO"],
+                speech_config=types.SpeechConfig(
+                    voice_config=types.VoiceConfig(
+                        prebuilt_voice_config=types.PrebuiltVoiceConfig(
+                            voice_name=gemini_voice,
+                        )
                     )
-                    response.stream_to_file(temp_path)
-                    temp_files.append(temp_path)
-                    logger.info(f"TTS: Chunk {i+1}/{len(chunks)} generated")
-                
-                # Concatenate all chunks
-                combined = AudioSegment.empty()
-                for temp_file in temp_files:
-                    audio_segment = AudioSegment.from_mp3(temp_file)
-                    combined += audio_segment
-                
-                combined.export(output_path, format="mp3")
-                
-            finally:
-                # Cleanup temp files
-                for temp_file in temp_files:
-                    if os.path.exists(temp_file):
-                        os.remove(temp_file)
+                ),
+            )
+        )
+
+        # Extract Audio Data
+        # Response structure: candidates[0].content.parts[0].inline_data.data (base64 string)
+        if not response.candidates or not response.candidates[0].content.parts:
+            raise Exception("No audio content returned from Gemini API")
+            
+        audio_data_b64 = response.candidates[0].content.parts[0].inline_data.data
+        audio_bytes = base64.b64decode(audio_data_b64)
         
-        logger.info(f"Audio saved to {output_path} (voice: {voice}, lang: {language}, chunks: {len(chunks)})")
+        # Save to file
+        with open(output_path, "wb") as f:
+            f.write(audio_bytes)
+            
+        logger.info(f"Audio saved to {output_path} ({len(audio_bytes)} bytes)")
         return output_path
-        
+
     except Exception as e:
         logger.error(f"TTS Error: {e}")
+        # Cleanup if partial
+        if os.path.exists(output_path):
+            try:
+                os.remove(output_path)
+            except:
+                pass
         raise e
