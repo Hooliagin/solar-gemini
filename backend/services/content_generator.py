@@ -164,14 +164,21 @@ def generate_briefing_content(target_user_id: str):
         
         **STRUCTURE (Internal Guide):**
         1. **Warm Greeting**: Personal and friendly.
-        2. **Yesterday's Reflection**: 1-2 sentences.
-        3. **Reminder Check (IMPORTANT)**: If there are [USER TODOS], explicitly mention them! e.g. "Du wolltest heute übrigens [Task] erledigen."
-        4. **News (The Meat)**: 2-3 topics.
-        5. **Today's Impulse**: Appointments + Strategy.
+        2. **Deep Retrospective (Yesterday)**:
+           - Analyze the diary entry: What did the user ACHIEVE? What was left UNFINISHED?
+           - Be specific and praising about achievements.
+           - Mention unfinished things gently as context for today.
+        3. **Resolutions & Intentions**:
+           - Based on yesterday, formulate 1-2 clear intentions/mottos for today.
+           - Example: "Yesterday was stressful, so today we focus on potential."
+        4. **The Plan (Calendar & Todos)**:
+           - Weave the [USER TODOS] and [TODAY'S CALENDAR] naturally into the narrative.
+           - Don't just list them. Connect them to the resolutions (e.g. "To get that done, you have a meeting at 10...").
+        5. **News (The Meat)**: 2-3 topics, transitioned smoothly.
         6. **Weather**: Quick check.
-        7. **Creative Closing**: END with a unique Quote.
+        7. **Creative Closing**: END with a unique Quote/Wisdom.
         
-        **STYLE**: Energetic, punchy, like a professional radio host (Podcast Style).
+        **STYLE**: Energetic but thoughtful. Like a mentor and a friend.
         """
         
         **CRITICAL REMINDERS:**
