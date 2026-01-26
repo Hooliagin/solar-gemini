@@ -40,7 +40,7 @@ async def get_briefing_audio(briefing_id: int, session: Session = Depends(get_se
     if not os.path.exists(briefing.audio_path):
         raise HTTPException(status_code=404, detail="Audio file missing")
         
-    return FileResponse(briefing.audio_path, media_type="audio/mpeg")
+    return FileResponse(briefing.audio_path, media_type="audio/wav")
 
 logger = logging.getLogger(__name__)
 

@@ -164,7 +164,7 @@ def generate_briefing_content(target_user_id: str):
         
         # 5. Generate Audio
         print("DEBUG: Generating Audio (TTS)...", flush=True)
-        audio_filename = f"briefing_{target_user_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.mp3"
+        audio_filename = f"briefing_{target_user_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.wav"
         
         # Ensure audio directory exists
         os.makedirs(settings.AUDIO_DIR, exist_ok=True)
