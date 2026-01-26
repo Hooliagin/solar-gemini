@@ -317,9 +317,20 @@ export default function SettingsPanel() {
                                     Code generieren
                                 </button>
                             ) : (
-                                <div className="p-3 bg-black/30 rounded-xl">
-                                    <p className="text-xs text-gray-400 mb-2">Sende an @DailyvoiceManagerbot:</p>
-                                    <code className="text-lg font-mono font-bold text-blue-400">/start {linkCode}</code>
+                                <div className="space-y-3">
+                                    <a
+                                        href={`https://t.me/DailyvoiceManagerbot?start=${linkCode}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="w-full py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-xl text-sm font-bold shadow-lg shadow-blue-500/30 transition-all flex items-center justify-center gap-2"
+                                    >
+                                        <MessageCircle className="w-5 h-5" />
+                                        In Telegram öffnen
+                                    </a>
+                                    <div className="p-3 bg-black/30 rounded-xl text-center">
+                                        <p className="text-xs text-gray-400 mb-1">Oder manuell senden:</p>
+                                        <code className="text-sm font-mono font-bold text-blue-400 select-all">/start {linkCode}</code>
+                                    </div>
                                 </div>
                             )}
                         </div>
