@@ -584,6 +584,78 @@ export default function SettingsPanel() {
                     })}
                 </div>
             </div>
+            {/* Debug Section */}
+            <div className="glass-card p-5 rounded-2xl border-t border-white/10 mt-8">
+                <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 rounded-lg bg-gray-800 flex items-center justify-center">
+                        <Zap className="w-5 h-5 text-yellow-500" />
+                    </div>
+                    <div>
+                        <h3 className="font-medium text-white">System Diagnose</h3>
+                        <p className="text-xs text-gray-500">Technische Details</p>
+                    </div>
+                </div>
+
+                <DebugInfo />
+            </div>
+        </div>
+    );
+}
+
+function DebugInfo() {
+    const [info, setInfo] = useState<any>(null);
+    const [loading, setLoading] = useState(false);
+
+    const checkHealth = async () => {
+        setLoading(true);
+        try {
+            const token = (await supabase.auth.getSession()).data.session?.access_token;
+            if (!token) return;
+            const res = await fetch(`${API_BASE_URL}/debug/me`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setInfo(data);
+            }
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div className="space-y-3">
+            {!info ? (
+                <button
+                    onClick={checkHealth}
+                    disabled={loading}
+                    className="w-full py-2 bg-white/5 hover:bg-white/10 rounded-lg text-xs font-mono text-gray-400 transition-colors"
+                >
+                    {loading ? "Lade..." : "Status prüfen"}
+                </button>
+            ) : (
+                <div className="text-xs font-mono text-gray-400 space-y-1 bg-black/30 p-3 rounded-lg overflow-hidden">
+                    <p>User ID: <span className="text-white">{info.my_user_id}</span></p>
+                    <p>Telegram Verbunden: <span className={info.telegram_connected ? "text-green-400" : "text-red-400"}>{String(info.telegram_connected)}</span></p>
+                    <p>Telegram Chat ID: <span className="text-white">{info.telegram_chat_id || "NULL"}</span></p>
+                    <p>Briefings (DB): <span className="text-white">{info.total_briefings}</span></p>
+                    <p>Entries (DB): <span className="text-white">{info.total_entries}</span></p>
+                    <div className="mt-2 pt-2 border-t border-white/10">
+                        <p className="opacity-50">Latest Briefing:</p>
+                        <pre className="whitespace-pre-wrap text-[10px] text-gray-500">
+                            {JSON.stringify(info.latest_briefing, null, 2)}
+                        </pre>
+                    </div>
+                    <button
+                        onClick={() => setInfo(null)}
+                        className="mt-2 text-[10px] underline hover:text-white"
+                    >
+                        Schließen
+                    </button>
+                </div>
+            )}
         </div>
     );
 }
