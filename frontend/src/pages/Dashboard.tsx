@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Settings, Play, Mic, Sun, Moon, AlertCircle, CheckCircle } from 'lucide-react';
+import { Settings, Play, Mic, Sun, Moon, AlertCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import Player from '../components/Player';
 import Recorder from '../components/Recorder';
