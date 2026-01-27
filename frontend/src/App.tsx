@@ -296,6 +296,7 @@ function App() {
       <Router>
         <Routes>
           <Route path="/login" element={<AuthPage />} />
+          <Route path="/update-password" element={<AuthPage />} />
           <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
           <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         </Routes>
