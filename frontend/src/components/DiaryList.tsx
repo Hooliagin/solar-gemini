@@ -39,8 +39,8 @@ export default function DiaryList({ refreshTrigger }: { refreshTrigger?: number 
         }
     };
 
-    if (loading) return <div className="text-xs uppercase tracking-widest text-warm-grey animate-pulse">Loading Archives...</div>;
-    if (entries.length === 0) return <div className="text-sm font-serif italic text-warm-grey">No entries found.</div>;
+    if (loading) return <div className="text-xs uppercase tracking-widest text-warm-grey animate-pulse">Lade Archiv...</div>;
+    if (entries.length === 0) return <div className="text-sm font-serif italic text-warm-grey">Keine Einträge gefunden.</div>;
 
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -48,7 +48,7 @@ export default function DiaryList({ refreshTrigger }: { refreshTrigger?: number 
                 <div key={entry.id} className="group border-t border-charcoal/10 pt-4 hover:border-gold transition-colors duration-500">
                     <div className="flex items-center justify-between mb-3 opacity-60 group-hover:opacity-100 transition-opacity">
                         <span className="font-mono text-[10px] text-charcoal">
-                            {new Date(entry.created_at).toLocaleDateString('en-US', { weekday: 'short', day: '2-digit', month: '2-digit' })}
+                            {new Date(entry.created_at).toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit' })}
                         </span>
                         <span className="text-[10px] uppercase tracking-widest text-warm-grey">
                             {entry.language || 'EN'}
@@ -59,7 +59,7 @@ export default function DiaryList({ refreshTrigger }: { refreshTrigger?: number 
                             "{entry.transcript}"
                         </p>
                     ) : (
-                        <span className="text-xs text-warm-grey italic">(No transcript available)</span>
+                        <span className="text-xs text-warm-grey italic">(Kein Transkript verfügbar)</span>
                     )}
                 </div>
             ))}

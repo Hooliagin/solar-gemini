@@ -91,7 +91,7 @@ export default function InterestManager() {
             <div className="flex items-center gap-4 mb-8 opacity-60">
                 <TrendingUp strokeWidth={1} className="w-5 h-5" />
                 <div className="uppercase text-xs tracking-widest">
-                    Your Interests <span className="text-warm-grey">({interests.length}/10)</span>
+                    Ihre Interessen <span className="text-warm-grey">({interests.length}/10)</span>
                 </div>
             </div>
 
@@ -113,7 +113,7 @@ export default function InterestManager() {
                 ))}
                 {interests.length === 0 && (
                     <div className="text-sm text-warm-grey font-serif italic">
-                        No topics yet. Add some to personalize your briefing.
+                        Noch keine Themen. Fügen Sie welche hinzu, um Ihr Briefing zu personalisieren.
                     </div>
                 )}
             </div>
@@ -121,7 +121,7 @@ export default function InterestManager() {
             {/* Quick Suggestions */}
             {availableSuggestions.length > 0 && (
                 <div className="mb-8 border-t border-charcoal/10 pt-4">
-                    <p className="text-xs uppercase tracking-widest text-warm-grey mb-3">Quick Add</p>
+                    <p className="text-xs uppercase tracking-widest text-warm-grey mb-3">Schnell hinzufügen</p>
                     <div className="flex flex-wrap gap-2">
                         {availableSuggestions.map(suggestion => (
                             <button
@@ -143,7 +143,7 @@ export default function InterestManager() {
                     type="text"
                     value={newTopic}
                     onChange={(e) => setNewTopic(e.target.value)}
-                    placeholder="Add custom topic..."
+                    placeholder="Eigenes Thema hinzufügen..."
                     className="input-luxury pr-12 text-lg font-serif"
                     disabled={loading}
                 />

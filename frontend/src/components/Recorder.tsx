@@ -126,20 +126,20 @@ const Recorder: React.FC<RecorderProps> = ({ onUploadComplete }) => {
                         </p>
                         <div className="flex items-center justify-center gap-2 text-red-500 text-xs uppercase tracking-widest animate-pulse">
                             <div className="w-2 h-2 rounded-full bg-red-500" />
-                            Recording
+                            Aufnahme läuft
                         </div>
                     </>
                 ) : isUploading ? (
                     <p className="text-xs uppercase tracking-widest text-charcoal animate-pulse">
-                        Uploading & Processing...
+                        Hochladen & Verarbeiten...
                     </p>
                 ) : (
                     <>
                         <p className="text-warm-grey font-serif italic text-lg">
-                            Tap to record.
+                            Tippen zum Aufnehmen.
                         </p>
                         <p className="text-[10px] uppercase tracking-widest text-charcoal/40">
-                            Auto-transcribed
+                            Automatisch transkribiert
                         </p>
                     </>
                 )}

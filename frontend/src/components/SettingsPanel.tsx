@@ -1,28 +1,29 @@
 import { useEffect, useState } from 'react';
 import {
     MapPin, Save, Volume2, Calendar,
-    MessageCircle, CheckCircle, Globe, Zap, User, Clock
+    MessageCircle, CheckCircle, Globe, Zap, User, Clock,
+    Scale, TrendingUp, Cpu, Trophy
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { API_BASE_URL } from '../config';
 
-// Voice options mapped to Gemini Personalities
+// Voice options with abstract visual indicators instead of emojis
 const VOICES = [
-    { id: 'alloy', name: 'Zephyr', color: 'bg-charcoal', icon: '🍃' },
-    { id: 'echo', name: 'Fenrir', color: 'bg-gold', icon: '🔥' },
-    { id: 'fable', name: 'Puck', color: 'bg-charcoal', icon: '📖' },
-    { id: 'onyx', name: 'Kore', color: 'bg-gold', icon: '⚓' },
-    { id: 'nova', name: 'Leda', color: 'bg-charcoal', icon: '✨' },
-    { id: 'shimmer', name: 'Aoede', color: 'bg-gold', icon: '🌊' },
+    { id: 'alloy', name: 'Zephyr', icon: 'audio-1' },
+    { id: 'echo', name: 'Fenrir', icon: 'audio-2' },
+    { id: 'fable', name: 'Puck', icon: 'audio-3' },
+    { id: 'onyx', name: 'Kore', icon: 'audio-4' },
+    { id: 'nova', name: 'Leda', icon: 'audio-5' },
+    { id: 'shimmer', name: 'Aoede', icon: 'audio-6' },
 ];
 
-// News categories with minimal logic
+// News categories with Lucide icons
 const NEWS_CATS = [
-    { key: 'news_politics', name: 'Politics', icon: '🏛️' },
-    { key: 'news_local', name: 'Local', icon: '📍' },
-    { key: 'news_economy', name: 'Economy', icon: '📈' },
-    { key: 'news_tech', name: 'Tech', icon: '💻' },
-    { key: 'news_sports', name: 'Sports', icon: '⚽' },
+    { key: 'news_politics', name: 'Politik', icon: Scale },
+    { key: 'news_local', name: 'Lokal', icon: MapPin },
+    { key: 'news_economy', name: 'Wirtschaft', icon: TrendingUp },
+    { key: 'news_tech', name: 'Tech', icon: Cpu },
+    { key: 'news_sports', name: 'Sport', icon: Trophy },
 ];
 
 interface SettingsPanelProps {
@@ -332,7 +333,7 @@ export default function SettingsPanel({ onDirtyChange }: SettingsPanelProps) {
                         ) : (
                             <Save className="w-4 h-4" />
                         )}
-                        {saving ? 'SAVING...' : saved ? 'SAVED' : 'SAVE CHANGES'}
+                        {saving ? 'SPEICHERT...' : saved ? 'GESPEICHERT' : 'ÄNDERUNGEN SPEICHERN'}
                     </span>
                 </button>
             </div>
@@ -347,28 +348,28 @@ export default function SettingsPanel({ onDirtyChange }: SettingsPanelProps) {
                                 <MessageCircle strokeWidth={1.5} className="w-5 h-5 text-charcoal" />
                                 <h3 className="text-xl font-serif">Telegram Intelligence</h3>
                             </div>
-                            <p className="text-warm-grey text-sm font-serif italic">Receive your daily briefing via chat.</p>
+                            <p className="text-warm-grey text-sm font-serif italic">Erhalten Sie Ihr tägliches Briefing per Chat.</p>
                         </div>
                         <span className={`text-xs tracking-widest uppercase py-1 px-2 border ${telegramConnected ? 'border-charcoal text-charcoal' : 'border-charcoal/20 text-charcoal/40'}`}>
-                            {telegramConnected ? 'CONNECTED' : 'OFFLINE'}
+                            {telegramConnected ? 'VERBUNDEN' : 'OFFLINE'}
                         </span>
                     </div>
 
                     {telegramConnected ? (
                         <button onClick={disconnectTelegram} className="text-xs uppercase tracking-widest text-red-500 hover:text-red-600 border-b border-red-200 pb-0.5">
-                            Disconnect
+                            Trennen
                         </button>
                     ) : (
                         <div>
                             {!linkCode ? (
                                 <button onClick={generateLinkCode} className="btn-luxury-outline w-full md:w-auto">
-                                    Generate Connection Code
+                                    Verbindungscode generieren
                                 </button>
                             ) : (
                                 <div className="space-y-4">
                                     <div className="p-4 bg-alabaster border border-charcoal/10 flex flex-col items-center">
                                         <span className="text-3xl font-serif tracking-widest mb-2">{linkCode}</span>
-                                        <span className="text-xs uppercase text-warm-grey">Active Code</span>
+                                        <span className="text-xs uppercase text-warm-grey">Aktiver Code</span>
                                     </div>
                                     <a
                                         href={`https://t.me/DailyvoiceManagerbot?start=${linkCode}`}
@@ -377,7 +378,7 @@ export default function SettingsPanel({ onDirtyChange }: SettingsPanelProps) {
                                         className="btn-luxury-primary w-full md:w-auto inline-flex"
                                     >
                                         <div className="btn-luxury-primary-inner" />
-                                        <span>Open Telegram</span>
+                                        <span>Telegram Öffnen</span>
                                     </a>
                                 </div>
                             )}
@@ -391,22 +392,22 @@ export default function SettingsPanel({ onDirtyChange }: SettingsPanelProps) {
                         <div>
                             <div className="flex items-center gap-3 mb-2">
                                 <Calendar strokeWidth={1.5} className="w-5 h-5 text-charcoal" />
-                                <h3 className="text-xl font-serif">Google Calendar</h3>
+                                <h3 className="text-xl font-serif">Google Kalender</h3>
                             </div>
-                            <p className="text-warm-grey text-sm font-serif italic">Sync schedule for intelligent planning.</p>
+                            <p className="text-warm-grey text-sm font-serif italic">Zeitplan synchronisieren für intelligente Planung.</p>
                         </div>
                         <span className={`text-xs tracking-widest uppercase py-1 px-2 border ${calendarConnected ? 'border-charcoal text-charcoal' : 'border-charcoal/20 text-charcoal/40'}`}>
-                            {calendarConnected ? 'CONNECTED' : 'OFFLINE'}
+                            {calendarConnected ? 'VERBUNDEN' : 'OFFLINE'}
                         </span>
                     </div>
                     <div>
                         {calendarConnected ? (
                             <button onClick={disconnectCalendar} className="text-xs uppercase tracking-widest text-red-500 hover:text-red-600 border-b border-red-200 pb-0.5">
-                                Disconnect
+                                Trennen
                             </button>
                         ) : (
                             <button onClick={connectCalendar} className="btn-luxury-outline w-full md:w-auto">
-                                Connect Account
+                                Konto verbinden
                             </button>
                         )}
                     </div>
@@ -418,28 +419,28 @@ export default function SettingsPanel({ onDirtyChange }: SettingsPanelProps) {
                 <div className="card-luxury">
                     <div className="flex items-center gap-3 mb-8 opacity-60">
                         <User strokeWidth={1} className="w-5 h-5" />
-                        <span className="text-xs uppercase tracking-widest">Profile Identity</span>
+                        <span className="text-xs uppercase tracking-widest">Profil Identität</span>
                     </div>
 
                     <div className="space-y-8">
                         <div>
-                            <label className="block text-xs uppercase tracking-widest text-warm-grey mb-2">Display Name</label>
+                            <label className="block text-xs uppercase tracking-widest text-warm-grey mb-2">Anzeigename</label>
                             <input
                                 type="text"
                                 value={userName}
                                 onChange={(e) => setUserName(e.target.value)}
-                                placeholder="E.g. Alexander"
+                                placeholder="z.B. Alexander"
                                 className="input-luxury text-xl font-serif"
                             />
                         </div>
                         <div>
-                            <label className="block text-xs uppercase tracking-widest text-warm-grey mb-2">Primary Location</label>
+                            <label className="block text-xs uppercase tracking-widest text-warm-grey mb-2">Hauptstandort</label>
                             <div className="relative">
                                 <input
                                     type="text"
                                     value={city}
                                     onChange={(e) => setCity(e.target.value)}
-                                    placeholder="E.g. Vienna"
+                                    placeholder="z.B. Wien"
                                     className="input-luxury text-xl font-serif"
                                 />
                                 <MapPin strokeWidth={1} className="absolute right-0 top-1/2 -translate-y-1/2 w-5 h-5 text-charcoal/30" />
@@ -452,12 +453,12 @@ export default function SettingsPanel({ onDirtyChange }: SettingsPanelProps) {
                 <div className="card-luxury">
                     <div className="flex items-center gap-3 mb-8 opacity-60">
                         <Clock strokeWidth={1} className="w-5 h-5" />
-                        <span className="text-xs uppercase tracking-widest">Routine Timing</span>
+                        <span className="text-xs uppercase tracking-widest">Routine Zeitplan</span>
                     </div>
 
                     <div className="space-y-8">
                         <div>
-                            <label className="block text-xs uppercase tracking-widest text-warm-grey mb-2">Morning Briefing</label>
+                            <label className="block text-xs uppercase tracking-widest text-warm-grey mb-2">Morgen Briefing</label>
                             <input
                                 type="time"
                                 value={briefingTime}
@@ -468,7 +469,7 @@ export default function SettingsPanel({ onDirtyChange }: SettingsPanelProps) {
 
                         <div>
                             <div className="flex justify-between items-center mb-4">
-                                <label className="block text-xs uppercase tracking-widest text-warm-grey">Evening Reflection</label>
+                                <label className="block text-xs uppercase tracking-widest text-warm-grey">Abend Reflexion</label>
                                 <button
                                     onClick={() => setReflectionReminderEnabled(!reflectionReminderEnabled)}
                                     className={`w-8 h-4 border transition-colors ${reflectionReminderEnabled ? 'bg-charcoal border-charcoal' : 'border-charcoal/30'}`}
@@ -488,7 +489,7 @@ export default function SettingsPanel({ onDirtyChange }: SettingsPanelProps) {
                         </div>
 
                         <div className="pt-4 flex items-center justify-between">
-                            <span className="font-serif">Include Weather Report</span>
+                            <span className="font-serif">Wetterbericht einschließen</span>
                             <button
                                 onClick={() => setWeatherEnabled(!weatherEnabled)}
                                 className={`w-8 h-4 border transition-colors ${weatherEnabled ? 'bg-charcoal border-charcoal' : 'border-charcoal/30'}`}
@@ -504,23 +505,27 @@ export default function SettingsPanel({ onDirtyChange }: SettingsPanelProps) {
             <div className="card-luxury">
                 <div className="flex items-center gap-3 mb-8 opacity-60">
                     <Globe strokeWidth={1} className="w-5 h-5" />
-                    <span className="text-xs uppercase tracking-widest">Intelligence Sources</span>
+                    <span className="text-xs uppercase tracking-widest">Intelligenz Quellen</span>
                 </div>
 
                 <div className="flex flex-wrap gap-4">
                     {NEWS_CATS.map((cat) => {
                         const isActive = newsCategories[cat.key as keyof typeof newsCategories];
+                        const Icon = cat.icon;
                         return (
                             <button
                                 key={cat.key}
                                 onClick={() => setNewsCategories(prev => ({ ...prev, [cat.key]: !isActive }))}
-                                className={`px-6 py-4 border transition-all duration-300 ${isActive
+                                className={`group px-6 py-4 border transition-all duration-300 relative overflow-hidden ${isActive
                                     ? 'bg-charcoal text-alabaster border-charcoal shadow-lg transform -translate-y-1'
-                                    : 'bg-transparent text-charcoal border-charcoal/20 hover:border-charcoal'
+                                    : 'bg-transparent text-charcoal border-charcoal/20 hover:border-charcoal hover:shadow-md'
                                     }`}
                             >
-                                <span className="block text-xs uppercase tracking-widest mb-1 opacity-60">{cat.icon}</span>
-                                <span className="font-serif text-lg">{cat.name}</span>
+                                <div className="flex flex-col items-center gap-2 relative z-10">
+                                    <Icon strokeWidth={1} className={`w-6 h-6 transition-transform duration-500 group-hover:scale-110 ${isActive ? 'text-gold' : 'text-charcoal/60'}`} />
+                                    <span className="font-serif text-lg">{cat.name}</span>
+                                </div>
+                                {!isActive && <div className="absolute inset-0 bg-charcoal/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />}
                             </button>
                         );
                     })}
@@ -531,51 +536,64 @@ export default function SettingsPanel({ onDirtyChange }: SettingsPanelProps) {
             <div className="card-luxury">
                 <div className="flex items-center gap-3 mb-8 opacity-60">
                     <Volume2 strokeWidth={1} className="w-5 h-5" />
-                    <span className="text-xs uppercase tracking-widest">Assistant Voice</span>
+                    <span className="text-xs uppercase tracking-widest">Assistenten Stimme</span>
                 </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-6 gap-0 border border-charcoal/20">
-                    {VOICES.map((voice, idx) => {
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                    {VOICES.map((voice) => {
                         const isSelected = voiceId === voice.id;
                         const isPlaying = playingVoice === voice.id;
                         const isLoading = audioLoading === voice.id;
-
-                        // Calculate grid borders manually for a clean look
-                        const borderClasses = `
-                             p-6 relative transition-all duration-300 hover:bg-charcoal/5
-                             ${idx !== VOICES.length - 1 ? 'md:border-r border-charcoal/20' : ''} 
-                             ${idx < VOICES.length - 2 ? 'border-b md:border-b-0 border-charcoal/20' : ''}
-                        `;
 
                         return (
                             <button
                                 key={voice.id}
                                 onClick={() => setVoiceId(voice.id)}
-                                className={`${borderClasses} ${isSelected ? 'bg-charcoal text-alabaster' : 'text-charcoal'}`}
+                                className={`
+                                    relative p-6 border transition-all duration-300 flex flex-col items-center justify-between gap-4 min-h-[140px]
+                                    ${isSelected
+                                        ? 'bg-charcoal text-alabaster border-charcoal shadow-xl scale-[1.02]'
+                                        : 'bg-transparent text-charcoal border-charcoal/20 hover:border-charcoal hover:bg-charcoal/5'
+                                    }
+                                `}
                             >
-                                <div className="flex flex-col items-center gap-4">
-                                    <span className="text-2xl">{voice.icon}</span>
-                                    <span className="font-serif tracking-wide">{voice.name}</span>
-
-                                    <div
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            playPreview(voice.id);
-                                        }}
-                                        className={`mt-2 p-2 rounded-full border ${isSelected ? 'border-alabaster hover:bg-alabaster hover:text-charcoal' : 'border-charcoal hover:bg-charcoal hover:text-alabaster'} transition-colors`}
-                                    >
-                                        {isLoading ? (
-                                            <div className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
-                                        ) : isPlaying ? (
-                                            <div className="w-3 h-3 bg-current" />
-                                        ) : (
-                                            <Volume2 className="w-3 h-3" />
-                                        )}
-                                    </div>
+                                {/* Abstract Visualizer Icon */}
+                                <div className="flex gap-1 h-8 items-center">
+                                    {[1, 2, 3, 4].map((bar) => (
+                                        <div
+                                            key={bar}
+                                            className={`w-1 bg-current rounded-full transition-all duration-300 ${isPlaying ? 'animate-wave' : ''}`}
+                                            style={{
+                                                height: isPlaying ? `${Math.random() * 100}%` : isSelected ? '60%' : '30%',
+                                                opacity: isSelected ? 1 : 0.4
+                                            }}
+                                        />
+                                    ))}
                                 </div>
-                                {isSelected && (
-                                    <div className="absolute top-2 right-2 w-2 h-2 bg-gold rounded-full" />
-                                )}
+
+                                <span className="font-serif tracking-wide text-lg">{voice.name}</span>
+
+                                <div
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        playPreview(voice.id);
+                                    }}
+                                    className={`
+                                        w-8 h-8 rounded-full border flex items-center justify-center transition-all hover:scale-110
+                                        ${isSelected
+                                            ? 'border-alabaster/30 hover:bg-alabaster hover:text-charcoal'
+                                            : 'border-charcoal/20 hover:bg-charcoal hover:text-alabaster'
+                                        }
+                                    `}
+                                >
+                                    {isLoading ? (
+                                        <div className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
+                                    ) : isPlaying ? (
+                                        <div className="w-2 h-2 bg-current" />
+                                    ) : (
+                                        <Volume2 className="w-3 h-3" />
+                                    )}
+                                </div>
                             </button>
                         );
                     })}
@@ -586,7 +604,7 @@ export default function SettingsPanel({ onDirtyChange }: SettingsPanelProps) {
             <div className="card-luxury opacity-40 hover:opacity-100 transition-opacity">
                 <div className="flex items-center gap-3 mb-4">
                     <Zap strokeWidth={1} className="w-4 h-4" />
-                    <h3 className="text-xs uppercase tracking-widest">System Diagnostics</h3>
+                    <h3 className="text-xs uppercase tracking-widest">Systemdiagnose</h3>
                 </div>
                 <DebugInfo />
             </div>
@@ -625,12 +643,12 @@ function DebugInfo() {
                     disabled={loading}
                     className="text-xs font-mono text-charcoal underline hover:text-gold"
                 >
-                    {loading ? "Scanning..." : "Run Diagnostics"}
+                    {loading ? "Scanne..." : "Diagnose starten"}
                 </button>
             ) : (
                 <div className="text-[10px] font-mono p-4 border border-charcoal/20 bg-alabaster">
                     <div className="grid grid-cols-2 gap-x-8 gap-y-2">
-                        <span className="text-warm-grey">USER ID</span>
+                        <span className="text-warm-grey">BENUTZER ID</span>
                         <span>{info.my_user_id}</span>
 
                         <span className="text-warm-grey">TELEGRAM</span>
@@ -644,7 +662,7 @@ function DebugInfo() {
                         onClick={() => setInfo(null)}
                         className="mt-4 text-xs underline"
                     >
-                        Close Report
+                        Bericht schließen
                     </button>
                 </div>
             )}

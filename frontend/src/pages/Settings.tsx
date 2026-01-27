@@ -26,7 +26,7 @@ export default function Settings() {
 
     const handleBack = () => {
         if (isDirty) {
-            if (window.confirm("You have unsaved changes. Are you sure you want to leave?")) {
+            if (window.confirm("Sie haben ungespeicherte Änderungen. Möchten Sie wirklich verlassen?")) {
                 navigate('/');
             }
         } else {
@@ -36,7 +36,7 @@ export default function Settings() {
 
     const handleSignOut = () => {
         if (isDirty) {
-            if (window.confirm("You have unsaved changes. Are you sure you want to leave?")) {
+            if (window.confirm("Sie haben ungespeicherte Änderungen. Möchten Sie wirklich verlassen?")) {
                 signOut();
             }
         } else {
@@ -56,19 +56,19 @@ export default function Settings() {
                         className="group flex items-center gap-3 text-warm-grey hover:text-charcoal transition-colors duration-500"
                     >
                         <ArrowLeft strokeWidth={1} className="w-5 h-5 transform group-hover:-translate-x-1 transition-transform" />
-                        <span className="text-xs uppercase tracking-[0.2em]">Back</span>
+                        <span className="text-xs uppercase tracking-[0.2em]">Zurück</span>
                     </button>
 
                     <h1 className="text-4xl md:text-5xl font-serif tracking-tight text-center absolute left-1/2 -translate-x-1/2">
-                        Settings
+                        Einstellungen
                     </h1>
 
                     <button
                         onClick={handleSignOut}
                         className="group flex items-center gap-2 text-warm-grey hover:text-charcoal transition-colors duration-500"
-                        title="Sign Out"
+                        title="Abmelden"
                     >
-                        <span className="hidden md:block text-xs uppercase tracking-[0.2em] opacity-0 group-hover:opacity-100 transition-opacity">Sign Out</span>
+                        <span className="hidden md:block text-xs uppercase tracking-[0.2em] opacity-0 group-hover:opacity-100 transition-opacity">Abmelden</span>
                         <LogOut strokeWidth={1} className="w-5 h-5" />
                     </button>
                 </header>
@@ -82,7 +82,7 @@ export default function Settings() {
                     <motion.section variants={itemVariants}>
                         <div className="flex items-center gap-4 mb-12">
                             <span className="text-xs font-mono text-charcoal/40">01</span>
-                            <h2 className="text-sm font-sans uppercase tracking-[0.2em] flex-1 border-b border-charcoal/10 pb-1">Interests & Topics</h2>
+                            <h2 className="text-sm font-sans uppercase tracking-[0.2em] flex-1 border-b border-charcoal/10 pb-1">Interessen & Themen</h2>
                         </div>
                         <InterestManager />
                     </motion.section>
@@ -90,7 +90,7 @@ export default function Settings() {
                     <motion.section variants={itemVariants}>
                         <div className="flex items-center gap-4 mb-12">
                             <span className="text-xs font-mono text-charcoal/40">02</span>
-                            <h2 className="text-sm font-sans uppercase tracking-[0.2em] flex-1 border-b border-charcoal/10 pb-1">System & Connections</h2>
+                            <h2 className="text-sm font-sans uppercase tracking-[0.2em] flex-1 border-b border-charcoal/10 pb-1">System & Verbindungen</h2>
                         </div>
                         <SettingsPanel onDirtyChange={setIsDirty} />
                     </motion.section>

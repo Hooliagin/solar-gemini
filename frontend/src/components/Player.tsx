@@ -111,7 +111,7 @@ const Player: React.FC = () => {
     if (loading) return (
         <div className="flex flex-col items-center justify-center py-12">
             <div className="w-8 h-8 border border-charcoal border-t-transparent rounded-full animate-spin mb-4" />
-            <p className="text-xs uppercase tracking-widest text-charcoal">Syncing...</p>
+            <p className="text-xs uppercase tracking-widest text-charcoal">Synchronisiere...</p>
         </div>
     );
 
@@ -122,10 +122,10 @@ const Player: React.FC = () => {
                     <Clock strokeWidth={1} className="w-8 h-8 text-charcoal" />
                 </div>
                 <h3 className="text-2xl font-serif mb-2 text-charcoal">
-                    No briefing available.
+                    Kein Briefing verfügbar.
                 </h3>
                 <p className="text-warm-grey font-serif italic mb-6 text-sm">
-                    Scheduled for {briefingTime}.
+                    Geplant für {briefingTime}.
                 </p>
 
                 {error && (
@@ -141,7 +141,7 @@ const Player: React.FC = () => {
                 className="w-full flex justify-between items-center py-4 border-t border-charcoal group hover:bg-charcoal hover:text-alabaster transition-colors duration-500"
             >
                 <span className="text-xs uppercase tracking-widest">
-                    {generating ? 'Composing...' : 'Generate Now'}
+                    {generating ? 'Erstelle...' : 'Jetzt erstellen'}
                 </span>
                 <span className="transform group-hover:translate-x-2 transition-transform duration-500">
                     {generating ? <RefreshCw className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}
@@ -158,13 +158,13 @@ const Player: React.FC = () => {
                     <span className="text-[10px] uppercase tracking-widest text-warm-grey block mb-1">Status</span>
                     <span className="flex items-center gap-2 text-xs font-medium">
                         <div className="w-1.5 h-1.5 rounded-full bg-green-600 animate-pulse" />
-                        Ready
+                        Bereit
                     </span>
                 </div>
                 <div className="text-right">
-                    <span className="text-[10px] uppercase tracking-widest text-warm-grey block mb-1">Date</span>
+                    <span className="text-[10px] uppercase tracking-widest text-warm-grey block mb-1">Datum</span>
                     <span className="font-serif">
-                        {new Date(briefing.created_at).toLocaleDateString('en-US', {
+                        {new Date(briefing.created_at).toLocaleDateString('de-DE', {
                             weekday: 'short',
                             day: 'numeric',
                             month: 'short'
@@ -183,7 +183,7 @@ const Player: React.FC = () => {
             {/* Script Preview */}
             <div className="flex-1 overflow-y-auto mb-6 pr-2 custom-scrollbar">
                 <p className="font-serif text-lg leading-relaxed text-charcoal/90">
-                    {briefing.script_content || "Audio only."}
+                    {briefing.script_content || "Nur Audio."}
                 </p>
             </div>
 
@@ -194,7 +194,7 @@ const Player: React.FC = () => {
                 className="text-xs uppercase tracking-widest text-warm-grey hover:text-charcoal transition-colors flex items-center gap-2 mt-auto pt-4 border-t border-charcoal/10"
             >
                 <RefreshCw className={`w-3 h-3 ${generating ? 'animate-spin' : ''}`} />
-                Regenerate Briefing
+                Briefing neu generieren
             </button>
         </div>
     );
