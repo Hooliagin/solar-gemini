@@ -63,6 +63,17 @@ export default function SettingsPanel() {
         }
     }, []);
 
+    // Poll for changes when link code is active (waiting for connection)
+    useEffect(() => {
+        if (!linkCode || telegramConnected) return;
+
+        const interval = setInterval(() => {
+            fetchSettings();
+        }, 3000);
+
+        return () => clearInterval(interval);
+    }, [linkCode, telegramConnected]);
+
     const fetchSettings = async () => {
         try {
             const token = (await supabase.auth.getSession()).data.session?.access_token;
