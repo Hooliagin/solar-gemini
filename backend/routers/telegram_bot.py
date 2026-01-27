@@ -44,8 +44,10 @@ async def start_command(update: Update, context):
     Usage: /start <link_code>
     Links Telegram chat_id to the user who generated the code.
     """
-    args = context.args
-    chat_id = str(update.effective_chat.id)
+    logger.info(f"Received /start with args: {context.args}")
+    try:
+        args = context.args
+        chat_id = str(update.effective_chat.id)
     
     import uuid
     
@@ -132,8 +134,13 @@ async def start_command(update: Update, context):
         )
         
     except Exception as e:
-        logger.error(f"Error in /start command: {e}")
-        await update.message.reply_text("❌ Fehler beim Verbinden.")
+        logger.error(f"CRITICAL ERROR in /start command: {e}")
+        import traceback
+        traceback.print_exc()
+        try:
+             await update.message.reply_text("❌ Ein kritischer Fehler ist aufgetreten.")
+        except:
+             pass
 
 async def unlink_command(update: Update, context):
     """
