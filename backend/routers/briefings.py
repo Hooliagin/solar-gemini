@@ -43,6 +43,7 @@ async def get_briefing_audio(
         
     # Security Check: Ensure ownership
     if briefing.user_id != user_id:
+        logger.error(f"Access Denied: Briefing Owner '{briefing.user_id}' vs Request User '{user_id}'")
         raise HTTPException(status_code=403, detail="Not authorized to access this briefing")
         
     if not os.path.exists(briefing.audio_path):
