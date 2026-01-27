@@ -98,12 +98,15 @@ const Player: React.FC = () => {
                 const success = await fetchLatestBriefing(); // Reuse existing fetch logic
 
                 // If we found a briefing OR max attempts reached
-                if (success || attempts >= maxAttempts) {
+                if (success) {
                     clearInterval(pollInterval);
                     setGenerating(false);
-                    if (!success) {
-                        alert("Zeitüberschreitung: Briefing wird noch verarbeitet. Bitte lade die Seite in Kürze neu.");
-                    }
+                    // Force refresh of audio component if needed via key change or similar, 
+                    // though state update should handle it.
+                } else if (attempts >= maxAttempts) {
+                    clearInterval(pollInterval);
+                    setGenerating(false);
+                    setError("Zeitüberschreitung: Briefing wird noch verarbeitet. Bitte lade die Seite gleich neu.");
                 }
             }, 3000);
 
