@@ -15,6 +15,28 @@ router = APIRouter(prefix="/debug", tags=["debug"])
 from auth import get_current_user_id
 from models import Briefing, Interest
 
+@router.get("/files")
+def inspect_files():
+    """
+    Lists files in the AUDIO_DIR to verify persistence.
+    """
+    from config import settings
+    import os
+    
+    try:
+        if not os.path.exists(settings.AUDIO_DIR):
+             return {"status": "error", "message": f"Directory not found: {settings.AUDIO_DIR}"}
+             
+        files = os.listdir(settings.AUDIO_DIR)
+        return {
+            "directory": settings.AUDIO_DIR,
+            "absolute_path": os.path.abspath(settings.AUDIO_DIR),
+            "file_count": len(files),
+            "files": files
+        }
+    except Exception as e:
+         return {"error": str(e)}
+
 @router.get("/me")
 def inspect_me(session: Session = Depends(get_session), user_id: str = Depends(get_current_user_id)):
     """
