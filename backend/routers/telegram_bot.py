@@ -49,36 +49,35 @@ async def start_command(update: Update, context):
         args = context.args
         chat_id = str(update.effective_chat.id)
     
-    import uuid
+        import uuid
     
-    if not args:
-        # Check if user already exists
-        session = next(get_session())
-        statement = select(UserSettings).where(UserSettings.telegram_chat_id == chat_id)
-        existing_user = session.exec(statement).first()
-        
-        if existing_user:
-             await update.message.reply_text(
-                "✅ Du bist bereits verbunden!\n"
-                "Sende mir eine Sprachnachricht für dein Tagebuch oder nutze /generate."
+        if not args:
+            # Check if user already exists
+            session = next(get_session())
+            statement = select(UserSettings).where(UserSettings.telegram_chat_id == chat_id)
+            existing_user = session.exec(statement).first()
+            
+            if existing_user:
+                 await update.message.reply_text(
+                    "✅ Du bist bereits verbunden!\n"
+                    "Sende mir eine Sprachnachricht für dein Tagebuch oder nutze /generate."
+                )
+                 session.close()
+                 return
+    
+            # STRICT MODE: No new users via Telegram
+            await update.message.reply_text(
+                "👋 **Willkommen!**\n\n"
+                "Bitte registriere dich zuerst in unserer Web-App:\n"
+                "👉 https://daily-manager-frontend.onrender.com\n\n"
+                "Dort findest du in den **Einstellungen** einen QR-Code oder Link,\n"
+                "um diesen Bot mit deinem Account zu verbinden."
             )
-             session.close()
-             return
-
-        # STRICT MODE: No new users via Telegram
-        await update.message.reply_text(
-            "👋 **Willkommen!**\n\n"
-            "Bitte registriere dich zuerst in unserer Web-App:\n"
-            "👉 https://daily-manager-frontend.onrender.com\n\n"
-            "Dort findest du in den **Einstellungen** einen QR-Code oder Link,\n"
-            "um diesen Bot mit deinem Account zu verbinden."
-        )
-        session.close()
-        return
-
-    link_code = args[0]
+            session.close()
+            return
     
-    try:
+        link_code = args[0]
+
         session = next(get_session())
         # Find user settings with this link token
         statement = select(UserSettings).where(UserSettings.telegram_link_token == link_code)
