@@ -115,6 +115,8 @@ async def start_command(update: Update, context):
             session.delete(shadow_user)
             session.flush() # Commit delete first to free up the unique telegram_chat_id constraint
             
+        logger.info(f"Linking Chat ID {chat_id} to User {target_user_id}")
+        
         # Link accounts
         user_settings.telegram_chat_id = chat_id
         user_settings.telegram_enabled = True
