@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends
-from sqlmodel import select
+from sqlmodel import select, Session
 from database import get_session
 from models import UserSettings, Entry
 from services.scheduler import check_reminders, check_briefings
