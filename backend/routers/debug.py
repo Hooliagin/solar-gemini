@@ -12,6 +12,37 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/debug", tags=["debug"])
 
+from auth import get_current_user_id
+from models import Briefing, Interest
+
+@router.get("/me")
+def inspect_me(session: Session = Depends(get_session), user_id: str = Depends(get_current_user_id)):
+    """
+    Returns debug info for the CURRENTLY LOGGED IN user.
+    """
+    try:
+        # User Settings
+        user = session.exec(select(UserSettings).where(UserSettings.user_id == user_id)).first()
+        
+        # Counts
+        briefing_count = session.exec(select(Briefing).where(Briefing.user_id == user_id)).all()
+        entry_count = session.exec(select(Entry).where(Entry.user_id == user_id)).all()
+        
+        # Latest Briefing (Raw)
+        latest_briefing = session.exec(select(Briefing).where(Briefing.user_id == user_id).order_by(Briefing.created_at.desc()).limit(1)).first()
+        
+        return {
+            "my_user_id": user_id,
+            "has_settings": user is not None,
+            "telegram_connected": user.telegram_enabled if user else False,
+            "telegram_chat_id": user.telegram_chat_id if user else None,
+            "total_briefings": len(briefing_count),
+            "total_entries": len(entry_count),
+            "latest_briefing": latest_briefing
+        }
+    finally:
+        session.close()
+
 @router.get("/users")
 def inspect_users():
     session = next(get_session())
