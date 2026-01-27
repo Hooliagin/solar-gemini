@@ -187,11 +187,8 @@ const Player: React.FC = () => {
 
             {/* Audio Player */}
             <div className="w-full p-4 rounded-2xl bg-gradient-to-br from-purple-500/10 to-blue-500/10 border border-white/10">
-                <audio
-                    controls
-                    className="w-full"
-                    src={`${API_BASE_URL}/briefings/${briefing.id}/audio`}
-                    style={{ filter: 'invert(1)' }}
+                <AudioPlayerWithAuth
+                    url={`${API_BASE_URL}/briefings/${briefing.id}/audio`}
                 />
             </div>
 
@@ -220,3 +217,55 @@ const Player: React.FC = () => {
 };
 
 export default Player;
+
+const AudioPlayerWithAuth = ({ url }: { url: string }) => {
+    const [audioSrc, setAudioSrc] = useState<string | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        const fetchAudio = async () => {
+            try {
+                const token = (await supabase.auth.getSession()).data.session?.access_token;
+                if (!token) {
+                    setError("Nicht authentifiziert");
+                    setLoading(false);
+                    return;
+                }
+
+                const res = await fetch(url, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+
+                if (!res.ok) throw new Error(`Status: ${res.status}`);
+
+                const blob = await res.blob();
+                const objectUrl = URL.createObjectURL(blob);
+                setAudioSrc(objectUrl);
+            } catch (err) {
+                console.error("Audio load failed", err);
+                setError("Audio konnte nicht geladen werden.");
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchAudio();
+
+        return () => {
+            if (audioSrc) URL.revokeObjectURL(audioSrc);
+        };
+    }, [url]);
+
+    if (loading) return <div className="text-xs text-gray-500 animate-pulse">Lade Audio...</div>;
+    if (error) return <div className="text-xs text-red-400">{error}</div>;
+
+    return (
+        <audio
+            controls
+            className="w-full"
+            src={audioSrc || undefined}
+            style={{ filter: 'invert(1)' }}
+        />
+    );
+};
