@@ -829,11 +829,9 @@ async def telegram_webhook(request: Request, background_tasks: BackgroundTasks):
             background_tasks.add_task(run_generation_task, update.effective_chat.id)
 
         # Commands
-        app.add_handler(CommandHandler("start", start_onboarding))
-        app.add_handler(CommandHandler("setup", start_onboarding))
+        # Commands
+        app.add_handler(CommandHandler("start", start_command))
         app.add_handler(CommandHandler("generate", generate_wrapper))
-        app.add_handler(CommandHandler("login", login_command))
-        app.add_handler(CommandHandler("cancel", cancel_onboarding)) # Singular
         app.add_handler(CommandHandler("unlink", unlink_command))
         app.add_handler(CommandHandler("reset", unlink_command))
         app.add_handler(CommandHandler("settings", settings_command))
@@ -842,13 +840,10 @@ async def telegram_webhook(request: Request, background_tasks: BackgroundTasks):
         app.add_handler(CommandHandler("toggle_news", toggle_news_command))
         
         # Callback queries (inline buttons)
-        app.add_handler(CallbackQueryHandler(onboarding_callback_router))
+        # app.add_handler(CallbackQueryHandler(onboarding_callback_router)) # Removed
         
         # Voice messages
         app.add_handler(MessageHandler(filters.VOICE, handle_voice_message))
-        
-        # Text messages - route based on database step
-        app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, onboarding_text_router))
         
         await app.initialize()
         await app.start()
