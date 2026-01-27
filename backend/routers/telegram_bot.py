@@ -125,8 +125,7 @@ async def start_command(update: Update, context):
         
         await update.message.reply_text(
             f"✅ **Erfolgreich verbunden!**\n"
-            f"Deine Accounts wurden zusammengeführt.\n"
-            f"Du findest alle deine bisherigen Telegram-Daten jetzt auch im Web.\n\n"
+            f"Deine Accounts wurden zusammengeführt.\n\n"
             "Befehle:\n"
             "/generate - Briefing sofort erstellen\n"
             "Sprachnachricht senden - Als Tagebuch-Eintrag speichern"
@@ -689,46 +688,61 @@ async def interests_state(update: Update, context):
     )
     return ConversationHandler.END
 
-async def cancel_onboarding(update: Update, context):
-    """Cancel the conversation."""
-    await update.message.reply_text("❌ Setup abgebrochen.")
-    return ConversationHandler.END
-
-async def onboarding_text_router(update: Update, context):
-    """Route text messages based on user's onboarding step in database."""
-    chat_id = str(update.effective_chat.id)
+async def handle_voice_message(update: Update, context):
+    """Handle voice messages - transcribe and save as diary entry."""
+    await update.message.reply_text("🎙️ Verarbeite Sprachnachricht...")
     
     try:
+        # Download voice file
+        voice = update.message.voice
+        file = await voice.get_file()
+        
+        # Save temporarily
+        os.makedirs(settings.AUDIO_DIR, exist_ok=True)
+        temp_path = os.path.join(settings.AUDIO_DIR, f"telegram_{voice.file_id}.ogg")
+        await file.download_to_drive(temp_path)
+        
+        # Transcribe
+        transcription_result = audio_service.transcribe_audio(temp_path)
+        transcript = transcription_result.get("text", "") if isinstance(transcription_result, dict) else transcription_result
+        language = transcription_result.get("language", "de") if isinstance(transcription_result, dict) else "de"
+        
         session = next(get_session())
+        
+        # Verify user mapping
+        chat_id = str(update.effective_chat.id)
         stmt = select(UserSettings).where(UserSettings.telegram_chat_id == chat_id)
         user = session.exec(stmt).first()
-        step = user.onboarding_step if user else None
-        session.close()
-    except Exception as e:
-        logger.error(f"Error getting onboarding step: {e}")
-        return
-    
-    if step == STEP_NAME:
-        await name_state(update, context)
-    elif step == STEP_AGE:
-        await age_state(update, context)
-    elif step == STEP_CITY:
-        await city_state(update, context)
-    elif step == STEP_INTERESTS:
-        await interests_state(update, context)
-    else:
-        # User is not in onboarding, just acknowledge
-        pass
+        
+        if not user:
+             logger.error(f"Telegram user {chat_id} not found/linked during voice upload.")
+             await update.message.reply_text(
+                 "❌ Fehler: Dein Account ist nicht verknüpft.\n"
+                 "Bitte verbinde dich zuerst über die Web-App."
+             )
+             session.close()
+             return
 
-async def onboarding_callback_router(update: Update, context):
-    """Route callback queries based on pattern (voice/news buttons)."""
-    query = update.callback_query
-    data = query.data
-    
-    if data.startswith('voice_'):
-        await voice_state(update, context)
-    elif data.startswith('toggle_') or data == 'news_done':
-        await news_state(update, context)
+        logger.info(f"Processing voice for Telegram User {chat_id} -> App User {user.user_id}")
+
+        entry = Entry(
+            audio_path=temp_path,
+            transcript=transcript,
+            language=language,
+            user_id=user.user_id
+        )
+        session.add(entry)
+        session.commit()
+        session.close()
+        
+        await update.message.reply_text(
+            f"✅ Tagebuch-Eintrag gespeichert!\n\n"
+            f"📝\" {transcript[:100]}{'...' if len(transcript) > 100 else ''}\""
+        )
+        
+    except Exception as e:
+        logger.error(f"Error processing voice message: {e}")
+        await update.message.reply_text("❌ Fehler beim Verarbeiten der Sprachnachricht.")
 
 def run_generation_task(chat_id: int):
     """Background task to generate and send a briefing."""
