@@ -36,6 +36,12 @@ def get_weather_forecast(city: str = "Berlin") -> dict:
             "wind_speed": round(data["wind"]["speed"] * 3.6),  # m/s to km/h
             "rain": data.get("rain", {}).get("1h", 0),
         }
+    except requests.exceptions.HTTPError as e:
+        if e.response.status_code == 404:
+            logger.warning(f"Weather city not found: {city}")
+        else:
+            logger.error(f"Weather API HTTP error: {e}")
+        return None
     except Exception as e:
         logger.error(f"Weather API error: {e}")
         return None

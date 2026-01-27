@@ -233,29 +233,8 @@ def generate_briefing_content(target_user_id: str):
         logger.info(f"Briefing generated successfully: {audio_path_abs}")
         print("DEBUG: Briefing saved to DB.", flush=True)
         
-        # 7. Send to Telegram if enabled
-        if user_settings.telegram_enabled and user_settings.telegram_chat_id:
-            try:
-                print(f"DEBUG: Sending briefing to Telegram (chat_id: {user_settings.telegram_chat_id})...", flush=True)
-                from services.telegram_service import send_briefing_audio
-                import asyncio
-                
-                caption = f"🌅 Dein Morgen-Briefing für {datetime.now().strftime('%d.%m.%Y')}"
-                # Must be run in event loop if async, but here we might be in sync context in thread
-                # send_briefing_audio is async.
-                # If called from background task which is async, we can await?
-                # No, this function 'generate_briefing_content' is sync def.
-                # So we use asyncio.run()
-                asyncio.run(send_briefing_audio(
-                    chat_id=user_settings.telegram_chat_id,
-                    audio_path=audio_path_abs,
-                    caption=caption
-                ))
-                print("DEBUG: Briefing sent to Telegram successfully!", flush=True)
-                    
-            except Exception as telegram_error:
-                logger.error(f"Error sending to Telegram: {telegram_error}")
-                print(f"DEBUG: Telegram error: {telegram_error}", flush=True)
+        # 7. (Removed) Sending is now handled by the caller (scheduler or router)
+        # to avoid asyncio event loop conflicts.
         
         print("DEBUG: Done.", flush=True)
         return briefing

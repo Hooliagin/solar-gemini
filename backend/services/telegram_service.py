@@ -45,6 +45,11 @@ async def send_briefing_audio(chat_id: str, audio_path: str, caption: str = None
         logger.error(f"Telegram error sending briefing: {e}")
         return False
     except Exception as e:
+        # Check if it's a Forbidden error (user blocked bot)
+        if "Forbidden" in str(e):
+            logger.warning(f"Briefing not sent: Bot blocked by user {chat_id}")
+            return False
+            
         logger.error(f"Error sending briefing to Telegram: {e}")
         return False
 
@@ -102,5 +107,9 @@ async def send_text_message(chat_id: str, text: str):
         logger.error(f"Telegram error sending message: {e}")
         return False
     except Exception as e:
+        if "Forbidden" in str(e):
+            logger.warning(f"Message not sent: Bot blocked by user {chat_id}")
+            return False
+            
         logger.error(f"Error sending message to Telegram: {e}")
         return False

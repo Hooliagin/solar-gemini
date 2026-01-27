@@ -4,27 +4,37 @@ import { Loader2, Sparkles, Mail, ArrowRight } from 'lucide-react';
 
 export default function AuthPage() {
     const [loading, setLoading] = useState(false);
+    const [mode, setMode] = useState<'login' | 'signup'>('login');
     const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
     const [message, setMessage] = useState('');
 
-    const handleLogin = async (e: React.FormEvent) => {
+    const handleAuth = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
         setMessage('');
 
-        const { error } = await supabase.auth.signInWithOtp({
-            email,
-            options: {
-                emailRedirectTo: window.location.origin,
-            },
-        });
-
-        if (error) {
+        try {
+            if (mode === 'signup') {
+                const { error } = await supabase.auth.signUp({
+                    email,
+                    password,
+                });
+                if (error) throw error;
+                setMessage('Account created! Please check your email to verify.');
+            } else {
+                const { error } = await supabase.auth.signInWithPassword({
+                    email,
+                    password,
+                });
+                if (error) throw error;
+                // Session listener in AuthContext will handle redirect
+            }
+        } catch (error: any) {
             setMessage(error.message);
-        } else {
-            setMessage('Check your email for the login link!');
+        } finally {
+            setLoading(false);
         }
-        setLoading(false);
     };
 
     return (
@@ -49,13 +59,24 @@ export default function AuthPage() {
                     </p>
                 </div>
 
-                {/* Login Card */}
+                {/* Auth Card */}
                 <div className="glass-card p-8">
-                    <h2 className="text-xl font-semibold text-white mb-6 text-center">
-                        Anmelden
-                    </h2>
+                    <div className="flex gap-4 mb-6 border-b border-gray-700 pb-2">
+                        <button
+                            onClick={() => setMode('login')}
+                            className={`flex-1 pb-2 text-center transition-colors ${mode === 'login' ? 'text-purple-400 border-b-2 border-purple-400' : 'text-gray-400 hover:text-white'}`}
+                        >
+                            Anmelden
+                        </button>
+                        <button
+                            onClick={() => setMode('signup')}
+                            className={`flex-1 pb-2 text-center transition-colors ${mode === 'signup' ? 'text-purple-400 border-b-2 border-purple-400' : 'text-gray-400 hover:text-white'}`}
+                        >
+                            Registrieren
+                        </button>
+                    </div>
 
-                    <form onSubmit={handleLogin} className="space-y-5">
+                    <form onSubmit={handleAuth} className="space-y-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-400 mb-2">
                                 E-Mail Adresse
@@ -73,19 +94,31 @@ export default function AuthPage() {
                             </div>
                         </div>
 
+                        <div>
+                            <label className="block text-sm font-medium text-gray-400 mb-2">
+                                Passwort
+                            </label>
+                            <input
+                                type="password"
+                                placeholder="••••••••"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                required
+                                minLength={6}
+                                className="input-field w-full pl-4"
+                            />
+                        </div>
+
                         <button
                             type="submit"
                             disabled={loading}
-                            className="btn-primary w-full flex items-center justify-center gap-3"
+                            className="btn-primary w-full flex items-center justify-center gap-3 mt-6"
                         >
                             {loading ? (
-                                <>
-                                    <Loader2 className="w-5 h-5 animate-spin" />
-                                    Sende Magic Link...
-                                </>
+                                <Loader2 className="w-5 h-5 animate-spin" />
                             ) : (
                                 <>
-                                    Magic Link senden
+                                    {mode === 'login' ? 'Einloggen' : 'Konto erstellen'}
                                     <ArrowRight className="w-5 h-5" />
                                 </>
                             )}
@@ -93,19 +126,14 @@ export default function AuthPage() {
                     </form>
 
                     {message && (
-                        <div className={`mt-6 p-4 rounded-xl text-center text-sm animate-fade-in ${message.includes('Check')
-                                ? 'bg-green-500/20 text-green-300 border border-green-500/30'
-                                : 'bg-red-500/20 text-red-300 border border-red-500/30'
+                        <div className={`mt-6 p-4 rounded-xl text-center text-sm animate-fade-in ${message.includes('Account created')
+                            ? 'bg-green-500/20 text-green-300 border border-green-500/30'
+                            : 'bg-red-500/20 text-red-300 border border-red-500/30'
                             }`}>
                             {message}
                         </div>
                     )}
                 </div>
-
-                {/* Footer */}
-                <p className="text-center text-gray-600 text-sm mt-8">
-                    Kein Account? Einfach E-Mail eingeben und loslegen!
-                </p>
             </div>
         </div>
     );

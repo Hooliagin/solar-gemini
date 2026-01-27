@@ -58,12 +58,43 @@ async def trigger_briefing_generation(
     def run_generation(uid: str):
         try:
             logger.info(f"Background generation started for user {uid}")
-            generate_briefing_content(target_user_id=uid)
+            briefing = generate_briefing_content(target_user_id=uid)
+            
+            # Send to Telegram (Manual Trigger runs in threadpool, so asyncio.run is safe)
+            if briefing and briefing.audio_path:
+                from services.telegram_service import send_briefing_audio, send_text_message
+                from models import UserSettings
+                
+                # Re-fetch settings
+                settings_stmt = select(UserSettings).where(UserSettings.user_id == uid)
+                user_settings = session.exec(settings_stmt).first()
+                
+                if user_settings and user_settings.telegram_enabled and user_settings.telegram_chat_id:
+                    import asyncio
+                    from datetime import datetime
+                    
+                    caption = f"🌅 Dein Morgen-Briefing für {datetime.now().strftime('%d.%m.%Y')}"
+                    
+                    asyncio.run(send_text_message(
+                        chat_id=user_settings.telegram_chat_id, 
+                        text=f"🚀 **Briefing manuell generiert!**"
+                    ))
+                    
+                    asyncio.run(send_briefing_audio(
+                        chat_id=user_settings.telegram_chat_id,
+                        audio_path=briefing.audio_path,
+                        caption=caption
+                    ))
+                    logger.info(f"Manual briefing sent to Telegram for {uid}")
+
             logger.info(f"Background generation finished for user {uid}")
         except Exception as e:
             logger.error(f"Background generation failed: {e}")
             import traceback
             traceback.print_exc()
+        finally:
+            if session:
+                session.close()
 
     try:
         logger.info(f"Queuing briefing generation for user {user_id}")
