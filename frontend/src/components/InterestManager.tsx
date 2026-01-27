@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Plus, X, Sparkles, TrendingUp } from 'lucide-react';
+import { Plus, X, TrendingUp } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { API_BASE_URL } from '../config';
 
@@ -8,8 +8,7 @@ interface Interest {
     topic: string;
 }
 
-// Suggestion tags for quick adding
-const SUGGESTIONS = ['KI', 'Fußball', 'Aktien', 'Krypto', 'Gaming', 'Startups', 'Klimawandel'];
+const SUGGESTIONS = ['AI', 'Football', 'Stocks', 'Crypto', 'Gaming', 'Startups', 'Climate'];
 
 export default function InterestManager() {
     const [interests, setInterests] = useState<Interest[]>([]);
@@ -37,7 +36,7 @@ export default function InterestManager() {
     const addInterest = async (topic: string) => {
         if (!topic.trim()) return;
         if (interests.length >= 10) {
-            alert("Maximal 10 Interessen erlaubt.");
+            alert("Maximum 10 interests allowed.");
             return;
         }
 
@@ -82,81 +81,54 @@ export default function InterestManager() {
         addInterest(newTopic);
     };
 
-    // Filter out already added suggestions
     const availableSuggestions = SUGGESTIONS.filter(
         s => !interests.some(i => i.topic.toLowerCase() === s.toLowerCase())
     );
 
     return (
-        <div className="glass-card rounded-2xl p-6 relative overflow-hidden">
-            {/* Background Decoration */}
-            <div className="absolute -top-10 -right-10 w-32 h-32 bg-gradient-to-br from-pink-500/20 to-purple-500/20 rounded-full blur-2xl" />
-
+        <div className="card-luxury relative">
             {/* Header */}
-            <div className="flex items-center gap-3 mb-6">
-                <div className="p-2.5 rounded-xl bg-gradient-to-br from-pink-500 to-purple-500 shadow-lg shadow-pink-500/20">
-                    <TrendingUp className="w-5 h-5 text-white" />
-                </div>
-                <div>
-                    <h2 className="text-lg font-semibold text-white">
-                        Deine Interessen <span className="text-xs text-gray-400 ml-2">({interests.length}/10)</span>
-                    </h2>
-                    <p className="text-xs text-gray-500">Personalisiere dein Briefing</p>
+            <div className="flex items-center gap-4 mb-8 opacity-60">
+                <TrendingUp strokeWidth={1} className="w-5 h-5" />
+                <div className="uppercase text-xs tracking-widest">
+                    Your Interests <span className="text-warm-grey">({interests.length}/10)</span>
                 </div>
             </div>
 
-            {/* Interest Tags - Horizontal Scroll */}
-            <div className="relative mb-6">
-                {/* Fade masks */}
-                <div className="absolute left-0 top-0 bottom-0 w-12 bg-gradient-to-r from-[var(--cyber-card)] to-transparent pointer-events-none z-10" />
-                <div className="absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-[var(--cyber-card)] to-transparent pointer-events-none z-10" />
-
-                {/* Scrollable container */}
-                <div
-                    className="flex gap-3 overflow-x-auto scrollbar-hide pb-2 px-1 min-h-[3rem] scroll-smooth"
-                    style={{
-                        scrollSnapType: 'x proximity',
-                        WebkitOverflowScrolling: 'touch'
-                    }}
-                >
-                    {interests.map(interest => (
-                        <div
-                            key={interest.id}
-                            className="group flex items-center gap-2 px-4 py-2 shrink-0 border border-[var(--cyber-accent)] bg-[var(--cyber-accent)]/10 text-[var(--cyber-accent)] font-mono text-xs uppercase tracking-wider hover:bg-[var(--cyber-accent)]/20 hover:shadow-[0_0_15px_rgba(0,255,136,0.4)] transition-all cursor-pointer"
-                            style={{
-                                clipPath: 'polygon(0 4px, 4px 0, calc(100% - 4px) 0, 100% 4px, 100% calc(100% - 4px), calc(100% - 4px) 100%, 4px 100%, 0 calc(100% - 4px))',
-                                scrollSnapAlign: 'start'
-                            }}
+            {/* Interest Tags */}
+            <div className="flex flex-wrap gap-3 mb-8">
+                {interests.map(interest => (
+                    <div
+                        key={interest.id}
+                        className="group flex items-center gap-3 px-4 py-2 border border-charcoal bg-white hover:bg-charcoal hover:text-white transition-all duration-300 cursor-default"
+                    >
+                        <span className="font-serif italic text-lg">#{interest.topic}</span>
+                        <button
+                            onClick={() => deleteInterest(interest.id)}
+                            className="opacity-40 group-hover:opacity-100 hover:text-red-400 transition-opacity"
                         >
-                            <span>#{interest.topic}</span>
-                            <button
-                                onClick={() => deleteInterest(interest.id)}
-                                className="opacity-60 group-hover:opacity-100 p-0.5 hover:bg-white/10 transition-all hover:text-[var(--cyber-danger)]"
-                            >
-                                <X className="w-3 h-3" />
-                            </button>
-                        </div>
-                    ))}
-                    {interests.length === 0 && (
-                        <div className="flex items-center gap-2 text-sm text-[var(--cyber-text-muted)] italic">
-                            <Sparkles className="w-4 h-4" />
-                            Füge Themen hinzu für personalisierte News
-                        </div>
-                    )}
-                </div>
+                            <X className="w-3 h-3" />
+                        </button>
+                    </div>
+                ))}
+                {interests.length === 0 && (
+                    <div className="text-sm text-warm-grey font-serif italic">
+                        No topics yet. Add some to personalize your briefing.
+                    </div>
+                )}
             </div>
 
             {/* Quick Suggestions */}
             {availableSuggestions.length > 0 && (
-                <div className="mb-4">
-                    <p className="text-xs text-gray-500 mb-2">Schnell hinzufügen:</p>
-                    <div className="flex flex-wrap gap-1.5">
+                <div className="mb-8 border-t border-charcoal/10 pt-4">
+                    <p className="text-xs uppercase tracking-widest text-warm-grey mb-3">Quick Add</p>
+                    <div className="flex flex-wrap gap-2">
                         {availableSuggestions.map(suggestion => (
                             <button
                                 key={suggestion}
                                 onClick={() => addInterest(suggestion)}
                                 disabled={loading}
-                                className="px-2.5 py-1 text-xs rounded-full border border-white/10 text-gray-400 hover:border-purple-500/50 hover:text-purple-300 hover:bg-purple-500/10 transition-all disabled:opacity-50"
+                                className="px-3 py-1 text-xs border border-charcoal/20 hover:border-charcoal hover:bg-charcoal/5 transition-colors disabled:opacity-50"
                             >
                                 + {suggestion}
                             </button>
@@ -171,16 +143,16 @@ export default function InterestManager() {
                     type="text"
                     value={newTopic}
                     onChange={(e) => setNewTopic(e.target.value)}
-                    placeholder="Eigenes Thema hinzufügen..."
-                    className="input-field w-full pr-12 text-sm"
+                    placeholder="Add custom topic..."
+                    className="input-luxury pr-12 text-lg font-serif"
                     disabled={loading}
                 />
                 <button
                     type="submit"
                     disabled={loading || !newTopic.trim()}
-                    className="absolute right-1.5 top-1/2 -translate-y-1/2 p-2 bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-400 hover:to-purple-400 rounded-lg transition-all disabled:opacity-30 disabled:hover:from-pink-500 disabled:hover:to-purple-500 shadow-lg shadow-pink-500/20"
+                    className="absolute right-0 top-1/2 -translate-y-1/2 text-charcoal disabled:opacity-30 hover:text-gold transition-colors"
                 >
-                    <Plus className="w-4 h-4 text-white" />
+                    <Plus strokeWidth={1} className="w-6 h-6" />
                 </button>
             </form>
         </div>

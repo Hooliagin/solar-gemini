@@ -32,13 +32,12 @@ const Recorder: React.FC<RecorderProps> = ({ onUploadComplete }) => {
             setIsRecording(true);
             setRecordingTime(0);
 
-            // Start timer
             timerRef.current = setInterval(() => {
                 setRecordingTime(t => t + 1);
             }, 1000);
         } catch (err) {
             console.error("Error accessing microphone:", err);
-            alert("Mikrofon-Zugriff verweigert oder nicht verfügbar.");
+            alert("Microphone access denied.");
         }
     };
 
@@ -48,7 +47,6 @@ const Recorder: React.FC<RecorderProps> = ({ onUploadComplete }) => {
             setIsRecording(false);
             mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
 
-            // Stop timer
             if (timerRef.current) {
                 clearInterval(timerRef.current);
                 timerRef.current = null;
@@ -77,11 +75,11 @@ const Recorder: React.FC<RecorderProps> = ({ onUploadComplete }) => {
             } else {
                 const errorData = await response.json();
                 console.error("Upload failed:", errorData);
-                alert(`Fehler beim Hochladen: ${errorData.detail || 'Unbekannter Fehler'}`);
+                alert(`Upload failed: ${errorData.detail}`);
             }
         } catch (error) {
             console.error("Upload error:", error);
-            alert(`Netzwerk- oder Serverfehler: ${(error as Error).message}`);
+            alert(`Error: ${(error as Error).message}`);
         } finally {
             setIsUploading(false);
             setRecordingTime(0);
@@ -95,92 +93,73 @@ const Recorder: React.FC<RecorderProps> = ({ onUploadComplete }) => {
     };
 
     return (
-        <div className="flex flex-col items-center justify-center space-y-6 py-4">
-            {/* Recording Visualization */}
-            <div className="relative">
-                {/* Outer ring */}
-                <div className={`w-32 h-32 rounded-full flex items-center justify-center transition-all duration-500 ${isRecording
-                    ? 'bg-gradient-to-br from-red-500/20 to-orange-500/20 border-2 border-red-500/50'
-                    : 'bg-gradient-to-br from-blue-500/20 to-cyan-500/20 border-2 border-blue-500/30'
-                    }`}>
-                    {/* Inner circle */}
-                    <div className={`w-24 h-24 rounded-full flex items-center justify-center transition-all duration-300 ${isRecording
-                        ? 'bg-gradient-to-br from-red-500 to-orange-500 animate-pulse shadow-lg shadow-red-500/50'
-                        : 'bg-gradient-to-br from-blue-500 to-cyan-500 shadow-lg shadow-blue-500/30'
-                        }`}>
-                        {isRecording ? (
-                            <Square className="w-8 h-8 text-white" />
-                        ) : isUploading ? (
-                            <Upload className="w-8 h-8 text-white animate-bounce" />
-                        ) : (
-                            <Mic className="w-8 h-8 text-white" />
-                        )}
-                    </div>
-                </div>
+        <div className="flex flex-col items-center justify-center h-full py-8">
 
-                {/* Recording pulse rings */}
+            <div className="relative mb-12">
                 {isRecording && (
-                    <>
-                        <div className="absolute inset-0 rounded-full border-2 border-red-500/50 animate-ping" />
-                        <div className="absolute inset-0 rounded-full border border-red-500/30 animate-pulse" style={{ animationDelay: '0.5s' }} />
-                    </>
+                    <div className="absolute inset-0 rounded-full border border-red-500/20 animate-ping" />
                 )}
+
+                <button
+                    onClick={isRecording ? stopRecording : startRecording}
+                    disabled={isUploading}
+                    className={`w-24 h-24 rounded-full flex items-center justify-center transition-all duration-500 outline-none ${isRecording
+                        ? 'bg-red-600 shadow-xl scale-110'
+                        : 'bg-charcoal hover:bg-black group'
+                        } disabled:opacity-50 disabled:cursor-not-allowed`}
+                >
+                    {isUploading ? (
+                        <Upload className="w-8 h-8 text-white animate-bounce" />
+                    ) : isRecording ? (
+                        <Square className="w-8 h-8 text-white fill-current" />
+                    ) : (
+                        <Mic strokeWidth={1} className="w-8 h-8 text-white group-hover:scale-110 transition-transform duration-500" />
+                    )}
+                </button>
             </div>
 
-            {/* Timer / Status */}
-            <div className="text-center">
+            <div className="text-center space-y-2 h-16">
                 {isRecording ? (
-                    <div className="space-y-1">
-                        <p className="text-3xl font-mono font-bold text-red-400">
+                    <>
+                        <p className="text-4xl font-serif text-charcoal tabular-nums">
                             {formatTime(recordingTime)}
                         </p>
-                        <p className="text-sm text-gray-400 animate-pulse">
-                            Aufnahme läuft...
-                        </p>
-                    </div>
+                        <div className="flex items-center justify-center gap-2 text-red-500 text-xs uppercase tracking-widest animate-pulse">
+                            <div className="w-2 h-2 rounded-full bg-red-500" />
+                            Recording
+                        </div>
+                    </>
                 ) : isUploading ? (
-                    <div className="flex items-center gap-2 text-blue-400">
-                        <Upload className="w-4 h-4 animate-spin" />
-                        <span>Wird hochgeladen...</span>
-                    </div>
-                ) : (
-                    <p className="text-sm text-gray-500">
-                        Klicke zum Aufnehmen
+                    <p className="text-xs uppercase tracking-widest text-charcoal animate-pulse">
+                        Uploading & Processing...
                     </p>
+                ) : (
+                    <>
+                        <p className="text-warm-grey font-serif italic text-lg">
+                            Tap to record.
+                        </p>
+                        <p className="text-[10px] uppercase tracking-widest text-charcoal/40">
+                            Auto-transcribed
+                        </p>
+                    </>
                 )}
             </div>
 
-            {/* Record Button */}
-            <button
-                onClick={isRecording ? stopRecording : startRecording}
-                disabled={isUploading}
-                className={`px-8 py-3 rounded-full font-semibold transition-all active:scale-95 flex items-center gap-2 ${isRecording
-                    ? 'bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-400 hover:to-orange-400 shadow-lg shadow-red-500/30'
-                    : 'bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-400 hover:to-cyan-400 shadow-lg shadow-blue-500/30'
-                    } disabled:opacity-50 disabled:cursor-not-allowed text-white`}
-            >
-                {isUploading ? (
-                    <>
-                        <Upload className="w-5 h-5" />
-                        Hochladen...
-                    </>
-                ) : isRecording ? (
-                    <>
-                        <Square className="w-5 h-5" />
-                        Stoppen
-                    </>
-                ) : (
-                    <>
-                        <Mic className="w-5 h-5" />
-                        Aufnahme starten
-                    </>
-                )}
-            </button>
-
-            {/* Hint */}
-            <p className="text-xs text-gray-600 text-center max-w-xs">
-                Sprich über deinen Tag, Gedanken oder Pläne. Die Aufnahme wird automatisch transkribiert.
-            </p>
+            {/* Visualizer Placeholder */}
+            {isRecording && (
+                <div className="mt-8 flex gap-1 items-center h-8">
+                    {[...Array(12)].map((_, i) => (
+                        <div
+                            key={i}
+                            className="w-1 bg-charcoal/20 rounded-full animate-wave"
+                            style={{
+                                height: `${Math.random() * 100}%`,
+                                animationDelay: `${i * 0.1}s`
+                            }}
+                        />
+                    ))}
+                </div>
+            )}
         </div>
     );
 };

@@ -1,8 +1,7 @@
-
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Sparkles, LogOut } from 'lucide-react';
+import { ArrowLeft, LogOut } from 'lucide-react';
 import SettingsPanel from '../components/SettingsPanel';
 import InterestManager from '../components/InterestManager';
 import { useAuth } from '../context/AuthContext';
@@ -27,7 +26,7 @@ export default function Settings() {
 
     const handleBack = () => {
         if (isDirty) {
-            if (window.confirm("Du hast ungespeicherte Änderungen. Möchtest du wirklich verlassen?")) {
+            if (window.confirm("You have unsaved changes. Are you sure you want to leave?")) {
                 navigate('/');
             }
         } else {
@@ -37,7 +36,7 @@ export default function Settings() {
 
     const handleSignOut = () => {
         if (isDirty) {
-            if (window.confirm("Du hast ungespeicherte Änderungen. Möchtest du wirklich verlassen?")) {
+            if (window.confirm("You have unsaved changes. Are you sure you want to leave?")) {
                 signOut();
             }
         } else {
@@ -46,35 +45,31 @@ export default function Settings() {
     };
 
     return (
-        <div className="min-h-screen text-white pb-20">
-            {/* Background */}
-            <div className="fixed inset-0 pointer-events-none overflow-hidden -z-10">
-                <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-blue-900/10 rounded-full blur-[100px]" />
-                <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-purple-900/10 rounded-full blur-[100px]" />
-            </div>
+        <div className="min-h-screen text-charcoal pb-32 animate-fade-in">
+            {/* Background Texture (Global is already applied, but we ensure no conflicts) */}
 
-            <div className="max-w-4xl mx-auto px-4 py-8">
+            <div className="max-w-[1000px] mx-auto px-8 md:px-16 py-12">
                 {/* Header */}
-                <header className="flex items-center justify-between mb-8">
+                <header className="flex items-end justify-between mb-24 border-b border-charcoal/10 pb-8">
                     <button
                         onClick={handleBack}
-                        className="p-2 hover:bg-white/10 rounded-full transition-colors flex items-center gap-2 text-gray-400 hover:text-white"
+                        className="group flex items-center gap-3 text-warm-grey hover:text-charcoal transition-colors duration-500"
                     >
-                        <ArrowLeft className="w-5 h-5" />
-                        <span className="text-sm font-medium">Zurück</span>
+                        <ArrowLeft strokeWidth={1} className="w-5 h-5 transform group-hover:-translate-x-1 transition-transform" />
+                        <span className="text-xs uppercase tracking-[0.2em]">Back</span>
                     </button>
 
-                    <h1 className="text-xl font-bold tracking-wider flex items-center gap-2">
-                        <Sparkles className="w-5 h-5 text-[var(--cyber-accent)]" />
-                        EINSTELLUNGEN
+                    <h1 className="text-4xl md:text-5xl font-serif tracking-tight text-center absolute left-1/2 -translate-x-1/2">
+                        Settings
                     </h1>
 
                     <button
                         onClick={handleSignOut}
-                        className="p-2 hover:bg-red-500/10 text-gray-400 hover:text-red-400 rounded-full transition-colors"
-                        title="Abmelden"
+                        className="group flex items-center gap-2 text-warm-grey hover:text-charcoal transition-colors duration-500"
+                        title="Sign Out"
                     >
-                        <LogOut className="w-5 h-5" />
+                        <span className="hidden md:block text-xs uppercase tracking-[0.2em] opacity-0 group-hover:opacity-100 transition-opacity">Sign Out</span>
+                        <LogOut strokeWidth={1} className="w-5 h-5" />
                     </button>
                 </header>
 
@@ -82,15 +77,21 @@ export default function Settings() {
                     variants={containerVariants}
                     initial="hidden"
                     animate="visible"
-                    className="space-y-8"
+                    className="space-y-24"
                 >
                     <motion.section variants={itemVariants}>
-                        <h2 className="text-lg font-semibold text-gray-300 mb-4 ml-1">Interessen & Themen</h2>
+                        <div className="flex items-center gap-4 mb-12">
+                            <span className="text-xs font-mono text-charcoal/40">01</span>
+                            <h2 className="text-sm font-sans uppercase tracking-[0.2em] flex-1 border-b border-charcoal/10 pb-1">Interests & Topics</h2>
+                        </div>
                         <InterestManager />
                     </motion.section>
 
                     <motion.section variants={itemVariants}>
-                        <h2 className="text-lg font-semibold text-gray-300 mb-4 ml-1">System & Verbindungen</h2>
+                        <div className="flex items-center gap-4 mb-12">
+                            <span className="text-xs font-mono text-charcoal/40">02</span>
+                            <h2 className="text-sm font-sans uppercase tracking-[0.2em] flex-1 border-b border-charcoal/10 pb-1">System & Connections</h2>
+                        </div>
                         <SettingsPanel onDirtyChange={setIsDirty} />
                     </motion.section>
                 </motion.div>

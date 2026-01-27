@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
-import { ArrowRight, Clock, User, Sparkles } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 
 export default function Onboarding() {
     const { user } = useAuth();
@@ -40,24 +40,24 @@ export default function Onboarding() {
     };
 
     return (
-        <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-black text-white">
+        <div className="min-h-screen flex flex-col items-center justify-center p-8 bg-alabaster">
             <div className="w-full max-w-lg">
-                <div className="mb-8 text-center">
-                    <h1 className="text-3xl font-bold mb-2">Welcome! 👋</h1>
-                    <p className="text-gray-400">Let's personalize your Daily Manager.</p>
+                <div className="mb-16 text-center">
+                    <h1 className="text-4xl font-serif text-charcoal mb-4">Welcome.</h1>
+                    <p className="text-warm-grey font-serif italic">Let's setup your daily intelligence.</p>
                 </div>
 
-                <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-xl">
-                    <form onSubmit={handleUpdateProfile} className="space-y-6">
+                <div className="card-luxury p-12">
+                    <form onSubmit={handleUpdateProfile} className="space-y-12">
                         {/* Name */}
                         <div>
-                            <label className="block text-sm font-medium text-gray-400 mb-2 flex items-center gap-2">
-                                <User className="w-4 h-4" /> What should we call you?
+                            <label className="block text-xs uppercase tracking-widest text-warm-grey mb-4">
+                                What should we call you?
                             </label>
                             <input
                                 type="text"
-                                className="w-full bg-black border border-gray-700 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                                placeholder="e.g. Josh"
+                                className="input-luxury text-2xl"
+                                placeholder="E.g. Joshua"
                                 value={formData.full_name}
                                 onChange={e => setFormData({ ...formData, full_name: e.target.value })}
                                 required
@@ -66,12 +66,12 @@ export default function Onboarding() {
 
                         {/* Interests */}
                         <div>
-                            <label className="block text-sm font-medium text-gray-400 mb-2 flex items-center gap-2">
-                                <Sparkles className="w-4 h-4" /> Interests (for news briefing)
+                            <label className="block text-xs uppercase tracking-widest text-warm-grey mb-4">
+                                Core Interests
                             </label>
                             <textarea
-                                className="w-full bg-black border border-gray-700 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none transition-all min-h-[100px]"
-                                placeholder="e.g. AI, Crypto, Local Weather in Berlin..."
+                                className="w-full bg-transparent border-b border-charcoal/20 py-2 font-serif text-lg outline-none focus:border-charcoal transition-colors min-h-[80px]"
+                                placeholder="E.g. AI, Global Economics, Design..."
                                 value={formData.interests}
                                 onChange={e => setFormData({ ...formData, interests: e.target.value })}
                             />
@@ -79,12 +79,12 @@ export default function Onboarding() {
 
                         {/* Time */}
                         <div>
-                            <label className="block text-sm font-medium text-gray-400 mb-2 flex items-center gap-2">
-                                <Clock className="w-4 h-4" /> When do you want your briefing?
+                            <label className="block text-xs uppercase tracking-widest text-warm-grey mb-4">
+                                Briefing Schedule
                             </label>
                             <input
                                 type="time"
-                                className="w-full bg-black border border-gray-700 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                                className="input-luxury text-2xl"
                                 value={formData.briefing_time}
                                 onChange={e => setFormData({ ...formData, briefing_time: e.target.value })}
                             />
@@ -93,9 +93,11 @@ export default function Onboarding() {
                         <button
                             type="submit"
                             disabled={loading}
-                            className="w-full py-4 bg-blue-600 hover:bg-blue-700 rounded-xl font-bold text-lg transition-all flex items-center justify-center gap-2 mt-4"
+                            className="btn-luxury-primary group w-full flex items-center justify-center gap-4 mt-8"
                         >
-                            {loading ? 'Saving...' : 'Get Started'} <ArrowRight className="w-5 h-5" />
+                            <div className="btn-luxury-primary-inner" />
+                            <span className="relative z-10">{loading ? 'Saving...' : 'Initialization Complete'}</span>
+                            <ArrowRight className="w-4 h-4 relative z-10" />
                         </button>
                     </form>
                 </div>

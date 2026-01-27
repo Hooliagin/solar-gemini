@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { API_BASE_URL } from '../config';
 import { supabase } from '../lib/supabase';
-import { Play, RefreshCw, Clock, Sparkles, Volume2 } from 'lucide-react';
+import { Play, RefreshCw, Clock, Pause, ArrowRight } from 'lucide-react';
 
 interface Briefing {
     id: number;
@@ -52,21 +52,17 @@ const Player: React.FC = () => {
             });
             if (res.ok) {
                 const data = await res.json();
-                // Optional: Check if it's actually new (by date) if we had previous data
-                // For now just checking if we got ANY data
                 setBriefing(data);
                 return true;
             } else {
-                console.warn("Fetch failed:", res.status, res.statusText);
-                // If 404, it just means no briefing yet.
                 if (res.status !== 404) {
-                    setError(`Fehler: ${res.status} ${res.statusText}`);
+                    setError(`Error: ${res.status} ${res.statusText}`);
                 }
                 return false;
             }
         } catch (err) {
             console.error(err);
-            setError(`Netzwerkfehler: ${(err as Error).message}`);
+            setError(`Network Error: ${(err as Error).message}`);
             return false;
         } finally {
             setLoading(false);
@@ -84,136 +80,121 @@ const Player: React.FC = () => {
 
             if (!res.ok) {
                 const data = await res.json();
-                throw new Error(data.detail || 'Fehler beim Generieren');
+                throw new Error(data.detail || 'Generation failed');
             }
-
-            alert("Briefing wird generiert! Dies dauert ca. 30 Sekunden...");
 
             // Start Polling
             let attempts = 0;
-            const maxAttempts = 20; // 20 * 3s = 60s max
+            const maxAttempts = 30; // 90s max
 
             const pollInterval = setInterval(async () => {
                 attempts++;
-                const success = await fetchLatestBriefing(); // Reuse existing fetch logic
+                const success = await fetchLatestBriefing();
 
-                // If we found a briefing OR max attempts reached
                 if (success) {
                     clearInterval(pollInterval);
                     setGenerating(false);
-                    // Force refresh of audio component if needed via key change or similar, 
-                    // though state update should handle it.
                 } else if (attempts >= maxAttempts) {
                     clearInterval(pollInterval);
                     setGenerating(false);
-                    setError("Zeitüberschreitung: Briefing wird noch verarbeitet. Bitte lade die Seite gleich neu.");
+                    setError("Timeout: Briefing is taking longer than expected.");
                 }
             }, 3000);
 
         } catch (error) {
             console.error("Failed to generate", error);
-            alert(`Fehler: ${(error as Error).message}`);
+            alert(`Error: ${(error as Error).message}`);
             setGenerating(false);
         }
     };
 
     if (loading) return (
-        <div className="flex flex-col items-center justify-center p-12">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-500 to-blue-600 flex items-center justify-center animate-pulse-slow mb-4">
-                <Volume2 className="w-8 h-8 text-white" />
-            </div>
-            <p className="text-gray-400 animate-pulse">Lade Briefing...</p>
+        <div className="flex flex-col items-center justify-center py-12">
+            <div className="w-8 h-8 border border-charcoal border-t-transparent rounded-full animate-spin mb-4" />
+            <p className="text-xs uppercase tracking-widest text-charcoal">Syncing...</p>
         </div>
     );
 
     if (!briefing) return (
-        <div className="flex flex-col items-center justify-center p-8 text-center">
-            {/* Decorative Icon */}
-            <div className="relative mb-6">
-                <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-purple-500/20 to-blue-500/20 flex items-center justify-center border border-white/10">
-                    <Clock className="w-10 h-10 text-purple-400" />
+        <div className="flex flex-col h-full justify-between">
+            <div className="flex-1 flex flex-col justify-center">
+                <div className="mb-6 opacity-40">
+                    <Clock strokeWidth={1} className="w-8 h-8 text-charcoal" />
                 </div>
-                <div className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-lg">
-                    <Sparkles className="w-4 h-4 text-white" />
-                </div>
+                <h3 className="text-2xl font-serif mb-2 text-charcoal">
+                    No briefing available.
+                </h3>
+                <p className="text-warm-grey font-serif italic mb-6 text-sm">
+                    Scheduled for {briefingTime}.
+                </p>
+
+                {error && (
+                    <div className="mb-4 text-xs text-red-500 border-l-2 border-red-500 pl-3">
+                        {error}
+                    </div>
+                )}
             </div>
-
-            <h3 className="text-xl font-bold text-white mb-2">
-                Kein Briefing vorhanden
-            </h3>
-            <p className="text-gray-400 mb-6 max-w-xs">
-                Dein nächstes Briefing wird um <strong className="text-purple-400">{briefingTime} Uhr</strong> generiert.
-            </p>
-
-            {error && (
-                <div className="mb-4 p-3 rounded-lg bg-red-500/20 border border-red-500/30 text-red-200 text-sm">
-                    {error}
-                </div>
-            )}
 
             <button
                 onClick={generateBriefing}
                 disabled={generating}
-                className="btn-primary flex items-center gap-2"
+                className="w-full flex justify-between items-center py-4 border-t border-charcoal group hover:bg-charcoal hover:text-alabaster transition-colors duration-500"
             >
-                {generating ? (
-                    <>
-                        <RefreshCw className="w-5 h-5 animate-spin" />
-                        Generiere...
-                    </>
-                ) : (
-                    <>
-                        <Sparkles className="w-5 h-5" />
-                        Jetzt generieren
-                    </>
-                )}
+                <span className="text-xs uppercase tracking-widest">
+                    {generating ? 'Composing...' : 'Generate Now'}
+                </span>
+                <span className="transform group-hover:translate-x-2 transition-transform duration-500">
+                    {generating ? <RefreshCw className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}
+                </span>
             </button>
         </div>
     );
 
     return (
-        <div className="flex flex-col items-center space-y-6 w-full">
+        <div className="h-full flex flex-col">
             {/* Header */}
-            <div className="text-center">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-green-500/20 border border-green-500/30 text-green-400 text-xs mb-3">
-                    <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-                    Briefing bereit
+            <div className="flex justify-between items-end mb-8 border-b border-charcoal/10 pb-4">
+                <div>
+                    <span className="text-[10px] uppercase tracking-widest text-warm-grey block mb-1">Status</span>
+                    <span className="flex items-center gap-2 text-xs font-medium">
+                        <div className="w-1.5 h-1.5 rounded-full bg-green-600 animate-pulse" />
+                        Ready
+                    </span>
                 </div>
-                <h3 className="text-xl font-bold text-white">
-                    {new Date(briefing.created_at).toLocaleDateString('de-DE', {
-                        weekday: 'long',
-                        day: 'numeric',
-                        month: 'long'
-                    })}
-                </h3>
+                <div className="text-right">
+                    <span className="text-[10px] uppercase tracking-widest text-warm-grey block mb-1">Date</span>
+                    <span className="font-serif">
+                        {new Date(briefing.created_at).toLocaleDateString('en-US', {
+                            weekday: 'short',
+                            day: 'numeric',
+                            month: 'short'
+                        })}
+                    </span>
+                </div>
             </div>
 
             {/* Audio Player */}
-            <div className="w-full p-4 rounded-2xl bg-gradient-to-br from-purple-500/10 to-blue-500/10 border border-white/10">
+            <div className="mb-8">
                 <AudioPlayerWithAuth
                     url={`${API_BASE_URL}/briefings/${briefing.id}/audio`}
                 />
             </div>
 
             {/* Script Preview */}
-            <details className="w-full group">
-                <summary className="flex items-center gap-2 text-sm text-gray-400 cursor-pointer hover:text-white transition-colors">
-                    <Play className="w-4 h-4" />
-                    Transkript anzeigen
-                </summary>
-                <div className="mt-3 p-4 rounded-xl bg-black/30 border border-white/5 text-sm text-gray-300 max-h-40 overflow-y-auto">
-                    {briefing.script_content}
-                </div>
-            </details>
+            <div className="flex-1 overflow-y-auto mb-6 pr-2 custom-scrollbar">
+                <p className="font-serif text-lg leading-relaxed text-charcoal/90">
+                    {briefing.script_content || "Audio only."}
+                </p>
+            </div>
 
             {/* Regenerate Button */}
             <button
                 onClick={generateBriefing}
                 disabled={generating}
-                className="text-xs text-gray-500 hover:text-purple-400 transition-colors flex items-center gap-1"
+                className="text-xs uppercase tracking-widest text-warm-grey hover:text-charcoal transition-colors flex items-center gap-2 mt-auto pt-4 border-t border-charcoal/10"
             >
                 <RefreshCw className={`w-3 h-3 ${generating ? 'animate-spin' : ''}`} />
-                Neu generieren
+                Regenerate Briefing
             </button>
         </div>
     );
@@ -225,16 +206,17 @@ const AudioPlayerWithAuth = ({ url }: { url: string }) => {
     const [audioSrc, setAudioSrc] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    // Custom controls state
+    const [isPlaying, setIsPlaying] = useState(false);
+    const [duration, setDuration] = useState(0);
+    const [currentTime, setCurrentTime] = useState(0);
+    const audioRef = React.useRef<HTMLAudioElement | null>(null);
 
     useEffect(() => {
         const fetchAudio = async () => {
             try {
                 const token = (await supabase.auth.getSession()).data.session?.access_token;
-                if (!token) {
-                    setError("Nicht authentifiziert");
-                    setLoading(false);
-                    return;
-                }
+                if (!token) return;
 
                 const res = await fetch(url, {
                     headers: { Authorization: `Bearer ${token}` }
@@ -247,28 +229,84 @@ const AudioPlayerWithAuth = ({ url }: { url: string }) => {
                 setAudioSrc(objectUrl);
             } catch (err) {
                 console.error("Audio load failed", err);
-                setError("Audio konnte nicht geladen werden.");
+                setError("Failed to load audio");
             } finally {
                 setLoading(false);
             }
         };
 
         fetchAudio();
-
-        return () => {
-            if (audioSrc) URL.revokeObjectURL(audioSrc);
-        };
+        return () => { if (audioSrc) URL.revokeObjectURL(audioSrc); };
     }, [url]);
 
-    if (loading) return <div className="text-xs text-gray-500 animate-pulse">Lade Audio...</div>;
-    if (error) return <div className="text-xs text-red-400">{error}</div>;
+    const togglePlay = () => {
+        if (!audioRef.current) return;
+        if (isPlaying) {
+            audioRef.current.pause();
+        } else {
+            audioRef.current.play();
+        }
+        setIsPlaying(!isPlaying);
+    };
+
+    const handleTimeUpdate = () => {
+        if (audioRef.current) {
+            setCurrentTime(audioRef.current.currentTime);
+        }
+    };
+
+    const handleLoadedMetadata = () => {
+        if (audioRef.current) {
+            setDuration(audioRef.current.duration);
+        }
+    };
+
+    const handleEnded = () => {
+        setIsPlaying(false);
+        setCurrentTime(0);
+    };
+
+    const formatTime = (time: number) => {
+        const mins = Math.floor(time / 60);
+        const secs = Math.floor(time % 60);
+        return `${mins}:${secs.toString().padStart(2, '0')}`;
+    };
+
+    if (loading) return <div className="text-[10px] uppercase tracking-widest animate-pulse">Loading Audio...</div>;
+    if (error) return <div className="text-[10px] text-red-500 uppercase tracking-widest">{error}</div>;
 
     return (
-        <audio
-            controls
-            className="w-full"
-            src={audioSrc || undefined}
-            style={{ filter: 'invert(1)' }}
-        />
+        <div className="py-4">
+            <audio
+                ref={audioRef}
+                src={audioSrc || undefined}
+                onTimeUpdate={handleTimeUpdate}
+                onLoadedMetadata={handleLoadedMetadata}
+                onEnded={handleEnded}
+            />
+
+            <div className="flex items-center gap-6">
+                <button
+                    onClick={togglePlay}
+                    className="w-12 h-12 bg-charcoal text-alabaster flex items-center justify-center hover:scale-105 transition-transform duration-300"
+                >
+                    {isPlaying ? <Pause className="w-5 h-5 fill-current" /> : <Play className="w-5 h-5 fill-current ml-1" />}
+                </button>
+
+                <div className="flex-1">
+                    <div className="h-px bg-charcoal/20 w-full mb-2 relative group cursor-pointer">
+                        <div
+                            className="absolute top-0 left-0 h-full bg-charcoal transition-all duration-100"
+                            style={{ width: `${(currentTime / duration) * 100}%` }}
+                        />
+                        {/* Simple scrubber input could go here */}
+                    </div>
+                    <div className="flex justify-between text-[10px] font-mono text-warm-grey">
+                        <span>{formatTime(currentTime)}</span>
+                        <span>{formatTime(duration)}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
     );
 };

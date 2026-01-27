@@ -5,18 +5,16 @@ import AuthPage from './pages/Auth';
 import Onboarding from './pages/Onboarding';
 import Dashboard from './pages/Dashboard';
 import Settings from './pages/Settings';
-import { Sparkles } from 'lucide-react';
+// Imports removed
 
 // Protected Route Component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { session, loading } = useAuth();
   if (loading) return (
-    <div className="min-h-screen flex items-center justify-center">
-      <div className="flex flex-col items-center gap-4">
-        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-blue-600 animate-pulse-slow flex items-center justify-center">
-          <Sparkles className="w-6 h-6 text-white" />
-        </div>
-        <p className="text-gray-400 animate-pulse">Loading...</p>
+    <div className="min-h-screen flex items-center justify-center bg-alabaster">
+      <div className="flex flex-col items-center gap-6">
+        <div className="w-12 h-12 border-2 border-charcoal border-t-transparent animate-spin rounded-full" />
+        <p className="text-charcoal font-serif tracking-[0.2em] text-xs uppercase animate-pulse">Loading</p>
       </div>
     </div>
   );
