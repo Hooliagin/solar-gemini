@@ -26,7 +26,11 @@ async def get_latest_briefing(
     return briefing
 
 @router.get("/{briefing_id}/audio")
-async def get_briefing_audio(briefing_id: int, session: Session = Depends(get_session)):
+async def get_briefing_audio(
+    briefing_id: int, 
+    session: Session = Depends(get_session),
+    user_id: str = Depends(get_current_user_id)
+):
     """
     Streams the audio file for a briefing.
     """
@@ -34,8 +38,9 @@ async def get_briefing_audio(briefing_id: int, session: Session = Depends(get_se
     if not briefing:
         raise HTTPException(status_code=404, detail="Briefing not found")
         
-    if not os.path.exists(briefing.audio_path):
-        raise HTTPException(status_code=404, detail="Audio file missing")
+    # Security Check: Ensure ownership
+    if briefing.user_id != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized to access this briefing")
         
     if not os.path.exists(briefing.audio_path):
         raise HTTPException(status_code=404, detail="Audio file missing")
