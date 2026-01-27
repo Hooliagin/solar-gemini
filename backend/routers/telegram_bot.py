@@ -63,26 +63,15 @@ async def start_command(update: Update, context):
              session.close()
              return
 
-        # New User Signup (Telegram Only)
-        new_user_id = str(uuid.uuid4())
-        new_user = UserSettings(
-            user_id=new_user_id,
-            telegram_chat_id=chat_id,
-            telegram_enabled=True,
-            updated_at=datetime.utcnow()
-        )
-        session.add(new_user)
-        session.commit()
-        session.close()
-        
+        # STRICT MODE: No new users via Telegram
         await update.message.reply_text(
-            "🎉 **Willkommen!**\n\n"
-            "Ich habe dir einen neuen Account erstellt. Du kannst diesen Bot jetzt sofort nutzen, ohne Web-Login.\n\n"
-            "**Befehle:**\n"
-            "🎤 Sende eine Sprachnachricht -> Tagebuch-Eintrag\n"
-            "🌅 /generate -> Morgen-Briefing erstellen\n"
-            "⚙️ (Bald) Einstellungen hier ändern"
+            "👋 **Willkommen!**\n\n"
+            "Bitte registriere dich zuerst in unserer Web-App:\n"
+            "👉 https://daily-manager-frontend.onrender.com\n\n"
+            "Dort findest du in den **Einstellungen** einen QR-Code oder Link,\n"
+            "um diesen Bot mit deinem Account zu verbinden."
         )
+        session.close()
         return
 
     link_code = args[0]
@@ -254,7 +243,10 @@ async def handle_voice_message(update: Update, context):
         
         if not user:
              logger.error(f"Telegram user {chat_id} not found/linked during voice upload.")
-             await update.message.reply_text("❌ Fehler: Dein Account ist nicht verknüpft.")
+             await update.message.reply_text(
+                 "❌ Fehler: Dein Account ist nicht verknüpft.\n"
+                 "Bitte verbinde dich zuerst über die Web-App."
+             )
              session.close()
              return
 
