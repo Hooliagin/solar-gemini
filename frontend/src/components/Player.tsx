@@ -15,6 +15,7 @@ const Player: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [generating, setGenerating] = useState(false);
     const [briefingTime, setBriefingTime] = useState('07:00');
+    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         fetchLatestBriefing();
@@ -56,13 +57,16 @@ const Player: React.FC = () => {
                 setBriefing(data);
                 return true;
             } else {
-                // Keep old briefing if 404? Or clear? 
-                // If 404, it means NO briefing exists.
-                // setBriefing(null); // Don't clear immediately while polling or we flicker
+                console.warn("Fetch failed:", res.status, res.statusText);
+                // If 404, it just means no briefing yet.
+                if (res.status !== 404) {
+                    setError(`Fehler: ${res.status} ${res.statusText}`);
+                }
                 return false;
             }
         } catch (err) {
             console.error(err);
+            setError(`Netzwerkfehler: ${(err as Error).message}`);
             return false;
         } finally {
             setLoading(false);
@@ -137,6 +141,12 @@ const Player: React.FC = () => {
             <p className="text-gray-400 mb-6 max-w-xs">
                 Dein nächstes Briefing wird um <strong className="text-purple-400">{briefingTime} Uhr</strong> generiert.
             </p>
+
+            {error && (
+                <div className="mb-4 p-3 rounded-lg bg-red-500/20 border border-red-500/30 text-red-200 text-sm">
+                    {error}
+                </div>
+            )}
 
             <button
                 onClick={generateBriefing}

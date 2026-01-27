@@ -17,12 +17,15 @@ async def get_latest_briefing(
     """
     Returns the most recent briefing metadata for the current user.
     """
+    logger.info(f"Fetching latest briefing for user {user_id}")
     statement = select(Briefing).where(Briefing.user_id == user_id).order_by(Briefing.created_at.desc()).limit(1)
     briefing = session.exec(statement).first()
     
     if not briefing:
+        logger.warning(f"No briefing found for user {user_id}")
         raise HTTPException(status_code=404, detail="No briefing found")
     
+    logger.info(f"Found briefing {briefing.id} for user {user_id}")
     return briefing
 
 @router.get("/{briefing_id}/audio")
