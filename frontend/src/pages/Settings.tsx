@@ -1,4 +1,5 @@
 
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Sparkles, LogOut } from 'lucide-react';
@@ -22,6 +23,27 @@ const itemVariants = {
 export default function Settings() {
     const navigate = useNavigate();
     const { signOut } = useAuth();
+    const [isDirty, setIsDirty] = useState(false);
+
+    const handleBack = () => {
+        if (isDirty) {
+            if (window.confirm("Du hast ungespeicherte Änderungen. Möchtest du wirklich verlassen?")) {
+                navigate('/');
+            }
+        } else {
+            navigate('/');
+        }
+    };
+
+    const handleSignOut = () => {
+        if (isDirty) {
+            if (window.confirm("Du hast ungespeicherte Änderungen. Möchtest du wirklich verlassen?")) {
+                signOut();
+            }
+        } else {
+            signOut();
+        }
+    };
 
     return (
         <div className="min-h-screen text-white pb-20">
@@ -35,7 +57,7 @@ export default function Settings() {
                 {/* Header */}
                 <header className="flex items-center justify-between mb-8">
                     <button
-                        onClick={() => navigate('/')}
+                        onClick={handleBack}
                         className="p-2 hover:bg-white/10 rounded-full transition-colors flex items-center gap-2 text-gray-400 hover:text-white"
                     >
                         <ArrowLeft className="w-5 h-5" />
@@ -48,7 +70,7 @@ export default function Settings() {
                     </h1>
 
                     <button
-                        onClick={signOut}
+                        onClick={handleSignOut}
                         className="p-2 hover:bg-red-500/10 text-gray-400 hover:text-red-400 rounded-full transition-colors"
                         title="Abmelden"
                     >
@@ -69,7 +91,7 @@ export default function Settings() {
 
                     <motion.section variants={itemVariants}>
                         <h2 className="text-lg font-semibold text-gray-300 mb-4 ml-1">System & Verbindungen</h2>
-                        <SettingsPanel />
+                        <SettingsPanel onDirtyChange={setIsDirty} />
                     </motion.section>
                 </motion.div>
             </div>

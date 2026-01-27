@@ -26,7 +26,11 @@ const NEWS_CATS = [
     { key: 'news_sports', name: 'Sport', icon: '⚽', color: 'bg-orange-500' },
 ];
 
-export default function SettingsPanel() {
+interface SettingsPanelProps {
+    onDirtyChange?: (isDirty: boolean) => void;
+}
+
+export default function SettingsPanel({ onDirtyChange }: SettingsPanelProps) {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [saved, setSaved] = useState(false);
@@ -47,6 +51,41 @@ export default function SettingsPanel() {
     });
     const [reflectionTime, setReflectionTime] = useState('19:00');
     const [reflectionReminderEnabled, setReflectionReminderEnabled] = useState(true);
+
+    // Dirty Checking State
+    const [initialSettings, setInitialSettings] = useState<any>(null);
+
+    // Calculate current state object for comparison
+    const currentSettings = {
+        name: userName,
+        weather_enabled: weatherEnabled,
+        weather_city: city,
+        voice_id: voiceId,
+        briefing_time: briefingTime,
+        telegram_enabled: telegramConnected,
+        ...newsCategories,
+        reflection_time: reflectionTime,
+        reflection_reminder_enabled: reflectionReminderEnabled
+    };
+
+    // Check for changes
+    useEffect(() => {
+        if (!initialSettings || loading) return;
+
+        const isDirty = JSON.stringify(currentSettings) !== JSON.stringify(initialSettings);
+        if (onDirtyChange) onDirtyChange(isDirty);
+
+        // Browser level protection (refresh/close)
+        const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+            if (isDirty) {
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        };
+        window.addEventListener('beforeunload', handleBeforeUnload);
+        return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+
+    }, [currentSettings, initialSettings, loading, onDirtyChange]);
 
     // Audio Playback State
     const [playingVoice, setPlayingVoice] = useState<string | null>(null);
@@ -98,6 +137,23 @@ export default function SettingsPanel() {
                 });
                 setReflectionTime(data.reflection_time || '19:00');
                 setReflectionReminderEnabled(data.reflection_reminder_enabled ?? true);
+
+                // Set initial settings for dirty checking
+                setInitialSettings({
+                    name: data.name || '',
+                    weather_enabled: data.weather_enabled ?? true,
+                    weather_city: data.weather_city || '',
+                    voice_id: data.voice_id || 'alloy',
+                    briefing_time: data.briefing_time || '07:00',
+                    telegram_enabled: data.telegram_enabled || false,
+                    news_politics: data.news_politics ?? true,
+                    news_local: data.news_local ?? true,
+                    news_economy: data.news_economy ?? false,
+                    news_tech: data.news_tech ?? false,
+                    news_sports: data.news_sports ?? false,
+                    reflection_time: data.reflection_time || '19:00',
+                    reflection_reminder_enabled: data.reflection_reminder_enabled ?? true
+                });
             }
         } catch (error) {
             console.error('Failed to fetch settings', error);
@@ -207,6 +263,8 @@ export default function SettingsPanel() {
             });
             if (res.ok) {
                 setSaved(true);
+                // Update initial settings to match new saved state
+                setInitialSettings(currentSettings);
                 setTimeout(() => setSaved(false), 2000);
             }
         } catch (error) {
