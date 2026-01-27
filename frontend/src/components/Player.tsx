@@ -14,6 +14,7 @@ const Player: React.FC = () => {
     const [briefing, setBriefing] = useState<Briefing | null>(null);
     const [loading, setLoading] = useState(true);
     const [generating, setGenerating] = useState(false);
+    const [showTranscript, setShowTranscript] = useState(false);
     const [briefingTime, setBriefingTime] = useState('07:00');
     const [error, setError] = useState<string | null>(null);
 
@@ -180,11 +181,24 @@ const Player: React.FC = () => {
                 />
             </div>
 
-            {/* Script Preview */}
-            <div className="flex-1 overflow-y-auto mb-6 pr-2 custom-scrollbar">
-                <p className="font-serif text-lg leading-relaxed text-charcoal/90">
-                    {briefing.script_content || "Nur Audio."}
-                </p>
+            {/* Script Preview (Collapsible) */}
+            <div className="flex-1 flex flex-col min-h-0 mb-6 transition-all duration-300">
+                <button
+                    onClick={() => setShowTranscript(!showTranscript)}
+                    className="flex items-center gap-2 text-xs uppercase tracking-widest text-charcoal/60 hover:text-charcoal transition-colors mb-4 group"
+                >
+                    <ArrowRight className={`w-3 h-3 transition-transform duration-300 ${showTranscript ? 'rotate-90' : ''}`} />
+                    {showTranscript ? 'Text verbergen' : 'Text anzeigen'}
+                </button>
+
+                <div className={`
+                    overflow-y-auto pr-2 custom-scrollbar transition-all duration-500 ease-in-out
+                    ${showTranscript ? 'opacity-100 max-h-[400px]' : 'opacity-0 max-h-0'}
+                `}>
+                    <p className="font-serif text-lg leading-relaxed text-charcoal/90 whitespace-pre-wrap">
+                        {briefing.script_content || "Nur Audio."}
+                    </p>
+                </div>
             </div>
 
             {/* Regenerate Button */}

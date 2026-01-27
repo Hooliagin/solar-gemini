@@ -106,7 +106,7 @@ export default function Dashboard() {
                     <div className="col-span-1 md:col-span-7 animate-slide-up" style={{ animationDelay: '0.1s' }}>
                         <div className="flex items-center gap-4 mb-8">
                             <span className="text-xs font-mono text-charcoal/40">01</span>
-                            <h2 className="text-sm font-sans uppercase tracking-[0.2em] border-b border-gold pb-1">Tägliches Briefing</h2>
+                            <h2 className="text-sm font-sans uppercase tracking-[0.2em] border-b border-gold pb-1">Morgendliches Briefing</h2>
                         </div>
 
                         <div className="card-luxury min-h-[300px] flex flex-col justify-between group hover:border-gold transition-colors duration-500">
