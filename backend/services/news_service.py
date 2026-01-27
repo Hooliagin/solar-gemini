@@ -137,24 +137,32 @@ def fetch_all_news(user_settings, custom_topics: list[str] = None) -> str:
     city = user_settings.weather_city if user_settings else None
     
     # Fetch predefined categories if enabled
+    # Fetch predefined categories if enabled
     if user_settings:
         if user_settings.news_politics:
+            print("DEBUG: Fetching Politics...", flush=True)
             all_news.append(fetch_category_news('news_politics'))
         if user_settings.news_local:
+            print(f"DEBUG: Fetching Local ({city})...", flush=True)
             all_news.append(fetch_category_news('news_local', city))
         if user_settings.news_economy:
+            print("DEBUG: Fetching Economy...", flush=True)
             all_news.append(fetch_category_news('news_economy'))
         if user_settings.news_tech:
+            print("DEBUG: Fetching Tech...", flush=True)
             all_news.append(fetch_category_news('news_tech'))
         if user_settings.news_sports:
+            print("DEBUG: Fetching Sports...", flush=True)
             all_news.append(fetch_category_news('news_sports'))
     
     # Fetch custom user interests
     if custom_topics:
+        print(f"DEBUG: Fetching {len(custom_topics)} Custom Topics...", flush=True)
         custom_news = fetch_detailed_news_per_topic(custom_topics)
         if custom_news:
             all_news.append(custom_news)
     
+    print("DEBUG: News Content Assembled.", flush=True)
     return "\n".join(filter(None, all_news)) or "Keine News-Kategorien aktiviert."
 
 
