@@ -47,6 +47,7 @@ async def get_briefing_audio(
         raise HTTPException(status_code=403, detail="Not authorized to access this briefing")
         
     if not os.path.exists(briefing.audio_path):
+        logger.error(f"Audio file missing at path: {briefing.audio_path}")
         raise HTTPException(status_code=404, detail="Audio file missing")
         
     return FileResponse(briefing.audio_path, media_type="audio/wav")
