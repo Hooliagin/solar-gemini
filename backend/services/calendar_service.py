@@ -48,8 +48,21 @@ def get_calendar_events(user_id: str):
         calendars_result = service.calendarList().list().execute()
         calendars = calendars_result.get('items', [])
         
-        now = datetime.datetime.utcnow().isoformat() + 'Z'
-        end_of_day = (datetime.datetime.utcnow().replace(hour=23, minute=59, second=59)).isoformat() + 'Z'
+        from zoneinfo import ZoneInfo
+        
+        # Force German Timezone for "Today" calculation
+        # In a real multi-user app, this should be taken from UserSettings
+        tz = ZoneInfo("Europe/Berlin")
+        now_local = datetime.datetime.now(tz)
+        
+        # Start of day (or current time if we want upcoming)
+        # We want "Today's events", even if it's 00:05 AM.
+        # But if it's 00:05, we want events starting from 00:00 today.
+        start_of_day = now_local.replace(hour=0, minute=0, second=0, microsecond=0)
+        end_of_day_local = now_local.replace(hour=23, minute=59, second=59, microsecond=0)
+        
+        time_min = start_of_day.isoformat()
+        time_max = end_of_day_local.isoformat()
         
         all_events = []
         
@@ -61,8 +74,8 @@ def get_calendar_events(user_id: str):
             try:
                 events_result = service.events().list(
                     calendarId=calendar_id,
-                    timeMin=now,
-                    timeMax=end_of_day,
+                    timeMin=time_min,
+                    timeMax=time_max,
                     maxResults=10,
                     singleEvents=True,
                     orderBy='startTime'
