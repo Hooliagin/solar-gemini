@@ -46,6 +46,29 @@ async def get_briefing_audio(
         logger.error(f"Access Denied: Briefing Owner '{briefing.user_id}' vs Request User '{user_id}'")
         raise HTTPException(status_code=403, detail="Not authorized to access this briefing")
         
+    # Determine if it's a local file (legacy) or Supabase Storage path
+    is_storage_path = briefing.audio_path and "/" in briefing.audio_path and not briefing.audio_path.startswith("/")
+    
+    if is_storage_path:
+        # Generate Signed URL
+        from services.storage_service import create_signed_url
+        try:
+             # Validity: 60 seconds (Client should start playing immediately)
+             signed_url = create_signed_url(briefing.audio_path, expires_in=60)
+             
+             # Extract string if it's a dict (supabase-py variation)
+             if isinstance(signed_url, dict):
+                 signed_url = signed_url.get("signedURL")
+             
+             # Redirect the client to the Supabase URL
+             from fastapi.responses import RedirectResponse
+             return RedirectResponse(url=signed_url, status_code=307)
+             
+        except Exception as e:
+            logger.error(f"Failed to sign URL: {e}")
+            raise HTTPException(status_code=500, detail="Could not retrieve audio file")
+
+    # Fallback for Legacy Local Files
     if not os.path.exists(briefing.audio_path):
         logger.error(f"Audio file missing at path: {briefing.audio_path}")
         raise HTTPException(status_code=404, detail="Audio file missing")

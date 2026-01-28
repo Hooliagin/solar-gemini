@@ -16,3 +16,4 @@ python-telegram-bot>=20.0
 pydub>=0.25.0
 PyJWT[crypto]
 pytz
+supabase

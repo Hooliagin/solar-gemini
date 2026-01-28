@@ -8,7 +8,7 @@ from services.tts_service import generate_speech
 from database import get_session
 from sqlmodel import select
 from models import Entry, Briefing, UserSettings
-from datetime import datetime
+from datetime import datetime, timedelta
 import logging
 import os
 
@@ -218,23 +218,68 @@ def generate_briefing_content(target_user_id: str):
         generate_speech(script, audio_path_abs, language=detected_language, voice_override=user_voice)
         print(f"DEBUG: Audio saved to {audio_path_abs} (lang: {detected_language}, voice: {user_voice})", flush=True)
         
-        # 6. Save Briefing to DB
+        # 6. Upload to Supabase Storage (Private Bucket)
+        print("DEBUG: Uploading to Supabase...", flush=True)
+        from services.storage_service import upload_file, delete_file
+        
+        # Define a structured path: user_id/filename
+        storage_path = f"{target_user_id}/{audio_filename}"
+        
+        try:
+            upload_file(audio_path_abs, storage_path)
+            # Delete local file to save space
+            if os.path.exists(audio_path_abs):
+                os.remove(audio_path_abs)
+                print("DEBUG: Local file generated and removed after upload.", flush=True)
+        except Exception as e:
+            logger.error(f"Upload failed: {e}. Keeping local file as fallback (though it may be lost on restart).")
+            storage_path = None # Mark as failed upload
+            # We keep audio_path_abs as the "path" but it will be broken on restart. 
+            # Ideally we mark this as an error state or retry later.
+
+        # 7. Save Briefing to DB
         briefing = Briefing(
             user_id=target_user_id,
             scheduled_for=datetime.now(),
             script_content=script,
-            audio_path=audio_path_abs,
+            # If upload worked, save the STORAGE PATH (not URL). If not, save local path (legacy).
+            audio_path=storage_path if storage_path else audio_path_abs, 
             status="generated"
         )
         session.add(briefing)
         session.commit()
         session.refresh(briefing)
         
-        logger.info(f"Briefing generated successfully: {audio_path_abs}")
+        logger.info(f"Briefing generated and stored: {storage_path}")
         print("DEBUG: Briefing saved to DB.", flush=True)
         
-        # 7. (Removed) Sending is now handled by the caller (scheduler or router)
-        # to avoid asyncio event loop conflicts.
+        # 8. Auto-Cleanup (Rolling Window)
+        try:
+            print("DEBUG: Running Auto-Cleanup...", flush=True)
+            cutoff_date = datetime.utcnow() - timedelta(days=3)
+            
+            # Find old briefings for this user
+            old_briefings = session.exec(
+                select(Briefing).where(
+                    Briefing.user_id == target_user_id,
+                    Briefing.created_at < cutoff_date
+                )
+            ).all()
+            
+            for old_b in old_briefings:
+                # Delete from Storage
+                if old_b.audio_path and "/" in old_b.audio_path and not old_b.audio_path.startswith("/"):
+                     # Heuristic: if it looks like a relative path (user/file), it's in storage
+                     delete_file(old_b.audio_path)
+                
+                # Delete from DB
+                session.delete(old_b)
+            
+            session.commit()
+            print(f"DEBUG: Cleanup finished. Removed {len(old_briefings)} old briefings.", flush=True)
+            
+        except Exception as e:
+            logger.error(f"Auto-cleanup failed: {e}")
         
         print("DEBUG: Done.", flush=True)
         return briefing
