@@ -58,7 +58,7 @@ class UserSettings(SQLModel, table=True):
     # Reflection Reminder settings
     reflection_time: str = Field(default="19:00") # Time for reflection reminder (HH:MM)
     reflection_reminder_enabled: bool = Field(default=True)
-    reflection_reminder_enabled: bool = Field(default=True)
+
     onboarding_step: Optional[str] = Field(default=None)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 class UserTodo(SQLModel, table=True):

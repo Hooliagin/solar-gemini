@@ -159,3 +159,37 @@ def check_reminders(session, current_time: str):
 
 
 
+
+async def process_briefing(user):
+    """
+    Orchestrates the generation and sending of a briefing for a single user.
+    """
+    try:
+        logger.info(f"Processing briefing for user {user.user_id}")
+        
+        # 1. Generate Content (Sync function, run in threadpool)
+        # We wrap it in to_thread to avoid blocking the async event loop
+        briefing = await asyncio.to_thread(generate_briefing_content, user.user_id)
+        
+        if not briefing:
+            logger.error(f"Failed to generate briefing for {user.user_id}")
+            return
+            
+        # 2. Send to Telegram (if enabled)
+        if user.telegram_enabled and user.telegram_chat_id:
+            caption = f"🌅 Dein Morgen-Briefing für {datetime.now().strftime('%d.%m.%Y')}"
+            
+            await send_text_message(
+                chat_id=user.telegram_chat_id, 
+                text=f"🚀 **Guten Morgen, {user.name or 'Freund'}!**\nDein Briefing ist bereit."
+            )
+            
+            await send_briefing_audio(
+                chat_id=user.telegram_chat_id,
+                audio_path=briefing.audio_path,
+                caption=caption
+            )
+            logger.info(f"Briefing sent to Telegram for {user.user_id}")
+            
+    except Exception as e:
+        logger.error(f"Error in process_briefing for {user.user_id}: {e}")
