@@ -14,7 +14,8 @@ def get_supabase_admin() -> Client:
     global _supabase
     if _supabase is None:
         if not settings.SUPABASE_URL or not settings.SUPABASE_SERVICE_ROLE_KEY:
-            logger.warning("Supabase credentials missing. Storage operations will fail.")
+            logger.warning(f"Supabase credentials missing: URL={'Found' if settings.SUPABASE_URL else 'Missing'}, KEY={'Found' if settings.SUPABASE_SERVICE_ROLE_KEY else 'Missing'}")
+            print(f"DEBUG: Supabase Config - URL: {settings.SUPABASE_URL}, KEY (len): {len(settings.SUPABASE_SERVICE_ROLE_KEY) if settings.SUPABASE_SERVICE_ROLE_KEY else 0}", flush=True)
             return None
         _supabase = create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_ROLE_KEY)
     return _supabase
