@@ -45,6 +45,24 @@ export default function Dashboard() {
 
     const { greeting } = getTimeOfDay();
 
+    const [latestBriefing, setLatestBriefing] = useState<any>(null);
+
+    // Format Date for Header: "Mi., 28. Jan."
+    const getFormattedDate = (isoString?: string) => {
+        const date = isoString ? new Date(isoString) : new Date();
+        return date.toLocaleDateString('de-DE', {
+            weekday: 'short',
+            day: 'numeric',
+            month: 'short'
+        });
+    };
+
+    const briefingTitle = latestBriefing
+        ? `Ihr morgendliches Briefing für den ${getFormattedDate(latestBriefing.created_at)}`
+        : "Ihr morgendliches Briefing";
+
+    const briefingQuote = latestBriefing?.quote || "Wissen ist der Zinseszins der Neugier.";
+
     return (
         <div className="min-h-screen text-charcoal pb-32">
 
@@ -111,10 +129,12 @@ export default function Dashboard() {
 
                         <div className="card-luxury min-h-[300px] flex flex-col justify-between group hover:border-gold transition-colors duration-500">
                             <div className="mb-8">
-                                <h3 className="text-4xl font-serif mb-4 group-hover:translate-x-2 transition-transform duration-700">Ihre Intelligenz-<br />Zusammenfassung</h3>
-                                <p className="text-warm-grey font-serif italic max-w-md">"Wissen ist der Zinseszins der Neugier."</p>
+                                <h3 className="text-4xl font-serif mb-4 group-hover:translate-x-2 transition-transform duration-700 leading-tight">
+                                    {briefingTitle}
+                                </h3>
+                                <p className="text-warm-grey font-serif italic max-w-md">"{briefingQuote}"</p>
                             </div>
-                            <Player />
+                            <Player onBriefingLoaded={setLatestBriefing} />
                         </div>
                     </div>
 

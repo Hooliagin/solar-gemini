@@ -10,7 +10,11 @@ interface Briefing {
     created_at: string;
 }
 
-const Player: React.FC = () => {
+interface PlayerProps {
+    onBriefingLoaded?: (data: Briefing | any) => void;
+}
+
+const Player: React.FC<PlayerProps> = ({ onBriefingLoaded }) => {
     const [briefing, setBriefing] = useState<Briefing | null>(null);
     const [loading, setLoading] = useState(true);
     const [generating, setGenerating] = useState(false);
@@ -54,6 +58,9 @@ const Player: React.FC = () => {
             if (res.ok) {
                 const data = await res.json();
                 setBriefing(data);
+                if (onBriefingLoaded) {
+                    onBriefingLoaded(data);
+                }
                 return true;
             } else {
                 if (res.status !== 404) {

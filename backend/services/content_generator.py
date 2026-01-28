@@ -538,7 +538,7 @@ def generate_briefing_content(target_user_id: str):
                         new_used_quote = UsedQuote(
                             user_id=target_user_id,
                             quote_id=qid,
-                            quote_text_snippet=q_text[:100]
+                            quote_text_snippet=q_text  # Store full text for frontend display
                         )
                         session.add(new_used_quote)
                     session.commit()

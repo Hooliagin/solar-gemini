@@ -26,7 +26,19 @@ async def get_latest_briefing(
         raise HTTPException(status_code=404, detail="No briefing found")
     
     logger.info(f"Found briefing {briefing.id} for user {user_id}")
-    return briefing
+    
+    # Fetch latest quote for this user to display on Dashboard
+    from models import UsedQuote
+    quote_stmt = select(UsedQuote).where(UsedQuote.user_id == user_id).order_by(UsedQuote.used_at.desc()).limit(1)
+    latest_quote = session.exec(quote_stmt).first()
+    
+    response_data = briefing.model_dump()
+    if latest_quote:
+        response_data["quote"] = latest_quote.quote_text_snippet
+    else:
+        response_data["quote"] = "Wissen ist der Zinseszins der Neugier." # Fallback
+
+    return response_data
 
 @router.get("/{briefing_id}/audio")
 async def get_briefing_audio(
