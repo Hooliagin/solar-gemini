@@ -32,6 +32,7 @@ def generate_briefing_content(target_user_id: str):
 
     # Gemini client will be initialized later when needed
     print("DEBUG: API Key validated.", flush=True)
+    client = genai.Client(api_key=settings.GOOGLE_API_KEY)
 
     session = None
     try:
