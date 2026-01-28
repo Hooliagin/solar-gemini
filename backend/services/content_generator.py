@@ -2,26 +2,337 @@ from google import genai
 from google.genai import types
 from config import settings
 from services.calendar_service import get_calendar_events
-from services.news_service import fetch_ai_news_summary
+from services.news_service import fetch_ai_news_summary, fetch_all_news
 from services.weather_service import get_weather_briefing
 from services.tts_service import generate_speech
 from database import get_session
 from sqlmodel import select
-from models import Entry, Briefing, UserSettings
+from models import Entry, Briefing, UserSettings, UsedQuote
 from datetime import datetime, timedelta
 import logging
 import os
+import hashlib
+import json
+from typing import Optional, List, Dict
 
 logger = logging.getLogger(__name__)
 
-# Configure Gemini (moved inside function to handle missing key gracefully)
-# genai.configure(api_key=settings.GOOGLE_API_KEY)
+# ═══════════════════════════════════════════════════════════════════════════════
+# HELPER FUNCTIONS (V3 PROMPT SYSTEM)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def get_german_date() -> tuple[str, str]:
+    """
+    Gibt das aktuelle Datum auf Deutsch zurück.
+    Returns: (kurz, lang) z.B. ("28. Januar 2026", "Mittwoch, der 28. Januar 2026")
+    """
+    now = datetime.now()
+    
+    weekdays = {
+        0: "Montag", 1: "Dienstag", 2: "Mittwoch", 3: "Donnerstag",
+        4: "Freitag", 5: "Samstag", 6: "Sonntag"
+    }
+    
+    months = {
+        1: "Januar", 2: "Februar", 3: "März", 4: "April",
+        5: "Mai", 6: "Juni", 7: "Juli", 8: "August",
+        9: "September", 10: "Oktober", 11: "November", 12: "Dezember"
+    }
+    
+    weekday = weekdays[now.weekday()]
+    month = months[now.month]
+    day = now.day
+    year = now.year
+    
+    date_short = f"{day}. {month} {year}"
+    date_long = f"{weekday}, der {day}. {month} {year}"
+    
+    return date_short, date_long
+
+
+def extract_key_phrases(text: str, max_phrases: int = 15) -> List[str]:
+    """
+    Extrahiert Schlüsselphrasen aus einem Text für Anti-Wiederholung.
+    """
+    if not text:
+        return []
+    
+    sentences = text.replace('!', '.').replace('?', '.').split('.')
+    phrases = []
+    
+    for sentence in sentences:
+        sentence = sentence.strip()
+        if 20 < len(sentence) < 120:
+            phrases.append(sentence)
+    
+    return phrases[:max_phrases]
+
+
+def generate_quote_id(quote: str, author: str) -> str:
+    """Generiert eine eindeutige ID für ein Zitat zum Tracking."""
+    combined = f"{author.lower().strip()}:{quote.lower().strip()[:50]}"
+    return hashlib.md5(combined.encode()).hexdigest()[:12]
+
+
+def _generate_anti_repetition_block(
+    briefing_yesterday: Optional[str],
+    briefing_day_before: Optional[str]
+) -> str:
+    """Generiert den Anti-Wiederholungs-Block für den Prompt."""
+    
+    if not briefing_yesterday and not briefing_day_before:
+        return "ANTI-WIEDERHOLUNG: Keine vorherigen Briefings vorhanden."
+    
+    block = """
+ANTI-WIEDERHOLUNG (KRITISCH - VARIANZ IST PFLICHT!)
+═══════════════════════════════════════════════════════════════════════════════
+
+Der User hört dieses Briefing JEDEN TAG.
+Wiederholungen zerstören das Erlebnis und wirken roboterhaft.
+
+**VERBOTENE WIEDERHOLUNGEN:**
+- Gleiche Begrüßungsformeln wie gestern/vorgestern
+- Identische Übergangsphrasen ("Kommen wir nun zu...", "Schauen wir mal...")
+- Gleiche oder ähnliche Zitate
+- Identische Wetterkommentare bei ähnlichem Wetter
+- Gleiche Abschiedsformeln
+
+**VARIANZ-TECHNIKEN:**
+- Begrüßung: Wechsle zwischen direkt, fragend, beobachtend, humorvoll
+- Übergänge: Nutze thematische Brücken statt generischer Phrasen
+- Zitate: KOMPLETT andere Denker/Themen als die letzten 2 Tage
+- Wetter: Variiere zwischen praktisch, poetisch, humorvoll
+- Abschied: Wechsle zwischen motivierend, nachdenklich, warm, energetisch
+"""
+
+    if briefing_yesterday:
+        phrases = extract_key_phrases(briefing_yesterday)
+        block += f"""
+**BRIEFING VON GESTERN (NICHT WIEDERHOLEN!):**
+\"\"\"
+{briefing_yesterday[:2500]}{"..." if len(briefing_yesterday) > 2500 else ""}
+\"\"\"
+
+**Identifizierte Phrasen die du VERMEIDEN musst:**
+{chr(10).join(f'- "{p}"' for p in phrases[:12])}
+"""
+
+    if briefing_day_before:
+        phrases = extract_key_phrases(briefing_day_before)
+        block += f"""
+**BRIEFING VON VORGESTERN (AUCH NICHT WIEDERHOLEN!):**
+\"\"\"
+{briefing_day_before[:1500]}{"..." if len(briefing_day_before) > 1500 else ""}
+\"\"\"
+
+**Weitere zu vermeidende Phrasen:**
+{chr(10).join(f'- "{p}"' for p in phrases[:8])}
+"""
+
+    return block
+
+
+def generate_morning_briefing_prompt(
+    # Kern-Inhalte
+    diary_transcript: str,
+    todo_list_text: str,
+    calendar_text: str,
+    weather_text: str,
+    
+    # News (beide Quellen)
+    news_curated: str = "",
+    news_dynamic: str = "",
+    
+    # Anti-Wiederholung: Letzte Briefings
+    briefing_yesterday: Optional[str] = None,
+    briefing_day_before: Optional[str] = None,
+    
+    # Optional
+    research_results_text: str = "",
+    user_name: str = "",
+    user_news_categories: Optional[List[str]] = None,
+    used_quote_ids: Optional[List[str]] = None,
+    
+    # Sprache
+    language: str = "German",
+) -> str:
+    """
+    Generiert den vollständigen Morning Briefing Prompt (V3.0).
+    """
+    
+    # Datum generieren
+    date_short, date_long = get_german_date()
+    
+    # Greeting
+    greeting = f"Sprich den User mit '{user_name}' an." if user_name else "Nutze eine warme, persönliche Begrüßung."
+    
+    # Anti-Wiederholungs-Block generieren
+    anti_repetition_block = _generate_anti_repetition_block(
+        briefing_yesterday, 
+        briefing_day_before
+    )
+    
+    # News-Kategorien für kontextuelle News-Suche
+    news_context = ""
+    if user_news_categories:
+        categories_str = ", ".join(user_news_categories)
+        news_context = f"Der User interessiert sich für: {categories_str}"
+    
+    # Blacklisted Quotes Block
+    blacklist_block = ""
+    if used_quote_ids:
+         blacklist_block = f"""
+**BLACKLIST - Diese Zitate/Autoren NIEMALS verwenden (Bereits kürzlich genutzt):**
+{json.dumps(used_quote_ids)}
+"""
+    
+    prompt = f"""
+Du bist ein freundlicher, professioneller persönlicher Assistent. Es ist Morgen am {date_long}.
+
+Erstelle ein DETAILLIERTES Morning Briefing für den User.
+
+**SPRACHE:** Antworte komplett auf Deutsch.
+**BEGRÜSSUNG:** {greeting}
+
+═══════════════════════════════════════════════════════════════════════════════
+TTS-OPTIMIERUNG (KRITISCH!)
+═══════════════════════════════════════════════════════════════════════════════
+
+- NIEMALS Markdown-Formatierung (kein **, -, #, _, `, etc.)
+- Schreibe ALLES als natürlichen Fließtext
+- Schreibe ALLE Zahlen als Wörter aus ("fünf" nicht "5", "zehn Uhr" nicht "10:00")
+- Nutze vollständige Wörter, KEINE Abkürzungen ("zum Beispiel" nicht "z.B.")
+- Schreibe Uhrzeiten in gesprochener Form ("zehn Uhr dreißig" nicht "10:30")
+- Nutze natürliche Pausen durch Satzzeichen (Kommas, Punkte)
+- Schreibe Daten in voller Form ("achtundzwanzigster Januar" nicht "28.01.")
+- **GRAMMATIK-CHECK**: Perfekte deutsche Grammatik. "hast geschlafen" NICHT "bist geschlafen".
+
+═══════════════════════════════════════════════════════════════════════════════
+{anti_repetition_block}
+═══════════════════════════════════════════════════════════════════════════════
+
+{blacklist_block}
+
+═══════════════════════════════════════════════════════════════════════════════
+KONTEXT-DATEN
+═══════════════════════════════════════════════════════════════════════════════
+
+[TAGEBUCH / GEDANKEN VON GESTERN]
+{diary_transcript if diary_transcript else "Kein Tagebucheintrag vorhanden."}
+
+[TO-DO LISTE / ERINNERUNGEN]
+{todo_list_text if todo_list_text else "Keine To-Dos eingetragen."}
+
+[RECHERCHE-ERGEBNISSE]
+{research_results_text if research_results_text else "Keine Recherche angefragt."}
+
+[HEUTIGE TERMINE]
+{calendar_text if calendar_text else "Keine Termine eingetragen."}
+
+[WETTER]
+{weather_text if weather_text else "Keine Wetterdaten verfügbar."}
+
+[NEWS - KURATIERTE QUELLEN]
+{news_curated if news_curated else "Keine kuratierten News verfügbar."}
+
+[NEWS - DYNAMISCHE SUCHE]
+{news_dynamic if news_dynamic else "Keine dynamischen News verfügbar."}
+
+[NEWS-KONTEXT]
+{news_context if news_context else "Keine spezifischen News-Präferenzen bekannt. Leite Themen aus Tagebuch und Kalender ab."}
+
+═══════════════════════════════════════════════════════════════════════════════
+ZITAT-AUSWAHL (KRITISCH - QUALITÄT WIRD BEWERTET!)
+═══════════════════════════════════════════════════════════════════════════════
+
+**GENERAL BLACKLIST - Diese Zitate/Autoren NIEMALS verwenden:**
+- Epiktet: "Es ist nicht wichtig, was dir zustößt..." ← VERBOTEN
+- "Der Weg entsteht beim Gehen" ← VERBOTEN
+- "Carpe Diem" / "Nutze den Tag" ← VERBOTEN
+- "Der Weg von tausend Meilen beginnt mit einem Schritt" ← VERBOTEN
+- "Sei die Veränderung, die du sehen willst" ← VERBOTEN
+- "Was dich nicht umbringt, macht dich stärker" ← VERBOTEN
+- "Alles geschieht aus einem Grund" ← VERBOTEN
+- "Folge deinen Träumen" ← VERBOTEN
+- Hesse: "Stufen" ← VERBOTEN
+- Generische Konfuzius, Gandhi, Einstein Kalendersprüche ← VERBOTEN
+
+**SO FINDEST DU GUTE ZITATE:**
+
+SCHRITT 1: Identifiziere die SPEZIFISCHE Emotion/Situation
+SCHRITT 2: Suche ein Zitat das diese SPEZIFISCHE Situation anspricht
+SCHRITT 3: Bevorzuge UNBEKANNTE Quellen (Seneca Briefe, Marc Aurel, Rilke, Brené Brown, Naval Ravikant)
+SCHRITT 4: VALIDIERE dein Zitat. Frage: "Würde dieses Zitat auf einer Instagram-Motivationsseite stehen?" JA → VERWERFEN.
+
+**ZWEI ZITATE ERFORDERLICH:**
+
+ZITAT 1 - REFLEXIONS-ZITAT (Rückblick auf Gestern/Tagebuch):
+├── Analysiere das TAGEBUCH → Identifiziere die dominante Emotion:
+│   • Erfolg/Leistung → Zitat über Bedeutung jenseits von Erfolg
+│   • Stress/Überforderung → Zitat über Perspektive, Loslassen
+│   • Unsicherheit/Hilflosigkeit → Zitat über Fragen stellen, Anfänge
+│   • Einsamkeit → Zitat über Verbindung, Menschlichkeit
+│   • Wachstum/Lernen → Zitat über die Reise, Neugier
+├── Wähle ein Zitat das diese Emotion DIREKT anspricht (ECHTE EMOTION!).
+└── PLATZIERUNG: Nach der Retrospektive.
+
+ZITAT 2 - INTENTIONS-ZITAT (Vorausschau auf Heute/Kalender):
+├── Analysiere den KALENDER → Bestimme den Tagestyp (Meeting, Deep Work, Admin, etc.)
+├── Wähle ein Zitat das zum Tagestyp PASST
+└── PLATZIERUNG: Vor dem Tagesplan / Als Übergang.
+
+═══════════════════════════════════════════════════════════════════════════════
+TO-DO INTEGRATION (PFLICHT - NICHT OPTIONAL!)
+═══════════════════════════════════════════════════════════════════════════════
+**METHODE - Die Gap-Analyse:**
+1. Liste alle festen Termine
+2. Identifiziere freie Zeitblöcke
+3. Ordne JEDES To-Do einem spezifischen Zeitslot zu
+4. Begründe WARUM dieser Slot passt
+
+**BEISPIEL:**
+"Nach deinem Standup um zehn Uhr hast du bis vierzehn Uhr einen freien Block. Ich schlage vor: Nutze zehn Uhr dreißig bis zwölf Uhr dreißig für den Businessplan."
+
+═══════════════════════════════════════════════════════════════════════════════
+NEWS-AUSWAHL (THEMATISCH, NICHT GEOGRAFISCH!)
+═══════════════════════════════════════════════════════════════════════════════
+**HEUTE IST: {date_short}**
+**NIEMALS** nach News für den Wohnort des Users suchen. Leite Themen aus dem KONTEXT ab (Tagebuch, Kalender, Interessen).
+Maximal 3 News-Themen. Nur Nachrichten der letzten 24 Stunden.
+
+═══════════════════════════════════════════════════════════════════════════════
+STRUKTUR (FLIESSTEXT - Keine Headlines!)
+═══════════════════════════════════════════════════════════════════════════════
+1. Warme Begrüßung (Variiere! Nicht wie gestern!)
+2. Tiefe Retrospektive (Was wurde geschafft? Emotionen ansprechen!).
+   - Schließe diesen Teil mit dem REFLEXIONS-ZITAT (Zitat 1) ab.
+3. Der Tagesplan (Termine + Todos in die Lücken integrieren).
+   - Schließe mit dem INTENTIONS-ZITAT (Zitat 2) ab.
+4. Recherche-Ergebnisse (falls vorhanden).
+5. News (Mix aus Kuratiert & Dynamisch. Max 2-3 Themen. Nur Relevantes!).
+6. Wetter & Abschluss (Motivation).
+
+**METADATA OUTPUT (REQUIRED AT THE VERY END):**
+Please add the following JSON block at the very end of your response, separated by "---METADATA---".
+---METADATA---
+{{
+  "quotes": [
+     {{ "text": "Quote 1 Text...", "author": "Author 1" }},
+     {{ "text": "Quote 2 Text...", "author": "Author 2" }}
+  ]
+}}
+"""
+    return prompt
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# MAIN GENERATION LOGIC
+# ═══════════════════════════════════════════════════════════════════════════════
 
 def generate_briefing_content(target_user_id: str):
     """
     Orchestrates the creation of the morning briefing for a SPECIFIC user.
     """
-    import sys
     print(f"DEBUG: Starting briefing generation for user {target_user_id}...", flush=True)
     logger.info(f"Starting briefing generation for user {target_user_id}...")
     
@@ -72,11 +383,6 @@ def generate_briefing_content(target_user_id: str):
         detected_language = last_entry.language if last_entry and last_entry.language else "de"  # Default to German
         print(f"DEBUG: Detected language: {detected_language}", flush=True)
 
-        # Determine language instruction for Gemini
-        language_instruction = "Respond in German (Deutsch)." if detected_language == "de" else f"Respond in English."
-        if detected_language not in ["de", "en"]:
-            language_instruction = f"Respond in the same language as the diary entry (detected: {detected_language})."
-        
         # Get user's name for personalized greeting
         user_name = user_settings.name if user_settings.name else ""
         
@@ -110,7 +416,7 @@ def generate_briefing_content(target_user_id: str):
             
             session.commit()
         else:
-            research_results_text = "No research requests."
+            research_results_text = ""
         
         # 4. Fetch Weather (if enabled)
         print("DEBUG: Checking Weather Settings...", flush=True)
@@ -121,17 +427,15 @@ def generate_briefing_content(target_user_id: str):
             print(f"DEBUG: Weather Fetched ({len(weather_text)} chars).", flush=True)
 
         # ═══════════════════════════════════════════════════════════════
-        # PROMPT v2.0 SYSTEM INTEGRATION
+        # PREPARE V3 INPUTS
         # ═══════════════════════════════════════════════════════════════
         
-        # 1. Fetch Split News (Curated vs Dynamic)
+        # 1. Fetch Split News
         print("DEBUG: Fetching Split News...", flush=True)
-        from services.news_service import fetch_all_news
         news_curated, news_dynamic = fetch_all_news(user_settings, topic_list)
         print(f"DEBUG: News Fetched. Curated: {len(news_curated)} chars, Dynamic: {len(news_dynamic)} chars.", flush=True)
 
         # 2. Fetch History for Anti-Repetition
-        # Fetch last 2 briefings to ensure variance
         prev_briefings = session.exec(
             select(Briefing)
             .where(Briefing.user_id == target_user_id)
@@ -142,146 +446,37 @@ def generate_briefing_content(target_user_id: str):
         briefing_yesterday = prev_briefings[0].script_content if len(prev_briefings) > 0 else None
         briefing_day_before = prev_briefings[1].script_content if len(prev_briefings) > 1 else None
         
-        # 2b. Fetch Used Quotes (Last 30 days)
-        from models import UsedQuote
+        # 3. Fetch Used Quotes (Last 30 days)
         cutoff_quotes = datetime.utcnow() - timedelta(days=30)
         used_quotes_db = session.exec(
             select(UsedQuote).where(UsedQuote.user_id == target_user_id, UsedQuote.used_at > cutoff_quotes)
         ).all()
         used_quote_ids = [q.quote_id for q in used_quotes_db]
         
-        # 3. Helper Functions (Embedded)
-        import hashlib
-        import json
+        # 4. Map User Settings to Categories
+        user_news_categories = []
+        if user_settings.news_politics: user_news_categories.append("general_de")
+        if user_settings.news_tech: user_news_categories.append("tech")
+        if user_settings.news_economy: user_news_categories.append("business")
         
-        def extract_key_phrases(text: str):
-            if not text: return []
-            sentences = text.replace('!', '.').replace('?', '.').split('.')
-            return [s.strip() for s in sentences if 20 < len(s.strip()) < 100][:20]
-
-        def generate_anti_repetition_instruction(yest, day_before):
-            if not yest and not day_before: return ""
-            instr = "\n════ ANTI-REPETITION (CRITICAL) ════\n"
-            instr += "VARIANZ IST PFLICHT. Wiederhole NICHTS von gestern.\n"
-            if yest:
-                phrases = extract_key_phrases(yest)
-                instr += f"GESTERN (VERBOTEN): {yest[:500]}...\nPhrasen zu vermeiden:\n" + "\n".join(f'- "{p}"' for p in phrases[:5]) + "\n"
-            return instr
-            
-        def generate_quote_id(quote_text: str, author: str) -> str:
-            combined = f"{author.lower().strip()}:{quote_text.lower().strip()[:50]}"
-            return hashlib.md5(combined.encode()).hexdigest()[:12]
-
-        # 4. Construct Prompt v2.0
+        # 5. GENERATE PROMPT V3
+        prompt = generate_morning_briefing_prompt(
+            diary_transcript=diary_transcript,
+            todo_list_text=todo_list_text,
+            calendar_text=calendar_text,
+            weather_text=weather_text,
+            news_curated=news_curated,
+            news_dynamic=news_dynamic,
+            briefing_yesterday=briefing_yesterday,
+            briefing_day_before=briefing_day_before,
+            research_results_text=research_results_text,
+            user_name=user_name,
+            user_news_categories=user_news_categories,
+            used_quote_ids=used_quote_ids,
+            language=user_settings.language
+        )
         
-        # Dynamic date injection
-        now = datetime.now()
-        current_date_spoken = now.strftime("%A, der %d. %B %Y")
-        # German weekday translation
-        replacements = {
-            "Monday": "Montag", "Tuesday": "Dienstag", "Wednesday": "Mittwoch",
-            "Thursday": "Donnerstag", "Friday": "Freitag", "Saturday": "Samstag", "Sunday": "Sonntag",
-            "January": "Januar", "February": "Februar", "March": "März", "April": "April", "May": "Mai",
-            "June": "Juni", "July": "Juli", "August": "August", "September": "September",
-            "October": "Oktober", "November": "November", "December": "Dezember"
-        }
-        for en, de in replacements.items():
-            current_date_spoken = current_date_spoken.replace(en, de)
-
-        anti_repetition = generate_anti_repetition_instruction(briefing_yesterday, briefing_day_before)
-        
-        prompt = f"""
-        You are a friendly, professional personal assistant. It is morning on {current_date_spoken}.
-        Create a DETAILED morning briefing script for the user.
-
-        **IMPORTANT: {language_instruction}**
-        **GREETING: Address the user as {user_name if user_name else 'my friend'}.**
-
-        **CRITICAL TTS OPTIMIZATION RULES:**
-        - NEVER use Markdown formatting (no **, -, #, _, `, etc.)
-        - Write EVERYTHING as natural spoken text
-        - Spell out ALL numbers as words (e.g., "fünf" not "5", "zehn Uhr" not "10:00")
-        - Use full words, NEVER abbreviations (e.g., "zum Beispiel" not "z.B.")
-        - Write times in spoken format (e.g., "zehn Uhr dreißig" not "10:30")
-        - Use natural pauses with punctuation (commas, periods)
-        - Write dates in full spoken form (e.g., "dreiundzwanzigster Januar")
-        - **GRAMMAR CHECK**: Ensure perfect German grammar. Use 'hast geschlafen' not 'bist geschlafen'.
-
-        {anti_repetition}
-        
-        **BLACKLISTED QUOTES (DO NOT USE THESE - ALREADY USED RECENTLY):**
-        {json.dumps(used_quote_ids)}
-
-        ═══════════════════════════════════════════════════════════════
-        CONTEXT DATA
-        ═══════════════════════════════════════════════════════════════
-
-        [YESTERDAY'S DIARY/THOUGHTS]
-        {diary_transcript if diary_transcript else "No diary entry available."}
-
-        [USER TODOS / REMINDERS]
-        {todo_list_text if todo_list_text else "No todos listed."}
-
-        [RESEARCH RESULTS]
-        {research_results_text if research_results_text else "No research requested."}
-
-        [TODAY'S CALENDAR]
-        {calendar_text if calendar_text else "No appointments scheduled."}
-
-        [WEATHER]
-        {weather_text if weather_text else "Weather data not available."}
-
-        [NEWS - CURATED SOURCES (High Quality)]
-        {news_curated}
-
-        [NEWS - DYNAMIC SEARCH (User Topics)]
-        {news_dynamic}
-
-        ═══════════════════════════════════════════════════════════════
-        ZITAT & STRUKTUR SYSTEM
-        ═══════════════════════════════════════════════════════════════
-
-        **ZWEI ZITATE ERFORDERLICH (CRITICAL: Beachtung der Reihenfolge):**
-
-        1. REFLEXIONS-ZITAT (Rückblick auf Gestern/Tagebuch):
-           - Analysiere Tagebuch (Stress? Erfolg? Sorge?).
-           - Falls Tagebuch leer/kurz: Nimm ein allgemeines Zitat über "Neuanfang" oder "Morgenroutine". ERFINDE KEINE GEFÜHLE, wenn keine da stehen.
-           - Wähle Zitat das die ECHTE Emotion anspricht.
-
-        2. INTENTIONS-ZITAT (Vorausschau auf Heute/Kalender):
-           - Analysiere Kalender (Meeting-Tag? Ruhiger Tag?).
-           - Wähle Zitat das zum TAGESTYP passt (Stoiker, Denker, Macher).
-           - Verbinde es direkt mit dem heutigen Tag.
-
-        **STRUKTUR (FLIESSTEXT - Keine Headlines!):**
-        1. Warme Begrüßung (Variiere! Nicht wie gestern!)
-        2. Tiefe Retrospektive (Was wurde geschafft?).
-           - **WICHTIG**: Wenn Tagebuch leer ist, sag ehrlich: "Du hast gestern nichts eingetragen, also blicken wir direkt nach vorne." (Erfinde NICHTS dazu).
-           - Wenn Tagebuch Inhalt hat: Gehe empathisch darauf ein.
-           - Schließe diesen Teil mit dem REFLEXIONS-ZITAT ab.
-        3. Der Tagesplan (Termine + Todos in die Lücken integrieren).
-        4. Intentions-Zitat als Überleitung zum "Doing".
-        5. Recherche-Ergebnisse (falls vorhanden).
-        6. News (Mix aus Kuratiert & Dynamisch. Max 2-3 Themen. Nur Relevantes!).
-        7. Wetter & Abschluss (Motivation).
-        
-        **METADATA OUTPUT (REQUIRED AT THE VERY END):**
-        Please add the following JSON block at the very end of your response, separated by "---METADATA---".
-        This is for my tracking system.
-        
-        ---METADATA---
-        {{
-          "quotes": [
-             {{ "text": "Quote 1 Text...", "author": "Author 1" }},
-             {{ "text": "Quote 2 Text...", "author": "Author 2" }}
-          ]
-        }}
-
-        **STYLE**: Energetic but thoughtful. Like a mentor and a friend.
-        **ZIEL**: 3-4 Minuten gesprochener Text.
-        """
-        
-        print("DEBUG: Generating Content with Gemini (v2.0 Prompt)...", flush=True)
+        print("DEBUG: Generating Content with Gemini (v3.0 Prompt)...", flush=True)
         response = client.models.generate_content(
             model="gemini-2.0-flash",
             contents=prompt
@@ -289,7 +484,7 @@ def generate_briefing_content(target_user_id: str):
         print("DEBUG: Gemini Response Received.", flush=True)
         raw_text = response.text
         
-        # 5. Extract Metadata (Quotes) & Clean Script
+        # 6. Extract Metadata (Quotes) & Clean Script
         script = raw_text
         try:
             if "---METADATA---" in raw_text:
@@ -298,7 +493,6 @@ def generate_briefing_content(target_user_id: str):
                 metadata_str = parts[1].strip()
                 
                 # Parse JSON
-                # Clean potential markdown code blocks like ```json ... ```
                 metadata_str = metadata_str.replace("```json", "").replace("```", "").strip()
                 metadata = json.loads(metadata_str)
                 
@@ -322,65 +516,55 @@ def generate_briefing_content(target_user_id: str):
                 logger.warning("No Metadata block found in LLM response.")
         except Exception as e:
             logger.error(f"Failed to parse Quote Metadata: {e}")
-            # We continue with the script, just failing to track quotes
             script = raw_text.split("---METADATA---")[0].strip() 
-             
         
-        # 5. Generate Audio
+        # 7. Generate Audio
         print("DEBUG: Generating Audio (TTS)...", flush=True)
         audio_filename = f"briefing_{target_user_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.wav"
         
-        # Ensure audio directory exists
         os.makedirs(settings.AUDIO_DIR, exist_ok=True)
         audio_path_abs = os.path.join(settings.AUDIO_DIR, audio_filename)
         
-        # Get user's preferred voice from settings
         user_voice = user_settings.voice_id if user_settings else None
         generate_speech(script, audio_path_abs, language=detected_language, voice_override=user_voice)
         print(f"DEBUG: Audio saved to {audio_path_abs} (lang: {detected_language}, voice: {user_voice})", flush=True)
         
-        # 6. Upload to Supabase Storage (Private Bucket)
+        # 8. Upload to Supabase Storage
         print("DEBUG: Uploading to Supabase...", flush=True)
         from services.storage_service import upload_file, delete_file
         
-        # Define a structured path: user_id/filename
         storage_path = f"{target_user_id}/{audio_filename}"
         
         try:
             upload_file(audio_path_abs, storage_path)
-            # Delete local file to save space
             if os.path.exists(audio_path_abs):
                 os.remove(audio_path_abs)
                 print("DEBUG: Local file generated and removed after upload.", flush=True)
         except Exception as e:
-            logger.error(f"Upload failed: {e}. Keeping local file as fallback (though it may be lost on restart).")
-            storage_path = None # Mark as failed upload
-            # We keep audio_path_abs as the "path" but it will be broken on restart. 
-            # Ideally we mark this as an error state or retry later.
+            logger.error(f"Upload failed: {e}. Keeping local file as fallback.")
+            storage_path = None 
 
-        # 7. Save Briefing to DB
+        # 9. Save Briefing to DB
         briefing = Briefing(
             user_id=target_user_id,
             scheduled_for=datetime.now(),
             script_content=script,
-            # If upload worked, save the STORAGE PATH (not URL). If not, save local path (legacy).
             audio_path=storage_path if storage_path else audio_path_abs, 
             status="generated"
         )
         session.add(briefing)
         session.commit()
         session.refresh(briefing)
-        session.expunge(briefing) # Allow usage after session closes
+        session.expunge(briefing) 
         
         logger.info(f"Briefing generated and stored: {storage_path}")
         print("DEBUG: Briefing saved to DB.", flush=True)
         
-        # 8. Auto-Cleanup (Rolling Window)
+        # 10. Auto-Cleanup
         try:
             print("DEBUG: Running Auto-Cleanup...", flush=True)
             cutoff_date = datetime.utcnow() - timedelta(days=3)
             
-            # Find old briefings for this user
             old_briefings = session.exec(
                 select(Briefing).where(
                     Briefing.user_id == target_user_id,
@@ -389,12 +573,8 @@ def generate_briefing_content(target_user_id: str):
             ).all()
             
             for old_b in old_briefings:
-                # Delete from Storage
                 if old_b.audio_path and "/" in old_b.audio_path and not old_b.audio_path.startswith("/"):
-                     # Heuristic: if it looks like a relative path (user/file), it's in storage
                      delete_file(old_b.audio_path)
-                
-                # Delete from DB
                 session.delete(old_b)
             
             session.commit()
@@ -416,5 +596,4 @@ def generate_briefing_content(target_user_id: str):
             session.close()
 
 if __name__ == "__main__":
-    # Test run
     generate_briefing_content()
