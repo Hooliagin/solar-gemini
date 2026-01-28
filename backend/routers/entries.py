@@ -1,5 +1,5 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
-from sqlmodel import Session, select
+from sqlmodel import Session, select, SQLModel
 from database import get_session
 from models import Entry
 from services.audio_service import save_audio_file, transcribe_audio
