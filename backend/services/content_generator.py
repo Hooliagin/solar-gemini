@@ -62,6 +62,63 @@ def generate_briefing_content(target_user_id: str):
         topic_list = [i.topic for i in interests]
         print(f"DEBUG: Found custom topics: {topic_list}", flush=True)
         
+        # 3. Fetch yesterday's diary (Last entry from DB for THIS USER)
+        print("DEBUG: Fetching last diary entry...", flush=True)
+        statement = select(Entry).where(Entry.user_id == target_user_id).order_by(Entry.id.desc())
+        last_entry = session.exec(statement).first()
+        
+        diary_transcript = last_entry.transcript if last_entry else "No diary entry for last night."
+        detected_language = last_entry.language if last_entry and last_entry.language else "de"  # Default to German
+        print(f"DEBUG: Detected language: {detected_language}", flush=True)
+
+        # Determine language instruction for Gemini
+        language_instruction = "Respond in German (Deutsch)." if detected_language == "de" else f"Respond in English."
+        if detected_language not in ["de", "en"]:
+            language_instruction = f"Respond in the same language as the diary entry (detected: {detected_language})."
+        
+        # Get user's name for personalized greeting
+        user_name = user_settings.name if user_settings.name else ""
+        
+        # 3b. Fetch Pending Todos
+        print("DEBUG: Fetching Pending Todos...", flush=True)
+        from services.todo_service import get_pending_todos, get_pending_research
+        todos = get_pending_todos(target_user_id, session)
+        todo_list_text = "\n".join([f"- {t.task} (Due: {t.due_date.strftime('%Y-%m-%d') if t.due_date else 'Anytime'})" for t in todos])
+        if not todo_list_text:
+            todo_list_text = "No pending tasks."
+            
+        # 3c. Perform Pending Research (JIT)
+        print("DEBUG: Checking for Research Tasks...", flush=True)
+        research_tasks = get_pending_research(target_user_id, session)
+        research_results_text = ""
+        
+        if research_tasks:
+            from services.research_service import perform_research_grounding
+            print(f"DEBUG: Found {len(research_tasks)} research tasks. Executing...", flush=True)
+            
+            for task in research_tasks:
+                print(f"DEBUG: Researching '{task.query}'...", flush=True)
+                summary = perform_research_grounding(task.query)
+                
+                research_results_text += f"\n[REQUEST: {task.query}]\nRESULT: {summary}\n"
+                
+                # Mark as done
+                task.status = "done"
+                task.result_summary = summary
+                session.add(task)
+            
+            session.commit()
+        else:
+            research_results_text = "No research requests."
+        
+        # 4. Fetch Weather (if enabled)
+        print("DEBUG: Checking Weather Settings...", flush=True)
+        weather_text = ""
+        if user_settings.weather_enabled:
+            print(f"DEBUG: Fetching Weather for {user_settings.weather_city}...", flush=True)
+            weather_text = get_weather_briefing(user_settings.weather_city)
+            print(f"DEBUG: Weather Fetched ({len(weather_text)} chars).", flush=True)
+
         # ═══════════════════════════════════════════════════════════════
         # PROMPT v2.0 SYSTEM INTEGRATION
         # ═══════════════════════════════════════════════════════════════
