@@ -249,6 +249,7 @@ def generate_briefing_content(target_user_id: str):
         session.add(briefing)
         session.commit()
         session.refresh(briefing)
+        session.expunge(briefing) # Allow usage after session closes
         
         logger.info(f"Briefing generated and stored: {storage_path}")
         print("DEBUG: Briefing saved to DB.", flush=True)
