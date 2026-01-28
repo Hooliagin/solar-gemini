@@ -62,142 +62,137 @@ def generate_briefing_content(target_user_id: str):
         topic_list = [i.topic for i in interests]
         print(f"DEBUG: Found custom topics: {topic_list}", flush=True)
         
-        # Fetch ALL news (predefined categories + custom topics)
-        print("DEBUG: Fetching News (categories + custom)...", flush=True)
+        # ═══════════════════════════════════════════════════════════════
+        # PROMPT v2.0 SYSTEM INTEGRATION
+        # ═══════════════════════════════════════════════════════════════
+        
+        # 1. Fetch Split News (Curated vs Dynamic)
+        print("DEBUG: Fetching Split News...", flush=True)
         from services.news_service import fetch_all_news
-        
-        all_news = fetch_all_news(user_settings, topic_list)
-        print(f"DEBUG: All News Fetched ({len(all_news)} chars).", flush=True)
-        
-        # 3. Fetch yesterday's diary (Last entry from DB for THIS USER)
-        print("DEBUG: Fetching last diary entry...", flush=True)
-        statement = select(Entry).where(Entry.user_id == target_user_id).order_by(Entry.id.desc())
-        last_entry = session.exec(statement).first()
-        
-        diary_transcript = last_entry.transcript if last_entry else "No diary entry for last night."
-        detected_language = last_entry.language if last_entry and last_entry.language else "de"  # Default to German
-        print(f"DEBUG: Detected language: {detected_language}", flush=True)
-        
-        # 4. Fetch Weather (if enabled)
-        print("DEBUG: Checking Weather Settings...", flush=True)
-        weather_text = ""
-        if user_settings.weather_enabled:
-            print(f"DEBUG: Fetching Weather for {user_settings.weather_city}...", flush=True)
-            weather_text = get_weather_briefing(user_settings.weather_city)
-            print(f"DEBUG: Weather Fetched ({len(weather_text)} chars).", flush=True)
-        
-        # 4. Generate Script using Gemini
-        print("DEBUG: Initializing Gemini Model...", flush=True)
-        client = genai.Client(api_key=settings.GOOGLE_API_KEY)
-        
-        # Determine language instruction for Gemini
-        language_instruction = "Respond in German (Deutsch)." if detected_language == "de" else f"Respond in English."
-        if detected_language not in ["de", "en"]:
-            language_instruction = f"Respond in the same language as the diary entry (detected: {detected_language})."
-        
-        # Get user's name for personalized greeting
-        user_name = user_settings.name if user_settings.name else ""
-        greeting_instruction = f"Address the user by name: '{user_name}'" if user_name else "Use a friendly greeting"
-        
-        # 3b. Fetch Pending Todos
-        print("DEBUG: Fetching Pending Todos...", flush=True)
-        from services.todo_service import get_pending_todos, get_pending_research
-        todos = get_pending_todos(target_user_id, session)
-        todo_list_text = "\n".join([f"- {t.task} (Due: {t.due_date.strftime('%Y-%m-%d') if t.due_date else 'Anytime'})" for t in todos])
-        if not todo_list_text:
-            todo_list_text = "No pending tasks."
-            
-        # 3c. Perform Pending Research (JIT)
-        print("DEBUG: Checking for Research Tasks...", flush=True)
-        research_tasks = get_pending_research(target_user_id, session)
-        research_results_text = ""
-        
-        if research_tasks:
-            from services.research_service import perform_research_grounding
-            print(f"DEBUG: Found {len(research_tasks)} research tasks. Executing...", flush=True)
-            
-            for task in research_tasks:
-                print(f"DEBUG: Researching '{task.query}'...", flush=True)
-                summary = perform_research_grounding(task.query)
-                
-                research_results_text += f"\n[REQUEST: {task.query}]\nRESULT: {summary}\n"
-                
-                # Mark as done
-                task.status = "done"
-                task.result_summary = summary
-                session.add(task)
-            
-            session.commit()
-        else:
-            research_results_text = "No research requests."
+        news_curated, news_dynamic = fetch_all_news(user_settings, topic_list)
+        print(f"DEBUG: News Fetched. Curated: {len(news_curated)} chars, Dynamic: {len(news_dynamic)} chars.", flush=True)
 
+        # 2. Fetch History for Anti-Repetition
+        # Fetch last 2 briefings to ensure variance
+        prev_briefings = session.exec(
+            select(Briefing)
+            .where(Briefing.user_id == target_user_id)
+            .order_by(Briefing.created_at.desc())
+            .limit(2)
+        ).all()
+        
+        briefing_yesterday = prev_briefings[0].script_content if len(prev_briefings) > 0 else None
+        briefing_day_before = prev_briefings[1].script_content if len(prev_briefings) > 1 else None
+        
+        # 3. Helper Functions (Embedded)
+        import hashlib
+        
+        def extract_key_phrases(text: str):
+            if not text: return []
+            sentences = text.replace('!', '.').replace('?', '.').split('.')
+            return [s.strip() for s in sentences if 20 < len(s.strip()) < 100][:20]
+
+        def generate_anti_repetition_instruction(yest, day_before):
+            if not yest and not day_before: return ""
+            instr = "\n════ ANTI-REPETITION (CRITICAL) ════\n"
+            instr += "VARIANZ IST PFLICHT. Wiederhole NICHTS von gestern.\n"
+            if yest:
+                phrases = extract_key_phrases(yest)
+                instr += f"GESTERN (VERBOTEN): {yest[:500]}...\nPhrasen zu vermeiden:\n" + "\n".join(f'- "{p}"' for p in phrases[:5]) + "\n"
+            return instr
+
+        # 4. Construct Prompt v2.0
+        
+        # Dynamic date injection
+        now = datetime.now()
+        current_date_spoken = now.strftime("%A, der %d. %B %Y")
+        # German weekday translation
+        replacements = {
+            "Monday": "Montag", "Tuesday": "Dienstag", "Wednesday": "Mittwoch",
+            "Thursday": "Donnerstag", "Friday": "Freitag", "Saturday": "Samstag", "Sunday": "Sonntag",
+            "January": "Januar", "February": "Februar", "March": "März", "April": "April", "May": "Mai",
+            "June": "Juni", "July": "Juli", "August": "August", "September": "September",
+            "October": "Oktober", "November": "November", "December": "Dezember"
+        }
+        for en, de in replacements.items():
+            current_date_spoken = current_date_spoken.replace(en, de)
+
+        anti_repetition = generate_anti_repetition_instruction(briefing_yesterday, briefing_day_before)
+        
         prompt = f"""
-        You are a friendly, professional personal assistant. It is morning.
+        You are a friendly, professional personal assistant. It is morning on {current_date_spoken}.
         Create a DETAILED morning briefing script for the user.
-        
+
         **IMPORTANT: {language_instruction}**
-        **GREETING: {greeting_instruction}**
-        
+        **GREETING: Address the user as {user_name if user_name else 'my friend'}.**
+
         **CRITICAL TTS OPTIMIZATION RULES:**
         - NEVER use Markdown formatting (no **, -, #, _, `, etc.)
         - Write EVERYTHING as natural spoken text
         - Spell out ALL numbers as words (e.g., "fünf" not "5", "zehn Uhr" not "10:00")
-        - Use full words, NEVER abbreviations (e.g., "zum Beispiel" not "z.B.", "das heißt" not "d.h.")
+        - Use full words, NEVER abbreviations (e.g., "zum Beispiel" not "z.B.")
         - Write times in spoken format (e.g., "zehn Uhr dreißig" not "10:30")
         - Use natural pauses with punctuation (commas, periods)
-        - Write dates in full spoken form (e.g., "dreiundzwanzigster Januar" not "23.01.")
-        - **GRAMMAR CHECK**: Ensure perfect German grammar. Do NOT make mistakes like 'bist geschlafen'. Use 'hast geschlafen'.
-        
-        Here is the context:
-        
+        - Write dates in full spoken form (e.g., "dreiundzwanzigster Januar")
+        - **GRAMMAR CHECK**: Ensure perfect German grammar. Use 'hast geschlafen' not 'bist geschlafen'.
+
+        {anti_repetition}
+
+        ═══════════════════════════════════════════════════════════════
+        CONTEXT DATA
+        ═══════════════════════════════════════════════════════════════
+
         [YESTERDAY'S DIARY/THOUGHTS]
-        {diary_transcript}
+        {diary_transcript if diary_transcript else "No diary entry available."}
 
         [USER TODOS / REMINDERS]
-        {todo_list_text}
-        
-        [RESEARCH RESULTS (ANSWERS TO USER QUESTIONS)]
-        {research_results_text}
-        
+        {todo_list_text if todo_list_text else "No todos listed."}
+
+        [RESEARCH RESULTS]
+        {research_results_text if research_results_text else "No research requested."}
+
         [TODAY'S CALENDAR]
-        {calendar_text}
-        
+        {calendar_text if calendar_text else "No appointments scheduled."}
+
         [WEATHER]
         {weather_text if weather_text else "Weather data not available."}
-        
-        [NEWS & TOPICS]
-        {all_news}
-        
-        **CRITICAL: FLOW TEXT ONLY (FLIESSTEXT)**
-        - **ABSOLUTELY NO HEADLINES**.
-        - The text must sound like a continuous, coherent radio moderation.
-        
-        **STRUCTURE (Internal Guide):**
-        1. **Warm Greeting**: Personal and friendly.
-        2. **Deep Retrospective (Yesterday)**:
-           - Analyze the diary entry: What did the user ACHIEVE? What was left UNFINISHED?
-           - Be specific and praising about achievements.
-           - Mention unfinished things gently as context for today.
-        3. **Resolutions & Intentions**:
-           - Based on yesterday, formulate 1-2 clear intentions/mottos for today.
-           - Example: "Yesterday was stressful, so today we focus on potential."
-        4. **The Plan (Calendar & Todos)**:
-           - **Step A (The Hard Landscape)**: Mention the fixed appointments clearly (Time + Event). Don't skip them.
-           - **Step B (The Gaps)**: Look for free slots between appointments.
-           - **Step C (Integration)**: Suggest when to do the [USER TODOS] in those gaps.
-           - Example: "You have meetings until 2 PM, but a free block afterwards—perfect to finally call Mom (from your todos)."
-        5. **Research Answers (If any)**:
-           - If there are [RESEARCH RESULTS], present them now.
-           - Say: "You asked me to look up X. Here is what I found..."
-        6. **News (The Meat)**: 2-3 topics, transitioned smoothly.
-        7. **Weather**: Quick check.
-        8. **Creative Closing**: END with a unique Quote/Wisdom.
 
-        
+        [NEWS - CURATED SOURCES (High Quality)]
+        {news_curated}
+
+        [NEWS - DYNAMIC SEARCH (User Topics)]
+        {news_dynamic}
+
+        ═══════════════════════════════════════════════════════════════
+        ZITAT & STRUKTUR SYSTEM
+        ═══════════════════════════════════════════════════════════════
+
+        **ZWEI ZITATE ERFORDERLICH:**
+
+        1. INTENTIONS-ZITAT (Nach Retrospektive):
+           - Analysiere Kalender (Meeting-Tag? Ruhiger Tag?)
+           - Wähle Zitat das zum TAGESTYP passt (Stoiker, Denker, etc.)
+           - Verbinde es direkt mit dem heutigen Tag.
+
+        2. REFLEXIONS-ZITAT (Abschluss):
+           - Analysiere Tagebuch (Stress? Erfolg? Sorge?)
+           - Wähle Zitat das diese EMOTION anspricht (nicht generisch!)
+           - Verbinde es mit der Situation von gestern.
+
+        **STRUKTUR (FLIESSTEXT - Keine Headlines!):**
+        1. Warme Begrüßung (Variiere! Nicht wie gestern!)
+        2. Tiefe Retrospektive (Was wurde geschafft? Was blieb liegen? Sei empathisch.)
+        3. Intentions-Zitat & Vorsätze für heute.
+        4. Der Tagesplan (Termine + Todos in die Lücken integrieren).
+        5. Recherche-Ergebnisse (falls vorhanden).
+        6. News (Mix aus Kuratiert & Dynamisch. Max 2-3 Themen. Nur Relevantes!).
+        7. Wetter & Abschluss mit Reflexions-Zitat.
+
         **STYLE**: Energetic but thoughtful. Like a mentor and a friend.
+        **ZIEL**: 3-4 Minuten gesprochener Text.
         """
         
-        print("DEBUG: Generating Content with Gemini...", flush=True)
+        print("DEBUG: Generating Content with Gemini (v2.0 Prompt)...", flush=True)
         response = client.models.generate_content(
             model="gemini-2.0-flash",
             contents=prompt

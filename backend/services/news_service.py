@@ -133,37 +133,41 @@ def fetch_all_news(user_settings, custom_topics: list[str] = None) -> str:
     Fetches all enabled news categories + custom topics.
     Returns combined news string.
     """
-    all_news = []
-    city = user_settings.weather_city if user_settings else None
+    curated_list = []
+    dynamic_list = []
     
-    # Fetch predefined categories if enabled
-    # Fetch predefined categories if enabled
+    # Fetch predefined categories (Curated)
     if user_settings:
         if user_settings.news_politics:
             print("DEBUG: Fetching Politics...", flush=True)
-            all_news.append(fetch_category_news('news_politics'))
+            curated_list.append(fetch_category_news('news_politics'))
         if user_settings.news_local:
             print(f"DEBUG: Fetching Local ({city})...", flush=True)
-            all_news.append(fetch_category_news('news_local', city))
+            curated_list.append(fetch_category_news('news_local', city))
         if user_settings.news_economy:
             print("DEBUG: Fetching Economy...", flush=True)
-            all_news.append(fetch_category_news('news_economy'))
+            curated_list.append(fetch_category_news('news_economy'))
         if user_settings.news_tech:
             print("DEBUG: Fetching Tech...", flush=True)
-            all_news.append(fetch_category_news('news_tech'))
+            curated_list.append(fetch_category_news('news_tech'))
         if user_settings.news_sports:
             print("DEBUG: Fetching Sports...", flush=True)
-            all_news.append(fetch_category_news('news_sports'))
+            curated_list.append(fetch_category_news('news_sports'))
     
-    # Fetch custom user interests
+    # Fetch custom user interests (Dynamic)
     if custom_topics:
         print(f"DEBUG: Fetching {len(custom_topics)} Custom Topics...", flush=True)
-        custom_news = fetch_detailed_news_per_topic(custom_topics)
-        if custom_news:
-            all_news.append(custom_news)
+        # Reuse existing function but treat result as dynamic list items
+        custom_news_str = fetch_detailed_news_per_topic(custom_topics)
+        if custom_news_str:
+            dynamic_list.append(custom_news_str)
     
-    print("DEBUG: News Content Assembled.", flush=True)
-    return "\n".join(filter(None, all_news)) or "Keine News-Kategorien aktiviert."
+    print("DEBUG: News Content Assembled (Split).", flush=True)
+    
+    curated_text = "\n".join(filter(None, curated_list)) or "Keine allgemeinen News-Kategorien aktiviert."
+    dynamic_text = "\n".join(filter(None, dynamic_list)) or "Keine persönlichen Themen definiert."
+    
+    return curated_text, dynamic_text
 
 
 # Legacy function for backward compatibility
