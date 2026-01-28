@@ -135,6 +135,7 @@ def fetch_all_news(user_settings, custom_topics: list[str] = None) -> str:
     """
     curated_list = []
     dynamic_list = []
+    city = user_settings.weather_city if user_settings else None
     
     # Fetch predefined categories (Curated)
     if user_settings:
