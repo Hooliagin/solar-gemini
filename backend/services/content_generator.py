@@ -294,12 +294,18 @@ TO-DO INTEGRATION (PFLICHT - NICHT OPTIONAL!)
 "Nach deinem Standup um zehn Uhr hast du bis vierzehn Uhr einen freien Block. Ich schlage vor: Nutze zehn Uhr dreißig bis zwölf Uhr dreißig für den Businessplan."
 
 ═══════════════════════════════════════════════════════════════════════════════
-NEWS-AUSWAHL (THEMATISCH, NICHT GEOGRAFISCH!)
+NEWS-AUSWAHL (STRIKTE QUELLEN-TREUE!)
 ═══════════════════════════════════════════════════════════════════════════════
 **HEUTE IST: {date_short}**
-**NIEMALS** nach News für den Wohnort des Users suchen. Leite Themen aus dem KONTEXT ab (Tagebuch, Kalender, Interessen).
-Maximal 3 News-Themen. Nur Nachrichten der letzten 24 Stunden.
 
+**REGEL 1:** Nutze AUSSCHLIESSLICH die Informationen aus [NEWS - KURATIERTE QUELLEN] und [NEWS - DYNAMISCHE SUCHE].
+**REGEL 2 (ANTI-HALLUZINATION):** Wenn dort steht "Keine News" oder wenn die Info leer ist: ERFINDE KEINE NEWS.
+**REGEL 3:** "Leite Themen aus dem Kontext ab" ist HIER VERBOTEN. Du darfst keine News erfinden, nur weil der User "KI" im Kalender hat.
+
+Wenn KEINE News-Quellen vorhanden sind:
+-> Erwähne kurz, dass es heute ruhig ist in der Welt, und geh direkt zum Wetter über.
+
+Maximal 3 Themen aus den GEGEBENEN Quellen.
 ═══════════════════════════════════════════════════════════════════════════════
 KALENDER-EMPFEHLUNGEN (AKTIV, NICHT PASSIV!)
 ═══════════════════════════════════════════════════════════════════════════════
