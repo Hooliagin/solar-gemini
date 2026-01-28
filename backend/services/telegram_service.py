@@ -27,16 +27,51 @@ async def send_briefing_audio(chat_id: str, audio_path: str, caption: str = None
     try:
         bot = get_bot()
         
-        if not os.path.exists(audio_path):
-            logger.error(f"Audio file not found: {audio_path}")
+        if not audio_path:
+            logger.error("Audio path not provided")
             return False
+
+        # Support for Supabase Storage Paths (Format: "user_id/filename.wav")
+        is_storage_path = "/" in audio_path and not audio_path.startswith("/") and not ":" in audio_path
         
-        with open(audio_path, 'rb') as audio_file:
+        voice_input = None
+        
+        if is_storage_path:
+            # Generate Signed URL for Telegram to download
+            from services.storage_service import create_signed_url
+            try:
+                # Telegram needs a valid URL. 5 mins expiration should be enough.
+                signed_url_obj = create_signed_url(audio_path, expires_in=300)
+                
+                # Handle Supabase response variations (dict vs string)
+                signed_url = signed_url_obj
+                if isinstance(signed_url_obj, dict):
+                    signed_url = signed_url_obj.get("signedURL")
+                
+                voice_input = signed_url
+                logger.info(f"Sending briefing via Signed URL: {signed_url[:50]}...")
+            except Exception as e:
+                logger.error(f"Failed to generate signed URL for Telegram: {e}")
+                return False
+        
+        elif os.path.exists(audio_path):
+            # Local File
+            voice_input = open(audio_path, 'rb')
+        else:
+            logger.error(f"Audio file not found (Local or Storage): {audio_path}")
+            return False
+            
+        # Send
+        try:
             await bot.send_voice(
                 chat_id=chat_id,
-                voice=audio_file,
+                voice=voice_input,
                 caption=caption[:1024] if caption else None
             )
+        finally:
+            # Close file if we opened one
+            if hasattr(voice_input, 'close'):
+                voice_input.close()
         
         logger.info(f"Briefing sent to Telegram chat {chat_id}")
         return True
