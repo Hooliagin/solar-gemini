@@ -3,7 +3,7 @@ services:
   - type: web
     name: daily-manager-backend
     runtime: python
-    plan: free # Explicitly request Free plan
+    plan: starter # User is on Starter tier
     buildCommand: |
       cd backend
       pip install -r requirements.txt
