@@ -76,3 +76,10 @@ class ResearchTask(SQLModel, table=True):
     result_summary: Optional[str] = None # The summary found by the agent
     created_at: datetime = Field(default_factory=datetime.utcnow)
     source_entry_id: Optional[int] = None
+
+class UsedQuote(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: str = Field(index=True)
+    quote_id: str = Field(index=True) # Hash of author:quote
+    quote_text_snippet: str # Stored just for debugging reference
+    used_at: datetime = Field(default_factory=datetime.utcnow)

@@ -84,8 +84,17 @@ def generate_briefing_content(target_user_id: str):
         briefing_yesterday = prev_briefings[0].script_content if len(prev_briefings) > 0 else None
         briefing_day_before = prev_briefings[1].script_content if len(prev_briefings) > 1 else None
         
+        # 2b. Fetch Used Quotes (Last 30 days)
+        from models import UsedQuote
+        cutoff_quotes = datetime.utcnow() - timedelta(days=30)
+        used_quotes_db = session.exec(
+            select(UsedQuote).where(UsedQuote.user_id == target_user_id, UsedQuote.used_at > cutoff_quotes)
+        ).all()
+        used_quote_ids = [q.quote_id for q in used_quotes_db]
+        
         # 3. Helper Functions (Embedded)
         import hashlib
+        import json
         
         def extract_key_phrases(text: str):
             if not text: return []
@@ -100,6 +109,10 @@ def generate_briefing_content(target_user_id: str):
                 phrases = extract_key_phrases(yest)
                 instr += f"GESTERN (VERBOTEN): {yest[:500]}...\nPhrasen zu vermeiden:\n" + "\n".join(f'- "{p}"' for p in phrases[:5]) + "\n"
             return instr
+            
+        def generate_quote_id(quote_text: str, author: str) -> str:
+            combined = f"{author.lower().strip()}:{quote_text.lower().strip()[:50]}"
+            return hashlib.md5(combined.encode()).hexdigest()[:12]
 
         # 4. Construct Prompt v2.0
         
@@ -137,6 +150,9 @@ def generate_briefing_content(target_user_id: str):
         - **GRAMMAR CHECK**: Ensure perfect German grammar. Use 'hast geschlafen' not 'bist geschlafen'.
 
         {anti_repetition}
+        
+        **BLACKLISTED QUOTES (DO NOT USE THESE - ALREADY USED RECENTLY):**
+        {json.dumps(used_quote_ids)}
 
         ═══════════════════════════════════════════════════════════════
         CONTEXT DATA
@@ -187,6 +203,18 @@ def generate_briefing_content(target_user_id: str):
         5. Recherche-Ergebnisse (falls vorhanden).
         6. News (Mix aus Kuratiert & Dynamisch. Max 2-3 Themen. Nur Relevantes!).
         7. Wetter & Abschluss mit Reflexions-Zitat.
+        
+        **METADATA OUTPUT (REQUIRED AT THE VERY END):**
+        Please add the following JSON block at the very end of your response, separated by "---METADATA---".
+        This is for my tracking system.
+        
+        ---METADATA---
+        {{
+          "quotes": [
+             {{ "text": "Quote 1 Text...", "author": "Author 1" }},
+             {{ "text": "Quote 2 Text...", "author": "Author 2" }}
+          ]
+        }}
 
         **STYLE**: Energetic but thoughtful. Like a mentor and a friend.
         **ZIEL**: 3-4 Minuten gesprochener Text.
@@ -198,7 +226,44 @@ def generate_briefing_content(target_user_id: str):
             contents=prompt
         )
         print("DEBUG: Gemini Response Received.", flush=True)
-        script = response.text
+        raw_text = response.text
+        
+        # 5. Extract Metadata (Quotes) & Clean Script
+        script = raw_text
+        try:
+            if "---METADATA---" in raw_text:
+                parts = raw_text.split("---METADATA---")
+                script = parts[0].strip() # The audio script
+                metadata_str = parts[1].strip()
+                
+                # Parse JSON
+                # Clean potential markdown code blocks like ```json ... ```
+                metadata_str = metadata_str.replace("```json", "").replace("```", "").strip()
+                metadata = json.loads(metadata_str)
+                
+                # Save Used Quotes
+                if "quotes" in metadata:
+                    for q in metadata["quotes"]:
+                        q_text = q.get("text", "")
+                        q_author = q.get("author", "Unknown")
+                        qid = generate_quote_id(q_text, q_author)
+                        
+                        # Store in DB
+                        print(f"DEBUG: Tracking Quote: {qid} ({q_author})", flush=True)
+                        new_used_quote = UsedQuote(
+                            user_id=target_user_id,
+                            quote_id=qid,
+                            quote_text_snippet=q_text[:100]
+                        )
+                        session.add(new_used_quote)
+                    session.commit()
+            else:
+                logger.warning("No Metadata block found in LLM response.")
+        except Exception as e:
+            logger.error(f"Failed to parse Quote Metadata: {e}")
+            # We continue with the script, just failing to track quotes
+            script = raw_text.split("---METADATA---")[0].strip() 
+             
         
         # 5. Generate Audio
         print("DEBUG: Generating Audio (TTS)...", flush=True)
