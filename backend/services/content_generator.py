@@ -26,7 +26,9 @@ def get_german_date() -> tuple[str, str]:
     Gibt das aktuelle Datum auf Deutsch zurück.
     Returns: (kurz, lang) z.B. ("28. Januar 2026", "Mittwoch, der 28. Januar 2026")
     """
-    now = datetime.now()
+    from zoneinfo import ZoneInfo
+    tz = ZoneInfo("Europe/Berlin")
+    now = datetime.now(tz)
     
     weekdays = {
         0: "Montag", 1: "Dienstag", 2: "Mittwoch", 3: "Donnerstag",
