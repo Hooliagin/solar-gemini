@@ -97,3 +97,17 @@ def delete_file(storage_path: str):
         logger.info(f"Deleted file {storage_path} from storage")
     except Exception as e:
         logger.error(f"Failed to delete file {storage_path}: {e}")
+
+def download_file(storage_path: str) -> bytes:
+    """Download a file from storage into memory (bytes)."""
+    client = get_supabase_admin()
+    if not client:
+        raise Exception("Supabase client not initialized")
+        
+    try:
+        # returns byte array usually
+        response = client.storage.from_(BUCKET_NAME).download(storage_path)
+        return response
+    except Exception as e:
+        logger.error(f"Failed to download file {storage_path}: {e}")
+        raise e

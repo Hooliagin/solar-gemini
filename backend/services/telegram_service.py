@@ -37,21 +37,15 @@ async def send_briefing_audio(chat_id: str, audio_path: str, caption: str = None
         voice_input = None
         
         if is_storage_path:
-            # Generate Signed URL for Telegram to download
-            from services.storage_service import create_signed_url
+            # Download file content to memory to ensure Telegram can send it reliably
+            # (Passing URLs sometimes fails if Telegram servers can't reach the signed link or if it's redirects)
+            from services.storage_service import download_file
             try:
-                # Telegram needs a valid URL. 5 mins expiration should be enough.
-                signed_url_obj = create_signed_url(audio_path, expires_in=300)
-                
-                # Handle Supabase response variations (dict vs string)
-                signed_url = signed_url_obj
-                if isinstance(signed_url_obj, dict):
-                    signed_url = signed_url_obj.get("signedURL")
-                
-                voice_input = signed_url
-                logger.info(f"Sending briefing via Signed URL: {signed_url[:50]}...")
+                logger.info(f"Downloading audio from storage for Telegram: {audio_path}")
+                file_bytes = download_file(audio_path)
+                voice_input = file_bytes # Telegram accepts bytes if we don't set a filename, but better to wrap
             except Exception as e:
-                logger.error(f"Failed to generate signed URL for Telegram: {e}")
+                logger.error(f"Failed to download file for Telegram: {e}")
                 return False
         
         elif os.path.exists(audio_path):
@@ -69,8 +63,8 @@ async def send_briefing_audio(chat_id: str, audio_path: str, caption: str = None
                 caption=caption[:1024] if caption else None
             )
         finally:
-            # Close file if we opened one
-            if hasattr(voice_input, 'close'):
+            # Close file if we opened one. Bytes objects don't need closing.
+            if hasattr(voice_input, 'close') and callable(voice_input.close):
                 voice_input.close()
         
         logger.info(f"Briefing sent to Telegram chat {chat_id}")
