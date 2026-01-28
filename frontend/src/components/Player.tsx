@@ -139,13 +139,13 @@ const Player: React.FC = () => {
             <button
                 onClick={generateBriefing}
                 disabled={generating}
-                className="w-full flex justify-between items-center py-4 border-t border-charcoal group hover:bg-charcoal hover:text-alabaster transition-colors duration-500"
+                className="w-full flex justify-between items-center py-6 border-t border-charcoal group hover:bg-charcoal hover:text-alabaster transition-colors duration-500"
             >
-                <span className="text-xs uppercase tracking-widest">
-                    {generating ? 'Erstelle...' : 'Jetzt erstellen'}
+                <span className="text-sm font-medium uppercase tracking-widest">
+                    {generating ? 'Erstelle...' : 'Tagebuch Eintrag jetzt generieren'}
                 </span>
                 <span className="transform group-hover:translate-x-2 transition-transform duration-500">
-                    {generating ? <RefreshCw className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}
+                    {generating ? <RefreshCw className="w-5 h-5 animate-spin" /> : <ArrowRight className="w-5 h-5" />}
                 </span>
             </button>
         </div>
@@ -205,10 +205,10 @@ const Player: React.FC = () => {
             <button
                 onClick={generateBriefing}
                 disabled={generating}
-                className="text-xs uppercase tracking-widest text-warm-grey hover:text-charcoal transition-colors flex items-center gap-2 mt-auto pt-4 border-t border-charcoal/10"
+                className="text-sm font-medium uppercase tracking-widest text-charcoal hover:bg-charcoal hover:text-alabaster transition-all flex items-center justify-center gap-3 mt-auto py-6 border-t border-charcoal w-full"
             >
-                <RefreshCw className={`w-3 h-3 ${generating ? 'animate-spin' : ''}`} />
-                Briefing neu generieren
+                <RefreshCw className={`w-4 h-4 ${generating ? 'animate-spin' : ''}`} />
+                Tagebuch Eintrag jetzt generieren
             </button>
         </div>
     );

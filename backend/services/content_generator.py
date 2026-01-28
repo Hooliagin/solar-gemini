@@ -241,26 +241,29 @@ def generate_briefing_content(target_user_id: str):
         ZITAT & STRUKTUR SYSTEM
         ═══════════════════════════════════════════════════════════════
 
-        **ZWEI ZITATE ERFORDERLICH:**
+        **ZWEI ZITATE ERFORDERLICH (CRITICAL: Beachtung der Reihenfolge):**
 
-        1. INTENTIONS-ZITAT (Nach Retrospektive):
-           - Analysiere Kalender (Meeting-Tag? Ruhiger Tag?)
-           - Wähle Zitat das zum TAGESTYP passt (Stoiker, Denker, etc.)
+        1. REFLEXIONS-ZITAT (Rückblick auf Gestern/Tagebuch):
+           - Analysiere Tagebuch (Stress? Erfolg? Sorge?).
+           - Falls Tagebuch leer/kurz: Nimm ein allgemeines Zitat über "Neuanfang" oder "Morgenroutine". ERFINDE KEINE GEFÜHLE, wenn keine da stehen.
+           - Wähle Zitat das die ECHTE Emotion anspricht.
+
+        2. INTENTIONS-ZITAT (Vorausschau auf Heute/Kalender):
+           - Analysiere Kalender (Meeting-Tag? Ruhiger Tag?).
+           - Wähle Zitat das zum TAGESTYP passt (Stoiker, Denker, Macher).
            - Verbinde es direkt mit dem heutigen Tag.
-
-        2. REFLEXIONS-ZITAT (Abschluss):
-           - Analysiere Tagebuch (Stress? Erfolg? Sorge?)
-           - Wähle Zitat das diese EMOTION anspricht (nicht generisch!)
-           - Verbinde es mit der Situation von gestern.
 
         **STRUKTUR (FLIESSTEXT - Keine Headlines!):**
         1. Warme Begrüßung (Variiere! Nicht wie gestern!)
-        2. Tiefe Retrospektive (Was wurde geschafft? Was blieb liegen? Sei empathisch.)
-        3. Intentions-Zitat & Vorsätze für heute.
-        4. Der Tagesplan (Termine + Todos in die Lücken integrieren).
+        2. Tiefe Retrospektive (Was wurde geschafft?).
+           - **WICHTIG**: Wenn Tagebuch leer ist, sag ehrlich: "Du hast gestern nichts eingetragen, also blicken wir direkt nach vorne." (Erfinde NICHTS dazu).
+           - Wenn Tagebuch Inhalt hat: Gehe empathisch darauf ein.
+           - Schließe diesen Teil mit dem REFLEXIONS-ZITAT ab.
+        3. Der Tagesplan (Termine + Todos in die Lücken integrieren).
+        4. Intentions-Zitat als Überleitung zum "Doing".
         5. Recherche-Ergebnisse (falls vorhanden).
         6. News (Mix aus Kuratiert & Dynamisch. Max 2-3 Themen. Nur Relevantes!).
-        7. Wetter & Abschluss mit Reflexions-Zitat.
+        7. Wetter & Abschluss (Motivation).
         
         **METADATA OUTPUT (REQUIRED AT THE VERY END):**
         Please add the following JSON block at the very end of your response, separated by "---METADATA---".
