@@ -13,7 +13,8 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 # OAuth configuration
 SCOPES = [
-    'https://www.googleapis.com/auth/calendar.events' # Read/Write events
+    'https://www.googleapis.com/auth/calendar.events', # Read/Write events
+    'https://www.googleapis.com/auth/calendar.readonly' # List calendars
 ]
 REDIRECT_URI = os.getenv("GOOGLE_REDIRECT_URI", "https://daily-manager-backend.onrender.com/auth/google/callback")
 
