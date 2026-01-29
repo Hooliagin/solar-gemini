@@ -297,8 +297,10 @@ Das Ziel ist es, die Gewohnheiten ([HABIT]) und To-Dos sinnvoll in den Tag zu in
 2.  **Analysiere die Habit-Präferenzen**:
     - "Morning Light" muss Vormittags sein.
     - "Read" kann Abends sein.
-3.  **SCHEDULE SIE**: Du musst für JEDEN aktiven Habit einen Slot finden, sofern möglich.
-4.  **Generiere Agenda Items**: Diese Habits MÜSSEN in der `final_agenda` im Metadata-Block erscheinen (als type: "suggestion").
+                # 3. SCHEDULE SIE: Du musst für JEDEN aktiven Habit einen Slot finden, sofern möglich.
+4.  **Generiere Agenda Items**: Das Ergebnis MUSS eine KOMBINATION aus allen `fixed` Events (unverändert!) und den neuen `suggestion` Events sein.
+    - WARNUNG: Du darfst KEINE existierenden Termine löschen.
+    - Deine `final_agenda` im JSON muss VOLLSTÄNDIG sein (Kalender + Habits).
 
 **BEISPIEL:**
 "Dein Vormittag ist voll, aber um fünfzehn Uhr ist eine Lücke. Das wäre perfekt für dein Sport-Habit."
@@ -603,6 +605,9 @@ def generate_briefing_content(target_user_id: str):
                             "calendar": "AI Suggestion" if event.get("type") == "suggestion" else "Calendar",
                             "type": event.get("type", "fixed")
                         })
+                    
+                    # Sort by start time to ensure chronological order
+                    normalized_agenda.sort(key=lambda x: x['start'])
                     
                     # OVERRIDE the raw calendar events with this AI-enhanced version
                     if normalized_agenda:
