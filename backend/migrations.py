@@ -42,6 +42,14 @@ def run_migrations():
                 conn.execute(text("ALTER TABLE usersettings ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"))
                 conn.commit()
                 
+            try:
+                conn.execute(text("SELECT calendar_events FROM briefing LIMIT 1"))
+            except Exception:
+                logger.info("Applying migration: Adding calendar_events column to briefing")
+                conn.rollback()
+                conn.execute(text("ALTER TABLE briefing ADD COLUMN calendar_events TEXT DEFAULT NULL"))
+                conn.commit()
+
             logger.info("Migrations completed successfully.")
             
         except Exception as e:

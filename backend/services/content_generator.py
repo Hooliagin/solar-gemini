@@ -1,7 +1,7 @@
 from google import genai
 from google.genai import types
 from config import settings
-from services.calendar_service import get_calendar_events
+from services.calendar_service import get_calendar_events, format_events_text
 from services.news_service import fetch_ai_news_summary, fetch_all_news
 from services.weather_service import get_weather_briefing
 from services.tts_service import generate_speech
@@ -393,8 +393,9 @@ def generate_briefing_content(target_user_id: str):
         # 1. Fetch Calendar
         print("DEBUG: Fetching Calendar...", flush=True)
         # TODO: Pass user tokens to calendar service
-        calendar_text = get_calendar_events(target_user_id) 
-        print(f"DEBUG: Calendar Fetched ({len(calendar_text)} chars).", flush=True)
+        calendar_events_list = get_calendar_events(target_user_id)
+        calendar_text = format_events_text(calendar_events_list)
+        print(f"DEBUG: Calendar Fetched ({len(calendar_events_list)} events).", flush=True)
         
         # 2. Fetch User Interests & News
         print("DEBUG: Querying Interests...", flush=True)
@@ -579,6 +580,7 @@ def generate_briefing_content(target_user_id: str):
             user_id=target_user_id,
             scheduled_for=datetime.now(),
             script_content=script,
+            calendar_events=json.dumps(calendar_events_list) if calendar_events_list else None,
             audio_path=storage_path if storage_path else audio_path_abs, 
             status="generated"
         )

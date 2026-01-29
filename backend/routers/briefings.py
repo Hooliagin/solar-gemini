@@ -124,11 +124,25 @@ async def trigger_briefing_generation(
                         chat_id=user_settings.telegram_chat_id, 
                         text=f"🚀 **Briefing manuell generiert!**"
                     ))
+
+                    # Generate Agenda Image
+                    agenda_image_path = None
+                    if briefing.calendar_events:
+                        try:
+                            import json
+                            from services.image_service import generate_agenda_image
+                            
+                            events = json.loads(briefing.calendar_events)
+                            date_str = datetime.now().strftime("%A, %d. %B")
+                            agenda_image_path = generate_agenda_image(events, date_str)
+                        except Exception as e:
+                            logger.error(f"Failed to generate agenda image: {e}")
                     
                     asyncio.run(send_briefing_audio(
                         chat_id=user_settings.telegram_chat_id,
                         audio_path=briefing.audio_path,
-                        caption=caption
+                        caption=caption,
+                        image_path=agenda_image_path
                     ))
                     logger.info(f"Manual briefing sent to Telegram for {uid}")
 
@@ -148,3 +162,27 @@ async def trigger_briefing_generation(
     except Exception as e:
         logger.error(f"Failed to queue task: {e}")
         raise HTTPException(status_code=500, detail=f"Queue failed: {str(e)}")
+
+@router.put("/{briefing_id}/events")
+async def update_briefing_events(
+    briefing_id: int,
+    events: list[dict],
+    session: Session = Depends(get_session),
+    user_id: str = Depends(get_current_user_id)
+):
+    """
+    Updates the cached calendar events for a specific briefing (Manual overrides).
+    """
+    briefing = session.get(Briefing, briefing_id)
+    if not briefing:
+        raise HTTPException(status_code=404, detail="Briefing not found")
+        
+    if briefing.user_id != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+        
+    import json
+    briefing.calendar_events = json.dumps(events)
+    session.add(briefing)
+    session.commit()
+    
+    return {"status": "success", "message": "Events updated"}

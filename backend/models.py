@@ -17,6 +17,7 @@ class Briefing(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
     scheduled_for: datetime
     script_content: str
+    calendar_events: Optional[str] = Field(default=None) # JSON encoded list of events
     audio_path: str
     status: str = Field(default="pending") # pending, generated, played
 

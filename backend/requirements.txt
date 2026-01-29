@@ -17,3 +17,4 @@ pydub>=0.25.0
 PyJWT[crypto]
 pytz
 supabase
+Pillow

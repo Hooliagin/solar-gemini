@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import Player from '../components/Player';
 import Recorder from '../components/Recorder';
 import DiaryList from '../components/DiaryList';
+import CalendarView from '../components/CalendarView';
 import { API_BASE_URL } from '../config';
 
 export default function Dashboard() {
@@ -120,41 +121,78 @@ export default function Dashboard() {
 
                 <main className="grid grid-cols-1 md:grid-cols-12 gap-x-12 gap-y-24">
 
-                    {/* Primary Action: Briefing Player */}
-                    <div className="col-span-1 md:col-span-7 animate-slide-up" style={{ animationDelay: '0.1s' }}>
-                        <div className="flex items-center gap-4 mb-8">
-                            <span className="text-xs font-mono text-charcoal/40">01</span>
-                            <h2 className="text-sm font-sans uppercase tracking-[0.2em] border-b border-gold pb-1">Morgendliches Briefing</h2>
+                    {/* Main Grid Layout */}
+                    <div className="col-span-1 md:col-span-8 space-y-12 animate-slide-up" style={{ animationDelay: '0.1s' }}>
+
+                        {/* 01 Briefing Player */}
+                        <div>
+                            <div className="flex items-center gap-4 mb-8">
+                                <span className="text-xs font-mono text-charcoal/40">01</span>
+                                <h2 className="text-sm font-sans uppercase tracking-[0.2em] border-b border-gold pb-1">Morgendliches Briefing</h2>
+                            </div>
+                            <div className="card-luxury min-h-[300px] flex flex-col justify-between group hover:border-gold transition-colors duration-500">
+                                <div className="mb-8">
+                                    <h3 className="text-4xl font-serif mb-4 group-hover:translate-x-2 transition-transform duration-700 leading-tight">
+                                        {briefingTitle}
+                                    </h3>
+                                    <p className="text-warm-grey font-serif italic max-w-md">"{briefingQuote}"</p>
+                                </div>
+                                <Player onBriefingLoaded={setLatestBriefing} />
+                            </div>
                         </div>
 
-                        <div className="card-luxury min-h-[300px] flex flex-col justify-between group hover:border-gold transition-colors duration-500">
-                            <div className="mb-8">
-                                <h3 className="text-4xl font-serif mb-4 group-hover:translate-x-2 transition-transform duration-700 leading-tight">
-                                    {briefingTitle}
-                                </h3>
-                                <p className="text-warm-grey font-serif italic max-w-md">"{briefingQuote}"</p>
+                        {/* 02 Recorder */}
+                        <div>
+                            <div className="flex items-center gap-4 mb-8">
+                                <span className="text-xs font-mono text-charcoal/40">02</span>
+                                <h2 className="text-sm font-sans uppercase tracking-[0.2em] border-b border-transparent group-hover:border-gold pb-1 transition-colors">Tagebuch-Eintrag</h2>
                             </div>
-                            <Player onBriefingLoaded={setLatestBriefing} />
+                            <div className="card-luxury min-h-[300px] flex flex-col justify-between group hover:border-gold transition-colors duration-500">
+                                <div className="mb-8">
+                                    <h3 className="text-4xl font-serif mb-4 group-hover:translate-x-2 transition-transform duration-700">Audio-<br />Tagebuch</h3>
+                                    <p className="text-warm-grey font-serif italic">Nehmen Sie Ihre Gedanken auf.</p>
+                                </div>
+                                <Recorder onUploadComplete={() => setRefreshTrigger(p => p + 1)} />
+                            </div>
                         </div>
+
                     </div>
 
-                    {/* Secondary Action: Recorder */}
-                    <div className="col-span-1 md:col-span-5 animate-slide-up" style={{ animationDelay: '0.2s' }}>
-                        <div className="flex items-center gap-4 mb-8">
-                            <span className="text-xs font-mono text-charcoal/40">02</span>
-                            <h2 className="text-sm font-sans uppercase tracking-[0.2em] border-b border-transparent group-hover:border-gold pb-1 transition-colors">Tagebuch-Eintrag</h2>
-                        </div>
+                    {/* Right Column: Calendar */}
+                    <div className="col-span-1 md:col-span-4 animate-slide-up" style={{ animationDelay: '0.2s' }}>
+                        {latestBriefing && latestBriefing.calendar_events && (
+                            <CalendarView
+                                events={JSON.parse(latestBriefing.calendar_events)}
+                                isUpdating={false} // TODO: Add state
+                                onUpdateErrors={async (newEvents) => {
+                                    // Optimistic update would be good here, but for now simple
+                                    console.log("Updating events:", newEvents);
+                                    if (!session?.access_token || !latestBriefing.id) return;
 
-                        <div className="card-luxury min-h-[300px] flex flex-col justify-between group hover:border-gold transition-colors duration-500">
-                            <div className="mb-8">
-                                <h3 className="text-4xl font-serif mb-4 group-hover:translate-x-2 transition-transform duration-700">Audio-<br />Tagebuch</h3>
-                                <p className="text-warm-grey font-serif italic">Nehmen Sie Ihre Gedanken auf.</p>
+                                    try {
+                                        await fetch(`${API_BASE_URL}/briefings/${latestBriefing.id}/events`, {
+                                            method: 'PUT',
+                                            headers: {
+                                                'Authorization': `Bearer ${session.access_token}`,
+                                                'Content-Type': 'application/json'
+                                            },
+                                            body: JSON.stringify(newEvents)
+                                        });
+                                        // Silent success or toast
+                                    } catch (e) {
+                                        console.error("Failed to update events", e);
+                                    }
+                                }}
+                            />
+                        )}
+                        {(!latestBriefing || !latestBriefing.calendar_events) && (
+                            <div className="card-luxury h-full flex items-center justify-center opacity-50">
+                                <p className="text-xs font-serif text-charcoal/40">Keine Agenda verfügbar</p>
                             </div>
-                            <Recorder onUploadComplete={() => setRefreshTrigger(p => p + 1)} />
-                        </div>
+                        )}
                     </div>
 
-                    {/* Recent History */}
+                    {/* Recent History (Full Width) */}
                     <div className="col-span-1 md:col-span-12 mt-12 animate-slide-up" style={{ animationDelay: '0.3s' }}>
                         <div className="flex items-center gap-4 mb-8">
                             <span className="text-xs font-mono text-charcoal/40">03</span>

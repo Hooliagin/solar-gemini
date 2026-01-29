@@ -15,18 +15,28 @@ def get_bot():
         raise ValueError("TELEGRAM_BOT_TOKEN not configured")
     return Bot(token=settings.TELEGRAM_BOT_TOKEN)
 
-async def send_briefing_audio(chat_id: str, audio_path: str, caption: str = None):
+async def send_briefing_audio(chat_id: str, audio_path: str, caption: str = None, image_path: str = None):
     """
     Sends briefing audio file to Telegram chat.
+    Optionally sends an agenda image first.
     
     Args:
         chat_id: Telegram chat ID
         audio_path: Absolute path to audio file
         caption: Optional caption (max 1024 chars)
+        image_path: Optional path to agenda image
     """
     try:
         bot = get_bot()
         
+        # 1. Send Image if provided
+        if image_path and os.path.exists(image_path):
+            try:
+                with open(image_path, 'rb') as photo:
+                    await bot.send_photo(chat_id=chat_id, photo=photo)
+            except Exception as e:
+                logger.error(f"Failed to send agenda image: {e}")
+
         if not audio_path:
             logger.error("Audio path not provided")
             return False
