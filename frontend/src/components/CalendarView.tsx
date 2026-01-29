@@ -7,6 +7,7 @@ interface CalendarEvent {
     name: string;
     calendar: string;
     id?: string;
+    type?: 'fixed' | 'suggestion';
 }
 
 interface CalendarViewProps {
@@ -28,6 +29,8 @@ export default function CalendarView({ events: initialEvents, onUpdateErrors, is
         let time = "All Day";
         if (event.start.includes('T')) {
             time = event.start.split('T')[1].substring(0, 5);
+        } else if (event.start.includes(':')) {
+            time = event.start.substring(0, 5);
         }
         setEditTime(time);
     };
@@ -42,10 +45,13 @@ export default function CalendarView({ events: initialEvents, onUpdateErrors, is
         event.name = editValue;
 
         // Update Time (Simple handling)
-        if (editTime !== "All Day" && event.start.includes('T')) {
-            const datePart = event.start.split('T')[0];
-            // Append seconds/timezone if needed, but for now kept simple
-            event.start = `${datePart}T${editTime}:00`;
+        if (editTime !== "All Day") {
+            if (event.start.includes('T')) {
+                const datePart = event.start.split('T')[0];
+                event.start = `${datePart}T${editTime}:00`;
+            } else {
+                event.start = editTime;
+            }
         }
 
         setEvents(newEvents);
@@ -74,7 +80,12 @@ export default function CalendarView({ events: initialEvents, onUpdateErrors, is
                         let timeStr = "Ganztägig";
                         if (event.start.includes('T')) {
                             timeStr = event.start.split('T')[1].substring(0, 5);
+                        } else if (event.start.includes(':')) {
+                            timeStr = event.start.substring(0, 5);
                         }
+
+                        // Determine Dot Style
+                        const isSuggestion = event.type === 'suggestion' || event.calendar === 'AI Suggestion';
 
                         return (
                             <motion.div
@@ -85,7 +96,10 @@ export default function CalendarView({ events: initialEvents, onUpdateErrors, is
                                 className="group relative flex items-start gap-6 group"
                             >
                                 {/* Dot */}
-                                <div className="absolute left-[21px] top-[9px] w-3 h-3 rounded-full border-2 border-gold bg-[#F5F5F0] z-20 transition-transform group-hover:scale-125 group-hover:bg-gold" />
+                                <div
+                                    className={`absolute left-[21px] top-[9px] w-3 h-3 rounded-full border-2 border-gold z-20 transition-transform group-hover:scale-125 
+                                    ${isSuggestion ? 'bg-[#F5F5F0]' : 'bg-gold'}`}
+                                />
 
                                 {/* Time */}
                                 <div className="w-16 pt-1 text-right">
@@ -125,7 +139,7 @@ export default function CalendarView({ events: initialEvents, onUpdateErrors, is
                                             className="group/item flex items-center justify-between cursor-pointer"
                                             onClick={() => handleEditStart(index, event)}
                                         >
-                                            <h4 className="font-sans text-charcoal group-hover:text-gold transition-colors truncate">
+                                            <h4 className={`font-sans text-charcoal group-hover:text-gold transition-colors truncate ${isSuggestion ? 'italic text-charcoal/80' : ''}`}>
                                                 {event.name}
                                             </h4>
                                             <Edit2 size={12} className="opacity-0 group-hover/item:opacity-30 ml-2" />
