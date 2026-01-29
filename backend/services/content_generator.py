@@ -379,16 +379,93 @@ Please add the following JSON block at the very end of your response, separated 
     return prompt
 
 
+def generate_weekly_briefing_prompt(
+    weekly_diary_text: str,
+    weekly_calendar_text: str,
+    user_name: str = "",
+    language: str = "German"
+) -> str:
+    """
+    Generates the WEEKLY Briefing Prompt (Sunday Vision).
+    Focus: Review of last 7 days + Preview of next 7 days.
+    """
+    from datetime import datetime
+    
+    date_short, date_long = get_german_date()
+    # Greeting
+    greeting = f"Sprich den User mit '{user_name}' an." if user_name else "Nutze eine warme, persönliche Begrüßung."
+
+    prompt = f"""
+Du bist ein strategischer Mentor und persönlicher Assistent. Es ist {date_long}.
+Dies ist das WOCHEN-BRIEFING ("Weekly Vision").
+
+Erstelle eine TIEFGEHENDE Reflexion der letzten Woche und eine Strategie für die kommende Woche.
+
+**SPRACHE:** Antworte komplett auf Deutsch.
+**BEGRÜSSUNG:** {greeting}
+
+═══════════════════════════════════════════════════════════════════════════════
+KONTEXT-DATEN
+═══════════════════════════════════════════════════════════════════════════════
+
+[RÜCKBLICK: DEINE GEDANKEN DER LETZTEN WOCHE]
+{weekly_diary_text if weekly_diary_text else "Keine Tagebucheinträge vorhanden."}
+
+[VORSCHAU: DEINE NÄCHSTE WOCHE]
+{weekly_calendar_text if weekly_calendar_text else "Keine Termine für nächste Woche eingetragen."}
+
+═══════════════════════════════════════════════════════════════════════════════
+STRUKTUR & INHALT
+═══════════════════════════════════════════════════════════════════════════════
+
+1. **Der Rückblick (Mustererkennung)**
+   - Analysiere die Tagebuch-Einträge der Woche.
+   - Identifiziere das dominierende Thema oder Gefühl.
+   - Feiere kleine Siege (Was lief gut?).
+   - Erkenne Stressoren (Was hat Energie gekostet?).
+   - Sei empathisch, aber analytisch. "Ich habe bemerkt, dass du Mittwoch sehr gestresst warst..."
+
+2. **Die Wochen-Strategie (Vorschau)**
+   - Schau auf die [VORSCHAU] (Kalender).
+   - Was ist der wichtigste Tag ("Big Rock") nächste Woche?
+   - Gib einen strategischen Rat, wie man diese Woche angeht (z.B. "Dienstag wird voll, sorge Montagabend für Ruhe").
+   
+3. **Fokus-Ziele**
+   - Schlage 1-2 mentale Fokus-Ziele vor (z.B. "Achte diese Woche besonders auf Pausen").
+
+4. **Abschluss**
+   - Ein motivierendes Zitat oder ein Gedanke für die Woche.
+
+═══════════════════════════════════════════════════════════════════════════════
+TTS-OPTIMIERUNG
+═══════════════════════════════════════════════════════════════════════════════
+- Schreibe ALLES als natürlichen Fließtext zum Vorlesen.
+- Keine Markdown-Listen im Textteil.
+- Nutze Pausen (...) für rhetorische Wirkung.
+
+**METADATA OUTPUT (REQUIRED):**
+Füge am Ende diesen JSON Block hinzu.
+---METADATA---
+{{
+  "final_agenda": [
+     {{ "start": "Monday", "name": "Weekly Focus: Stability", "type": "suggestion" }}
+  ]
+}}
+"""
+    return prompt
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # MAIN GENERATION LOGIC
 # ═══════════════════════════════════════════════════════════════════════════════
 
-def generate_briefing_content(target_user_id: str):
+def generate_briefing_content(target_user_id: str, briefing_type: str = "daily"):
     """
     Orchestrates the creation of the morning briefing for a SPECIFIC user.
+    briefing_type: "daily" or "weekly"
     """
-    print(f"DEBUG: Starting briefing generation for user {target_user_id}...", flush=True)
-    logger.info(f"Starting briefing generation for user {target_user_id}...")
+    print(f"DEBUG: Starting {briefing_type} briefing generation for user {target_user_id}...", flush=True)
+    logger.info(f"Starting {briefing_type} briefing generation for user {target_user_id}...")
     
     # Validation
     if not settings.GOOGLE_API_KEY:
@@ -538,23 +615,59 @@ def generate_briefing_content(target_user_id: str):
         if user_settings.news_tech: user_news_categories.append("tech")
         if user_settings.news_economy: user_news_categories.append("business")
         
-        # 5. GENERATE PROMPT V3
-        prompt = generate_morning_briefing_prompt(
-            diary_transcript=diary_transcript,
-            todo_list_text=todo_list_text,
-            habits_text=habits_text,
-            calendar_text=calendar_text,
-            weather_text=weather_text,
-            news_curated=news_curated,
-            news_dynamic=news_dynamic,
-            briefing_yesterday=briefing_yesterday,
-            briefing_day_before=briefing_day_before,
-            research_results_text=research_results_text,
-            user_name=user_name,
-            user_news_categories=user_news_categories,
-            used_quote_ids=used_quote_ids,
-            language=user_settings.language
-        )
+        # 5. GENERATE PROMPT
+        if briefing_type == "weekly":
+             # --- WEEKLY LOGIC ---
+             print("DEBUG: Gathering data for WEEKLY briefing...", flush=True)
+             
+             # 1. Fetch Diary (Last 7 Days)
+             cutoff_date = datetime.utcnow() - timedelta(days=7)
+             weekly_entries = session.exec(
+                 select(Entry)
+                 .where(Entry.user_id == target_user_id, Entry.created_at >= cutoff_date)
+                 .order_by(Entry.created_at.asc())
+             ).all()
+             
+             weekly_diary_text = ""
+             if weekly_entries:
+                 for entry in weekly_entries:
+                     date_str = entry.created_at.strftime("%A")
+                     weekly_diary_text += f"\n[TAGEBUCH {date_str}]: {entry.transcript[:500]}..." # Limit context
+             else:
+                 weekly_diary_text = "Keine Einträge in dieser Woche."
+
+             # 2. Fetch Calendar (Next 7 Days)
+             weekly_events = get_calendar_events(target_user_id, days=7)
+             weekly_calendar_text = format_events_text(weekly_events)
+             
+             # Overwrite calendar_events_list for storage
+             calendar_events_list = weekly_events
+
+             prompt = generate_weekly_briefing_prompt(
+                 weekly_diary_text=weekly_diary_text,
+                 weekly_calendar_text=weekly_calendar_text,
+                 user_name=user_name,
+                 language=user_settings.language
+             )
+
+        else:
+             # --- DAILY LOGIC (Existing) ---
+             prompt = generate_morning_briefing_prompt(
+                diary_transcript=diary_transcript,
+                todo_list_text=todo_list_text,
+                habits_text=habits_text,
+                calendar_text=calendar_text,
+                weather_text=weather_text,
+                news_curated=news_curated,
+                news_dynamic=news_dynamic,
+                briefing_yesterday=briefing_yesterday,
+                briefing_day_before=briefing_day_before,
+                research_results_text=research_results_text,
+                user_name=user_name,
+                user_news_categories=user_news_categories,
+                used_quote_ids=used_quote_ids,
+                language=user_settings.language
+            )
         
         print("DEBUG: Generating Content with Gemini (v3.0 Prompt)...", flush=True)
         response = client.models.generate_content(
@@ -662,7 +775,8 @@ def generate_briefing_content(target_user_id: str):
             script_content=script,
             calendar_events=json.dumps(calendar_events_list) if calendar_events_list else None,
             audio_path=storage_path if storage_path else audio_path_abs, 
-            status="generated"
+            status="generated",
+            type=briefing_type
         )
         session.add(briefing)
         session.commit()

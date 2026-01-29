@@ -11,9 +11,9 @@ logger = logging.getLogger(__name__)
 
 SCOPES = ['https://www.googleapis.com/auth/calendar.events']
 
-def get_calendar_events(user_id: str) -> list[dict]:
+def get_calendar_events(user_id: str, days: int = 1) -> list[dict]:
     """
-    Fetches events from ALL calendars for today using DB-stored OAuth tokens.
+    Fetches events from ALL calendars for the specified number of days (default 1).
     Returns a list of event dictionaries.
     """
     session = next(get_session())
@@ -57,10 +57,12 @@ def get_calendar_events(user_id: str) -> list[dict]:
         now_local = datetime.datetime.now(tz)
         
         start_of_day = now_local.replace(hour=0, minute=0, second=0, microsecond=0)
-        end_of_day_local = now_local.replace(hour=23, minute=59, second=59, microsecond=0)
+        # End of period (1 day or 7 days)
+        end_date = now_local + datetime.timedelta(days=days-1)
+        end_of_period = end_date.replace(hour=23, minute=59, second=59, microsecond=0)
         
         time_min = start_of_day.isoformat()
-        time_max = end_of_day_local.isoformat()
+        time_max = end_of_period.isoformat()
         
         all_events = []
         

@@ -12,9 +12,10 @@ interface Briefing {
 
 interface PlayerProps {
     onBriefingLoaded?: (data: Briefing | any) => void;
+    briefingType?: 'daily' | 'weekly';
 }
 
-const Player: React.FC<PlayerProps> = ({ onBriefingLoaded }) => {
+const Player: React.FC<PlayerProps> = ({ onBriefingLoaded, briefingType = 'daily' }) => {
     const [briefing, setBriefing] = useState<Briefing | null>(null);
     const [loading, setLoading] = useState(true);
     const [generating, setGenerating] = useState(false);
@@ -23,9 +24,11 @@ const Player: React.FC<PlayerProps> = ({ onBriefingLoaded }) => {
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
+        setBriefing(null);
+        setLoading(true);
         fetchLatestBriefing();
         fetchSettings();
-    }, []);
+    }, [briefingType]); // Re-fetch on type change
 
     const fetchSettings = async () => {
         try {
@@ -52,7 +55,7 @@ const Player: React.FC<PlayerProps> = ({ onBriefingLoaded }) => {
                 return false;
             }
 
-            const res = await fetch(`${API_BASE_URL}/briefings/latest?t=${Date.now()}`, {
+            const res = await fetch(`${API_BASE_URL}/briefings/latest?type=${briefingType}&t=${Date.now()}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             if (res.ok) {
@@ -81,7 +84,7 @@ const Player: React.FC<PlayerProps> = ({ onBriefingLoaded }) => {
         setGenerating(true);
         try {
             const token = (await supabase.auth.getSession()).data.session?.access_token;
-            const res = await fetch(`${API_BASE_URL}/briefings/generate`, {
+            const res = await fetch(`${API_BASE_URL}/briefings/generate?type=${briefingType}`, {
                 method: 'POST',
                 headers: { Authorization: `Bearer ${token}` }
             });
@@ -136,6 +139,8 @@ const Player: React.FC<PlayerProps> = ({ onBriefingLoaded }) => {
                     Geplant für {briefingTime}.
                 </p>
 
+
+
                 {error && (
                     <div className="mb-4 text-xs text-red-500 border-l-2 border-red-500 pl-3">
                         {error}
@@ -149,13 +154,13 @@ const Player: React.FC<PlayerProps> = ({ onBriefingLoaded }) => {
                 className="w-full flex justify-between items-center py-6 border-t border-charcoal group hover:bg-charcoal hover:text-alabaster transition-colors duration-500"
             >
                 <span className="text-sm font-medium uppercase tracking-widest">
-                    {generating ? 'Erstelle...' : 'Tagebuch Eintrag jetzt generieren'}
+                    {generating ? 'Erstelle...' : (briefingType === 'weekly' ? 'Wochen-Vision erstellen' : 'Tages-Briefing erstellen')}
                 </span>
                 <span className="transform group-hover:translate-x-2 transition-transform duration-500">
                     {generating ? <RefreshCw className="w-5 h-5 animate-spin" /> : <ArrowRight className="w-5 h-5" />}
                 </span>
             </button>
-        </div>
+        </div >
     );
 
     return (
@@ -215,7 +220,9 @@ const Player: React.FC<PlayerProps> = ({ onBriefingLoaded }) => {
                 className="text-sm font-medium uppercase tracking-widest text-charcoal hover:bg-charcoal hover:text-alabaster transition-all flex items-center justify-center gap-3 mt-auto py-6 border-t border-charcoal w-full"
             >
                 <RefreshCw className={`w-4 h-4 ${generating ? 'animate-spin' : ''}`} />
-                Tagebuch Eintrag jetzt generieren
+                {generating
+                    ? 'Erstelle...'
+                    : (briefingType === 'weekly' ? 'Wochen-Vision jetzt generieren' : 'Tages-Briefing jetzt generieren')}
             </button>
         </div>
     );

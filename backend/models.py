@@ -20,6 +20,7 @@ class Briefing(SQLModel, table=True):
     calendar_events: Optional[str] = Field(default=None) # JSON encoded list of events
     audio_path: str
     status: str = Field(default="pending") # pending, generated, played
+    type: str = Field(default="daily", index=True) # daily, weekly
 
 class Interest(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)

@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import AuthPage from './pages/Auth';
 import Onboarding from './pages/Onboarding';
 import Dashboard from './pages/Dashboard';
+import WeeklyDashboard from './pages/WeeklyDashboard';
 import Settings from './pages/Settings';
 // Imports removed
 
@@ -34,6 +35,8 @@ function App() {
 
           {/* Main Dashboard */}
           <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+
+          <Route path="/weekly" element={<ProtectedRoute><WeeklyDashboard /></ProtectedRoute>} />
 
           {/* Settings Page */}
           <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />

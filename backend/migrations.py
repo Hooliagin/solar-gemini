@@ -50,6 +50,14 @@ def run_migrations():
                 conn.execute(text("ALTER TABLE briefing ADD COLUMN calendar_events TEXT DEFAULT NULL"))
                 conn.commit()
 
+            try:
+                conn.execute(text("SELECT type FROM briefing LIMIT 1"))
+            except Exception:
+                logger.info("Applying migration: Adding type column to briefing")
+                conn.rollback()
+                conn.execute(text("ALTER TABLE briefing ADD COLUMN type VARCHAR DEFAULT 'daily'"))
+                conn.commit()
+
             # Ensure Habit table exists (handled by SQLModel.create_all usually, but explicit check here doesn't hurt if we want manual control, 
             # though usually create_all is enough for NEW tables. Let's trust create_all for new tables unless I see issues).
             # Actually, let's verify main.py calls create_all.

@@ -78,6 +78,15 @@ export default function Dashboard() {
                         <h1 className="text-6xl md:text-8xl font-serif tracking-tighter leading-[0.9] mix-blend-difference text-charcoal">
                             {userName || 'Gast'}.
                         </h1>
+                        <div className="mt-6 flex gap-6">
+                            <button
+                                onClick={() => navigate('/weekly')}
+                                className="text-xs font-medium uppercase tracking-[0.15em] text-gold hover:text-charcoal transition-colors flex items-center gap-2 group"
+                            >
+                                <span className="border-b border-gold group-hover:border-charcoal transition-colors">Zur Wochen-Vision</span>
+                                <ArrowRight className="w-3 h-3 transform group-hover:translate-x-1 transition-transform" />
+                            </button>
+                        </div>
                     </div>
 
                     <button
@@ -225,7 +234,7 @@ export default function Dashboard() {
                     </div>
 
                 </main>
-            </div>
-        </div>
+            </div >
+        </div >
     );
 }

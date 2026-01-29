@@ -11,14 +11,18 @@ router = APIRouter(prefix="/briefings", tags=["briefings"])
 
 @router.get("/latest")
 async def get_latest_briefing(
+    type: str = "daily",  # Query parameter, default daily
     session: Session = Depends(get_session),
     user_id: str = Depends(get_current_user_id)
 ):
     """
     Returns the most recent briefing metadata for the current user.
     """
-    logger.info(f"Fetching latest briefing for user {user_id}")
-    statement = select(Briefing).where(Briefing.user_id == user_id).order_by(Briefing.created_at.desc()).limit(1)
+    logger.info(f"Fetching latest {type} briefing for user {user_id}")
+    statement = select(Briefing).where(
+        Briefing.user_id == user_id, 
+        Briefing.type == type
+    ).order_by(Briefing.created_at.desc()).limit(1)
     briefing = session.exec(statement).first()
     
     if not briefing:
@@ -91,21 +95,29 @@ logger = logging.getLogger(__name__)
 
 @router.post("/generate")
 async def trigger_briefing_generation(
-    background_tasks: BackgroundTasks,
+    type: str = "daily", # Query param or body
+    background_tasks: BackgroundTasks = None,
     session: Session = Depends(get_session),
     user_id: str = Depends(get_current_user_id)
 ):
     """
     Manually triggers the generation of a morning briefing (Async).
+    Type: "daily" or "weekly"
     """
+    # Fix: background_tasks argument position
+    if background_tasks is None:
+         # Should be injected by FastAPI if defined correctly, but order matters
+         raise HTTPException(status_code=500, detail="BackgroundTasks not injected properly")
+
     from services.content_generator import generate_briefing_content
     
-    def run_generation(uid: str):
+    def run_generation(uid: str, b_type: str):
         try:
-            logger.info(f"Background generation started for user {uid}")
-            briefing = generate_briefing_content(target_user_id=uid)
+            logger.info(f"Background generation started for user {uid} (Type: {b_type})")
+            briefing = generate_briefing_content(target_user_id=uid, briefing_type=b_type)
             
             # Send to Telegram (Manual Trigger runs in threadpool, so asyncio.run is safe)
+            # Only send Telegram for DAILY for now, or adapt text?
             if briefing and briefing.audio_path:
                 from services.telegram_service import send_briefing_audio, send_text_message
                 from models import UserSettings
@@ -157,8 +169,8 @@ async def trigger_briefing_generation(
                 session.close()
 
     try:
-        logger.info(f"Queuing briefing generation for user {user_id}")
-        background_tasks.add_task(run_generation, user_id)
+        logger.info(f"Queuing {type} briefing generation for user {user_id}")
+        background_tasks.add_task(run_generation, user_id, type)
         return {"status": "success", "message": "Briefing generation started in background"}
     except Exception as e:
         logger.error(f"Failed to queue task: {e}")
