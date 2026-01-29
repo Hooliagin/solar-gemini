@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Check, Edit2 } from 'lucide-react';
+import { Check, Edit2, Loader2, Upload } from 'lucide-react';
 
 interface CalendarEvent {
     start: string;
@@ -14,14 +14,16 @@ interface CalendarEvent {
 interface CalendarViewProps {
     events: CalendarEvent[];
     onUpdateErrors: (events: CalendarEvent[]) => void;
+    onExport?: () => Promise<void>;
     isUpdating: boolean;
 }
 
-export default function CalendarView({ events: initialEvents, onUpdateErrors, isUpdating }: CalendarViewProps) {
+export default function CalendarView({ events: initialEvents, onUpdateErrors, onExport, isUpdating }: CalendarViewProps) {
     const [events, setEvents] = useState(initialEvents);
     const [editingIndex, setEditingIndex] = useState<number | null>(null);
     const [editValue, setEditValue] = useState("");
     const [editTime, setEditTime] = useState("");
+    const [isExporting, setIsExporting] = useState(false);
 
     const handleEditStart = (index: number, event: CalendarEvent) => {
         setEditingIndex(index);
@@ -60,11 +62,32 @@ export default function CalendarView({ events: initialEvents, onUpdateErrors, is
         onUpdateErrors(newEvents);
     };
 
+    const handleExport = async () => {
+        setIsExporting(true);
+        if (onExport) {
+            await onExport();
+        }
+        setIsExporting(false);
+    };
+
     return (
         <div className="card-luxury relative min-h-[400px]">
-            <div className="flex items-center gap-4 mb-8">
-                <span className="text-xs font-mono text-charcoal/40">04</span>
-                <h2 className="text-sm font-sans uppercase tracking-[0.2em] border-b border-gold pb-1">Tages-Agenda</h2>
+            <div className="flex items-center justify-between gap-4 mb-8">
+                <div className="flex items-center gap-4">
+                    <span className="text-xs font-mono text-charcoal/40">04</span>
+                    <h2 className="text-sm font-sans uppercase tracking-[0.2em] border-b border-gold pb-1">Tages-Agenda</h2>
+                </div>
+                {onExport && (
+                    <button
+                        onClick={handleExport}
+                        disabled={isExporting}
+                        className="flex items-center gap-2 text-[10px] uppercase tracking-widest hover:text-gold transition-colors disabled:opacity-50"
+                        title="Vorschläge in echten Kalender übertragen"
+                    >
+                        {isExporting ? <Loader2 className="animate-spin w-3 h-3" /> : <Upload className="w-3 h-3" />}
+                        <span>Export</span>
+                    </button>
+                )}
             </div>
 
             <div className="relative pl-4">
@@ -121,12 +144,15 @@ export default function CalendarView({ events: initialEvents, onUpdateErrors, is
                                             value={editTime}
                                             onChange={(e) => setEditTime(e.target.value)}
                                             className="w-full bg-white/50 border-b border-charcoal/20 text-xs font-serif text-right focus:outline-none focus:border-gold"
+                                            placeholder="HH:MM"
                                         />
                                     ) : (
-                                        <span className="text-xs font-serif text-charcoal/60 leading-tight block">
-                                            {startStr || "Ganztägig"}
-                                            {endStr && <span className="block opacity-60">-{endStr}</span>}
-                                        </span>
+                                        <div className="group/time cursor-pointer hover:text-gold transition-colors" onClick={() => handleEditStart(index, event)}>
+                                            <span className="text-xs font-serif text-charcoal/60 leading-tight block">
+                                                {startStr || "Ganztägig"}
+                                                {endStr && <span className="block opacity-60">-{endStr}</span>}
+                                            </span>
+                                        </div>
                                     )}
                                 </div>
 

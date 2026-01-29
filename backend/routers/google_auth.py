@@ -12,7 +12,10 @@ import os
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 # OAuth configuration
-SCOPES = ['https://www.googleapis.com/auth/calendar.readonly']
+SCOPES = [
+    'https://www.googleapis.com/auth/calendar',  # Full access (Read/Write)
+    'https://www.googleapis.com/auth/calendar.events' # Events access
+]
 REDIRECT_URI = os.getenv("GOOGLE_REDIRECT_URI", "https://daily-manager-backend.onrender.com/auth/google/callback")
 
 def get_flow():

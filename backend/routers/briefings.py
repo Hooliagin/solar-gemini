@@ -187,3 +187,73 @@ async def update_briefing_events(
     session.commit()
     
     return {"status": "success", "message": "Events updated"}
+
+@router.post("/{briefing_id}/export-calendar")
+async def export_briefing_to_calendar(
+    briefing_id: int,
+    session: Session = Depends(get_session),
+    user_id: str = Depends(get_current_user_id)
+):
+    """
+    Exports AI-suggested events from the briefing to the user's primary Google Calendar.
+    Skips existing events (type='fixed').
+    """
+    briefing = session.get(Briefing, briefing_id)
+    if not briefing:
+        raise HTTPException(status_code=404, detail="Briefing not found")
+        
+    if briefing.user_id != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+        
+    if not briefing.calendar_events:
+        return {"status": "ignored", "message": "No events in briefing to export"}
+        
+    try:
+        import json
+        from services.calendar_service import create_calendar_event
+        
+        events = json.loads(briefing.calendar_events)
+        exported_count = 0
+        failed_count = 0
+        
+        for event in events:
+            # Only export suggestions, ignore fixed original events
+            if event.get('type') == 'suggestion' or event.get('calendar') == 'AI Suggestion':
+                 # Prepare simple description
+                 event_data = {
+                     'name': event['name'],
+                     'start': event['start'],
+                     'end': event.get('end'),
+                     'description': "AI Suggestion from Daily Manager"
+                 }
+                 
+                 # If no end time, assume 30m default or parse from string if possible?
+                 # Data model guarantees end time usually, but if missing, handle it:
+                 if not event_data['end']:
+                      # Fallback logic if needed, but assuming valid ISO for now.
+                      # Actually, if 'end' is missing, Google API might complain.
+                      # Let's try to parse start and add 30 mins if needed.
+                      from datetime import datetime, timedelta
+                      try:
+                          dt = datetime.fromisoformat(event_data['start'])
+                          dt_end = dt + timedelta(minutes=30)
+                          event_data['end'] = dt_end.isoformat()
+                      except:
+                          pass
+
+                 success = create_calendar_event(user_id, event_data)
+                 if success:
+                     exported_count += 1
+                 else:
+                     failed_count += 1
+        
+        return {
+            "status": "success", 
+            "exported": exported_count, 
+            "failed": failed_count,
+            "message": f"Exported {exported_count} events to your calendar."
+        }
+            
+    except Exception as e:
+        logger.error(f"Export failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Export failed: {str(e)}")

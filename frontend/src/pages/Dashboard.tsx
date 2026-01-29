@@ -183,6 +183,27 @@ export default function Dashboard() {
                                         console.error("Failed to update events", e);
                                     }
                                 }}
+                                onExport={async () => {
+                                    if (!session?.access_token || !latestBriefing.id) return;
+                                    try {
+                                        const res = await fetch(`${API_BASE_URL}/briefings/${latestBriefing.id}/export-calendar`, {
+                                            method: 'POST',
+                                            headers: {
+                                                'Authorization': `Bearer ${session.access_token}`
+                                            }
+                                        });
+                                        if (res.ok) {
+                                            const data = await res.json();
+                                            alert(data.message); // Simple alert for now, could be a toast
+                                        } else {
+                                            const err = await res.json();
+                                            alert("Fehler beim Export: " + err.detail);
+                                        }
+                                    } catch (e) {
+                                        console.error("Export failed", e);
+                                        alert("Export fehlgeschlagen.");
+                                    }
+                                }}
                             />
                         )}
                         {(!latestBriefing || !latestBriefing.calendar_events) && (

@@ -129,3 +129,56 @@ def format_events_text(events: list[dict]) -> str:
         event_summary.append(f"- {time_str}: {event['name']}")
     
     return "Today's Calendar:\n" + "\n".join(event_summary)
+
+def create_calendar_event(user_id: str, event_data: dict) -> bool:
+    """
+    Creates a new event in the user's primary calendar.
+    event_data expected: {'name': str, 'start': iso_str, 'end': iso_str, 'description': str}
+    """
+    session = next(get_session())
+    user_settings = session.query(UserSettings).filter(UserSettings.user_id == user_id).first()
+    
+    if not user_settings or not user_settings.google_access_token:
+        logger.warning("Calendar: Not connected for write.")
+        return False
+        
+    try:
+        creds = Credentials(
+            token=user_settings.google_access_token,
+            refresh_token=user_settings.google_refresh_token,
+            token_uri="https://oauth2.googleapis.com/token",
+            client_id=settings.GOOGLE_CLIENT_ID,
+            client_secret=settings.GOOGLE_CLIENT_SECRET,
+            scopes=SCOPES
+        )
+        
+        # Auto-refresh if needed logic (same as fetch)
+        if creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+            user_settings.google_access_token = creds.token
+            session.commit()
+            
+        service = build('calendar', 'v3', credentials=creds)
+        
+        # Construct body
+        body = {
+            'summary': event_data['name'],
+            'description': event_data.get('description', 'Created by Daily Manager AI'),
+            'start': {
+                'dateTime': event_data['start'],
+                'timeZone': 'Europe/Berlin', # Force Berlin for simplicity? Or infer?
+            },
+            'end': {
+                'dateTime': event_data['end'],
+                'timeZone': 'Europe/Berlin',
+            },
+        }
+        
+        service.events().insert(calendarId='primary', body=body).execute()
+        return True
+        
+    except Exception as e:
+        logger.error(f"Failed to create event: {e}")
+        return False
+    finally:
+        session.close()
