@@ -100,6 +100,7 @@ def generate_speech(text: str, output_path: str, language: str = "de", voice_ove
 
     except Exception as e:
         logger.error(f"TTS Error: {e}")
+        print(f"DEBUG: TTS GENERATION FAILED: {e}", flush=True)
         # Cleanup if partial
         if os.path.exists(output_path):
             try:

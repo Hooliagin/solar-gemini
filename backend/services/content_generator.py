@@ -629,6 +629,7 @@ def generate_briefing_content(target_user_id: str):
         
     except Exception as e:
         logger.error(f"Error generating briefing: {e}")
+        print(f"DEBUG: ERROR GENERATING BRIEFING: {e}", flush=True)
         if session:
             session.rollback()
         raise e

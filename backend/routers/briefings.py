@@ -149,6 +149,7 @@ async def trigger_briefing_generation(
             logger.info(f"Background generation finished for user {uid}")
         except Exception as e:
             logger.error(f"Background generation failed: {e}")
+            print(f"DEBUG: BACKGROUND TASK FAILED: {e}", flush=True)
             import traceback
             traceback.print_exc()
         finally:
