@@ -297,14 +297,23 @@ Das Ziel ist es, die Gewohnheiten ([HABIT]) und To-Dos sinnvoll in den Tag zu in
 2.  **Analysiere die Habit-Präferenzen**:
     - "Morning Light" muss Vormittags sein.
     - "Read" kann Abends sein.
-                # 3. SCHEDULE SIE: Du musst für JEDEN aktiven Habit einen Slot finden, sofern möglich.
-4.  **Generiere Agenda Items**: Das Ergebnis MUSS eine KOMBINATION aus allen `fixed` Events (unverändert!) und den neuen `suggestion` Events sein.
+3.  **SCHEDULE SIE (PFLICHT)**:
+    - Du MUSST versuchen, **ALLE** aktiven Habits ([HABIT]) im Tagesplan unterzubringen.
+    - Habits haben **VORRANG** vor deinen eigenen kreativen Vorschlägen.
+    - Wenn ein Habit sehr lang ist (z.B. 180 Min), prüfe ob genügend Freizeit da ist. Wenn nicht, schlage eine gekürzte Version vor oder weise darauf hin.
+    
+4.  **Generiere Agenda Items**: Das Ergebnis MUSS eine KOMBINATION aus:
+    - Allen `fixed` Events (unverändert!)
+    - ALLEN geplanten Habits (als type: "suggestion")
+    - Optionalen To-Do Blöcken (als type: "suggestion")
+    sein.
+    
     - WARNUNG: Du darfst KEINE existierenden Termine löschen.
-    - Deine `final_agenda` im JSON muss VOLLSTÄNDIG sein (Kalender + Habits).
+    - Deine `final_agenda` im JSON muss VOLLSTÄTIG sein.
 
 **BEISPIEL:**
-"Dein Vormittag ist voll, aber um fünfzehn Uhr ist eine Lücke. Das wäre perfekt für dein Sport-Habit."
-(Und dann füge es in die Metadata Agenda ein!)
+"Alles klar. Um den Sport (180min) unterzubringen, habe ich den freien Block am Nachmittag von 14 bis 17 Uhr reserviert."
+(Und DANN muss dieser Eintrag zwingend im JSON auftauchen!)
 
 ═══════════════════════════════════════════════════════════════════════════════
 NEWS-AUSWAHL (STRIKTE QUELLEN-TREUE!)
