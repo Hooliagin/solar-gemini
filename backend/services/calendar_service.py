@@ -172,6 +172,15 @@ def create_calendar_event(user_id: str, event_data: dict) -> bool:
 
         start_str = normalize_iso(event_data['start'])
         end_str = normalize_iso(event_data['end'])
+        
+        # Safety fallback: If End is missing, assume +30 mins
+        if not end_str and start_str:
+            try:
+                dt_start = datetime.datetime.fromisoformat(start_str)
+                dt_end = dt_start + datetime.timedelta(minutes=30)
+                end_str = dt_end.isoformat(timespec='seconds')
+            except:
+                pass
 
         # Construct body
         body = {
@@ -187,8 +196,12 @@ def create_calendar_event(user_id: str, event_data: dict) -> bool:
             },
         }
         
-        service.events().insert(calendarId='primary', body=body).execute()
-        return True
+        try:
+            service.events().insert(calendarId='primary', body=body).execute()
+            return True
+        except Exception as api_err:
+             logger.error(f"Google API Error Body: {body}")
+             raise api_err
         
     except Exception as e:
         logger.error(f"Failed to create event: {e}")
