@@ -160,16 +160,29 @@ def create_calendar_event(user_id: str, event_data: dict) -> bool:
             
         service = build('calendar', 'v3', credentials=creds)
         
+        # Helper to ensure RFC3339 format (YYYY-MM-DDTHH:MM:SS)
+        def normalize_iso(iso_str):
+            if not iso_str: return None
+            try:
+                dt = datetime.datetime.fromisoformat(iso_str)
+                # Ensure we have a string representation with seconds, but NO offset if we use timeZone
+                return dt.isoformat(timespec='seconds') 
+            except ValueError:
+                return iso_str # Fallback to original if parsing fails
+
+        start_str = normalize_iso(event_data['start'])
+        end_str = normalize_iso(event_data['end'])
+
         # Construct body
         body = {
             'summary': event_data['name'],
             'description': event_data.get('description', 'Created by Daily Manager AI'),
             'start': {
-                'dateTime': event_data['start'],
-                'timeZone': 'Europe/Berlin', # Force Berlin for simplicity? Or infer?
+                'dateTime': start_str,
+                'timeZone': 'Europe/Berlin', 
             },
             'end': {
-                'dateTime': event_data['end'],
+                'dateTime': end_str,
                 'timeZone': 'Europe/Berlin',
             },
         }
