@@ -6,6 +6,8 @@ import SettingsPanel from '../components/SettingsPanel';
 import InterestManager from '../components/InterestManager';
 import { useAuth } from '../context/AuthContext';
 
+import HabitManager from '../components/HabitManager';
+
 const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -86,12 +88,6 @@ export default function Settings() {
                         </div>
                         <InterestManager />
                     </motion.section>
-
-                    import HabitManager from '../components/HabitManager';
-
-                    // ... existing imports ...
-
-                    // ... inside main return ...
 
                     <motion.section variants={itemVariants}>
                         <div className="flex items-center gap-4 mb-12">

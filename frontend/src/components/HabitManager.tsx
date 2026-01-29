@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { Plus, X, Loader2, Calendar } from 'lucide-react';
+import { Plus, X, Loader2 } from 'lucide-react';
 import { API_BASE_URL } from '../config';
 
 interface Habit {
