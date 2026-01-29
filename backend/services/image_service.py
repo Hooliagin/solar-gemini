@@ -78,13 +78,22 @@ def generate_agenda_image(events: list[dict], date_text: str) -> str:
         time_str = "All Day"
         if 'T' in start_time:
              time_str = start_time.split('T')[1][:5]
+        elif ':' in start_time:
+             time_str = start_time[:5]
         
         # Draw Time (Left)
         draw.text((padding, current_y), time_str, font=time_font, fill=TEXT_COLOR)
         
         # Draw Dot
         dot_r = 6
-        draw.ellipse([(line_x - dot_r, current_y + 15 - dot_r), (line_x + dot_r, current_y + 15 + dot_r)], fill=BG_COLOR, outline=ACCENT_COLOR, width=3)
+        is_fixed = event.get('type') == 'fixed'
+        
+        if is_fixed:
+            # Solid Gold Dot for fixed events
+            draw.ellipse([(line_x - dot_r, current_y + 15 - dot_r), (line_x + dot_r, current_y + 15 + dot_r)], fill=ACCENT_COLOR, outline=ACCENT_COLOR)
+        else:
+            # Hollow Dot for suggestions
+            draw.ellipse([(line_x - dot_r, current_y + 15 - dot_r), (line_x + dot_r, current_y + 15 + dot_r)], fill=BG_COLOR, outline=ACCENT_COLOR, width=2)
         
         # Draw Event Name (Right)
         text_x = line_x + 40

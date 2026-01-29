@@ -347,8 +347,11 @@ Please add the following JSON block at the very end of your response, separated 
 ---METADATA---
 {{
   "quotes": [
-     {{ "text": "Quote 1 Text...", "author": "Author 1" }},
-     {{ "text": "Quote 2 Text...", "author": "Author 2" }}
+     {{ "text": "Quote 1 Text...", "author": "Author 1" }}
+  ],
+  "final_agenda": [
+     {{ "time": "09:00", "name": "Deep Work (AI Suggestion)", "type": "suggestion" }},
+     {{ "time": "14:00", "name": "Meeting with Client", "type": "fixed" }}
   ]
 }}
 """
@@ -552,6 +555,34 @@ def generate_briefing_content(target_user_id: str):
                         )
                         session.add(new_used_quote)
                     session.commit()
+
+                # Extract Final Agenda (AI Suggestions + Fixed)
+                if "final_agenda" in metadata and isinstance(metadata["final_agenda"], list):
+                    ai_agenda = metadata["final_agenda"]
+                    print(f"DEBUG: Found AI Suggested Agenda with {len(ai_agenda)} items.", flush=True)
+                    
+                    # Normalize to internal format
+                    # Internal Format expected by Frontend/ImageService: { 'start': 'HH:MM' or ISO, 'name': '...', 'calendar': '...' }
+                    normalized_agenda = []
+                    for event in ai_agenda:
+                        start_time = event.get("time", "")
+                        # Ensure we handle purely time strings "10:00" vs ISO timestamps
+                        # If it's just a time, append today's date for consistency if needed, 
+                        # OR just keep it as is since frontend/image service handles "T" split check.
+                        # Let's keep it simple: Ensure 'start' key exists.
+                        
+                        normalized_agenda.append({
+                            "start": start_time, # ImageService expects 'start'
+                            "name": event.get("name", "Event"),
+                            "calendar": "AI Suggestion" if event.get("type") == "suggestion" else "Calendar",
+                            "type": event.get("type", "fixed")
+                        })
+                    
+                    # OVERRIDE the raw calendar events with this AI-enhanced version
+                    if normalized_agenda:
+                         calendar_events_list = normalized_agenda
+                         print("DEBUG: Replaced raw calendar with AI Agenda.", flush=True)
+
             else:
                 logger.warning("No Metadata block found in LLM response.")
         except Exception as e:
