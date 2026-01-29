@@ -72,6 +72,9 @@ def google_callback(state: str, code: str = None, error: str = None, session: Se
     user_id = state
     
     try:
+        # Relax scope validation because Google returns all granted scopes (e.g. readonly + events)
+        os.environ['OAUTHLIB_RELAX_TOKEN_SCOPE'] = '1'
+        
         flow = get_flow()
         flow.fetch_token(code=code)
         credentials = flow.credentials
