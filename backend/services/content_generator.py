@@ -226,7 +226,7 @@ KONTEXT-DATEN
 [TO-DO LISTE / ERINNERUNGEN]
 {todo_list_text if todo_list_text else "Keine To-Dos eingetragen."}
 
-[DAUERHAFTE GEWOHNHEITEN & ZIELE]
+[PFLICHT-ROUTINEN (MANDATORY)]
 {habits_text}
 
 [RECHERCHE-ERGEBNISSE]
@@ -246,6 +246,31 @@ KONTEXT-DATEN
 
 [NEWS-KONTEXT]
 {news_context if news_context else "Keine spezifischen News-Präferenzen bekannt. Leite Themen aus Tagebuch und Kalender ab."}
+
+═══════════════════════════════════════════════════════════════════════════════
+PLANUNG & SCHEDULING (OBERSTE PRIORITÄT!)
+═══════════════════════════════════════════════════════════════════════════════
+**HIER ENTSCHEIDET SICH DER TAGESABLAUF.**
+
+**DEINE AUFGABE:**
+Du musst die festen Termine ([HEUTIGE TERMINE]) mit den PFLICHT-ROUTINEN ([PFLICHT-ROUTINEN]) kombinieren.
+
+**REGELN:**
+1.  **C A L E N D A R   F I R S T**: Feste Termine bleiben fest.
+2.  **H A B I T S   S E C O N D**: Du MUSST für JEDEN Routine-Eintrag einen Slot finden.
+    - Wenn "Morgenlicht" (15min) da steht, muss es morgens eingeplant werden.
+    - Wenn "Sport" (180min) da steht, suche den größten freien Block.
+    - **FALLBACK**: Wenn absolut kein Platz ist (z.B. 12h Meetings), ERWÄHNE ES im Text ("Leider ist heute kein Platz für Sport..."). Aber ignoriere es niemals stillschweigend.
+
+**JSON-OUTPUT ANFORDERUNG:**
+Die `final_agenda` MUSS enthalten:
+1. Alle festen Termine (type: "fixed")
+2. Alle erfolgreich eingeplanten Habits (type: "suggestion")
+
+**BEISPIEL-LOGIK:**
+"User hat Meeting 09:00-11:00.
+Habit 'Morgenlicht' (15m) -> Schlage 08:30 vor.
+Habit 'Sport' (180m) -> Schlage 14:00-17:00 vor (da Block frei)."
 
 ═══════════════════════════════════════════════════════════════════════════════
 ZITAT-AUSWAHL (KRITISCH - QUALITÄT WIRD BEWERTET!)
@@ -286,34 +311,6 @@ ZITAT 2 - INTENTIONS-ZITAT (Vorausschau auf Heute/Kalender):
 ├── Analysiere den KALENDER → Bestimme den Tagestyp (Meeting, Deep Work, Admin, etc.)
 ├── Wähle ein Zitat das zum Tagestyp PASST
 └── PLATZIERUNG: Vor dem Tagesplan / Als Übergang.
-
-═══════════════════════════════════════════════════════════════════════════════
-HABIT & TO-DO INTEGRATION (PRIORITÄT)
-═══════════════════════════════════════════════════════════════════════════════
-**METHODE - Das Intelligente Scheduling:**
-Das Ziel ist es, die Gewohnheiten ([HABIT]) und To-Dos sinnvoll in den Tag zu integrieren.
-
-1.  **Analysiere die fixen Termine**: Wo sind Lücken?
-2.  **Analysiere die Habit-Präferenzen**:
-    - "Morning Light" muss Vormittags sein.
-    - "Read" kann Abends sein.
-3.  **SCHEDULE SIE (PFLICHT)**:
-    - Du MUSST versuchen, **ALLE** aktiven Habits ([HABIT]) im Tagesplan unterzubringen.
-    - Habits haben **VORRANG** vor deinen eigenen kreativen Vorschlägen.
-    - Wenn ein Habit sehr lang ist (z.B. 180 Min), prüfe ob genügend Freizeit da ist. Wenn nicht, schlage eine gekürzte Version vor oder weise darauf hin.
-    
-4.  **Generiere Agenda Items**: Das Ergebnis MUSS eine KOMBINATION aus:
-    - Allen `fixed` Events (unverändert!)
-    - ALLEN geplanten Habits (als type: "suggestion")
-    - Optionalen To-Do Blöcken (als type: "suggestion")
-    sein.
-    
-    - WARNUNG: Du darfst KEINE existierenden Termine löschen.
-    - Deine `final_agenda` im JSON muss VOLLSTÄTIG sein.
-
-**BEISPIEL:**
-"Alles klar. Um den Sport (180min) unterzubringen, habe ich den freien Block am Nachmittag von 14 bis 17 Uhr reserviert."
-(Und DANN muss dieser Eintrag zwingend im JSON auftauchen!)
 
 ═══════════════════════════════════════════════════════════════════════════════
 NEWS-AUSWAHL (STRIKTE QUELLEN-TREUE!)
