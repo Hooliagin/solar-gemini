@@ -424,6 +424,15 @@ def generate_briefing_content(target_user_id: str):
         todo_list_text = "\n".join([f"- {t.task} (Due: {t.due_date.strftime('%Y-%m-%d') if t.due_date else 'Anytime'})" for t in todos])
         if not todo_list_text:
             todo_list_text = "No pending tasks."
+        
+        # Auto-complete Todos (Ephemeral Mode)
+        # User requested no persistent storage. We mention them once, then mark as done.
+        if todos:
+            print(f"DEBUG: Marking {len(todos)} todos as completed (Ephemeral Mode).", flush=True)
+            for t in todos:
+                t.is_completed = True
+                session.add(t)
+            session.commit()
             
         # 3c. Perform Pending Research (JIT)
         print("DEBUG: Checking for Research Tasks...", flush=True)
