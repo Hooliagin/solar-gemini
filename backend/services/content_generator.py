@@ -350,8 +350,8 @@ Please add the following JSON block at the very end of your response, separated 
      {{ "text": "Quote 1 Text...", "author": "Author 1" }}
   ],
   "final_agenda": [
-     {{ "time": "09:00", "name": "Deep Work (AI Suggestion)", "type": "suggestion" }},
-     {{ "time": "14:00", "name": "Meeting with Client", "type": "fixed" }}
+     {{ "start": "09:00", "end": "11:00", "name": "Deep Work (AI Suggestion)", "type": "suggestion" }},
+     {{ "start": "14:00", "end": "14:30", "name": "Meeting with Client", "type": "fixed" }}
   ]
 }}
 """
@@ -565,14 +565,14 @@ def generate_briefing_content(target_user_id: str):
                     # Internal Format expected by Frontend/ImageService: { 'start': 'HH:MM' or ISO, 'name': '...', 'calendar': '...' }
                     normalized_agenda = []
                     for event in ai_agenda:
-                        start_time = event.get("time", "")
-                        # Ensure we handle purely time strings "10:00" vs ISO timestamps
-                        # If it's just a time, append today's date for consistency if needed, 
-                        # OR just keep it as is since frontend/image service handles "T" split check.
-                        # Let's keep it simple: Ensure 'start' key exists.
+                        start_time = event.get("start", event.get("time", ""))
+                        end_time = event.get("end", "")
+                        
+                        # Use AI's start/end if available, otherwise just pass it through
                         
                         normalized_agenda.append({
-                            "start": start_time, # ImageService expects 'start'
+                            "start": start_time, 
+                            "end": end_time,
                             "name": event.get("name", "Event"),
                             "calendar": "AI Suggestion" if event.get("type") == "suggestion" else "Calendar",
                             "type": event.get("type", "fixed")

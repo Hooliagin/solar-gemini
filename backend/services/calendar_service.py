@@ -81,11 +81,15 @@ def get_calendar_events(user_id: str) -> list[dict]:
                 
                 for event in events_result.get('items', []):
                     start = event['start'].get('dateTime', event['start'].get('date'))
+                    # Extract End Time
+                    end = event['end'].get('dateTime', event['end'].get('date'))
+                    
                     # Normalize start to just ISO string without timezone offset if needed, or keep as is
                     
                     event_name = event.get('summary', 'No title')
                     all_events.append({
                         'start': start,
+                        'end': end,
                         'name': event_name,
                         'calendar': calendar_name,
                         'id': event.get('id')
@@ -112,10 +116,16 @@ def format_events_text(events: list[dict]) -> str:
     event_summary = []
     for event in events[:15]:  # Limit to 15 events
         start = event['start']
+        end = event.get('end', '')
+        
+        time_str = ""
         if 'T' in start:
-            time_part = start.split('T')[1][:5]
-            event_summary.append(f"- {time_part}: {event['name']}")
+            start_time = start.split('T')[1][:5]
+            end_time = end.split('T')[1][:5] if 'T' in end else "?"
+            time_str = f"{start_time}-{end_time}"
         else:
-            event_summary.append(f"- {event['name']} (all day)")
+            time_str = "All Day"
+            
+        event_summary.append(f"- {time_str}: {event['name']}")
     
     return "Today's Calendar:\n" + "\n".join(event_summary)

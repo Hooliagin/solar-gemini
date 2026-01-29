@@ -4,6 +4,7 @@ import { Check, Edit2 } from 'lucide-react';
 
 interface CalendarEvent {
     start: string;
+    end?: string;
     name: string;
     calendar: string;
     id?: string;
@@ -77,11 +78,23 @@ export default function CalendarView({ events: initialEvents, onUpdateErrors, is
 
                     {events.map((event, index) => {
                         const isEditing = editingIndex === index;
-                        let timeStr = "Ganztägig";
+
+                        // Parse Start
+                        let startStr = "";
                         if (event.start.includes('T')) {
-                            timeStr = event.start.split('T')[1].substring(0, 5);
+                            startStr = event.start.split('T')[1].substring(0, 5);
                         } else if (event.start.includes(':')) {
-                            timeStr = event.start.substring(0, 5);
+                            startStr = event.start.substring(0, 5);
+                        }
+
+                        // Parse End
+                        let endStr = "";
+                        if (event.end) {
+                            if (event.end.includes('T')) {
+                                endStr = event.end.split('T')[1].substring(0, 5);
+                            } else if (event.end.includes(':')) {
+                                endStr = event.end.substring(0, 5);
+                            }
                         }
 
                         // Determine Dot Style
@@ -110,7 +123,10 @@ export default function CalendarView({ events: initialEvents, onUpdateErrors, is
                                             className="w-full bg-white/50 border-b border-charcoal/20 text-xs font-serif text-right focus:outline-none focus:border-gold"
                                         />
                                     ) : (
-                                        <span className="text-xs font-serif text-charcoal/60">{timeStr}</span>
+                                        <span className="text-xs font-serif text-charcoal/60 leading-tight block">
+                                            {startStr || "Ganztägig"}
+                                            {endStr && <span className="block opacity-60">-{endStr}</span>}
+                                        </span>
                                     )}
                                 </div>
 

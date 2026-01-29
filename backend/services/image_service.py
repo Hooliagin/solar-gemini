@@ -76,13 +76,34 @@ def generate_agenda_image(events: list[dict], date_text: str) -> str:
         
         # Format Time
         time_str = "All Day"
-        if 'T' in start_time:
-             time_str = start_time.split('T')[1][:5]
-        elif ':' in start_time:
-             time_str = start_time[:5]
+        start_t = ""
+        end_t = ""
         
-        # Draw Time (Left)
-        draw.text((padding, current_y), time_str, font=time_font, fill=TEXT_COLOR)
+        # Parse Start
+        if 'T' in start_time:
+             start_t = start_time.split('T')[1][:5]
+        elif ':' in start_time:
+             start_t = start_time[:5]
+             
+        # Parse End (if available)
+        end_time = event.get('end', '')
+        if end_time:
+            if 'T' in end_time:
+                end_t = end_time.split('T')[1][:5]
+            elif ':' in end_time:
+                end_t = end_time[:5]
+
+        if start_t:
+            if end_t:
+                # Multi-line time for range
+                # Draw start, then end below
+                draw.text((padding, current_y - 10), start_t, font=time_font, fill=TEXT_COLOR)
+                draw.text((padding + 5, current_y + 20), f"-{end_t}", font=time_font, fill=TEXT_COLOR)
+                is_multiline_time = True
+            else:
+                draw.text((padding, current_y), start_t, font=time_font, fill=TEXT_COLOR)
+        else:
+             draw.text((padding, current_y), "All Day", font=time_font, fill=TEXT_COLOR)
         
         # Draw Dot
         dot_r = 6
