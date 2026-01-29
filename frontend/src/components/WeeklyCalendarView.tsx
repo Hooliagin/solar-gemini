@@ -61,7 +61,7 @@ export default function WeeklyCalendarView({ events }: WeeklyCalendarViewProps) 
                     <p className="text-warm-grey italic text-sm">Keine Woche geplant.</p>
                 )}
 
-                {groupedEvents.map((group, groupIndex) => (
+                {groupedEvents.map((group) => (
                     <div key={group.date} className="relative">
                         {/* Date Header */}
                         <div className="sticky top-0 bg-[#F5F5F0] z-20 py-2 border-b border-charcoal/10 mb-4">
