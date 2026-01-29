@@ -128,7 +128,7 @@ async def trigger_briefing_generation(
                 
                 if user_settings and user_settings.telegram_enabled and user_settings.telegram_chat_id:
                     import asyncio
-                    from datetime import datetime
+                    from datetime import datetime, timedelta
                     
                     caption = f"🌅 Dein Morgen-Briefing für {datetime.now().strftime('%d.%m.%Y')}"
                     
@@ -142,11 +142,19 @@ async def trigger_briefing_generation(
                     if briefing.calendar_events:
                         try:
                             import json
-                            from services.image_service import generate_agenda_image
-                            
                             events = json.loads(briefing.calendar_events)
-                            date_str = datetime.now().strftime("%A, %d. %B")
-                            agenda_image_path = generate_agenda_image(events, date_str)
+                            
+                            if b_type == "weekly":
+                                from services.image_service import generate_weekly_agenda_image
+                                start_str = datetime.now().strftime("%d.%m")
+                                end_str = (datetime.now() + timedelta(days=6)).strftime("%d.%m")
+                                week_str = f"Week of {start_str}" # Simple header
+                                agenda_image_path = generate_weekly_agenda_image(events, week_str)
+                            else:
+                                from services.image_service import generate_agenda_image
+                                date_str = datetime.now().strftime("%A, %d. %B")
+                                agenda_image_path = generate_agenda_image(events, date_str)
+                                
                         except Exception as e:
                             logger.error(f"Failed to generate agenda image: {e}")
                     
