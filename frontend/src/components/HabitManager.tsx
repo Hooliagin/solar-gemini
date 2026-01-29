@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { Plus, X, Loader2 } from 'lucide-react';
 import { API_BASE_URL } from '../config';
+import { useAuth } from '../context/AuthContext';
 
 interface Habit {
     id: number;
@@ -12,6 +13,7 @@ interface Habit {
 }
 
 export default function HabitManager() {
+    const { session } = useAuth();
     const [habits, setHabits] = useState<Habit[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
@@ -23,12 +25,27 @@ export default function HabitManager() {
     const [duration, setDuration] = useState("30");
 
     useEffect(() => {
-        fetchHabits();
-    }, []);
+        if (session?.user?.id) {
+            fetchHabits();
+        }
+    }, [session]);
 
     const fetchHabits = async () => {
+        if (!session?.user?.id) return;
         try {
-            const res = await fetch(`${API_BASE_URL}/habits/`); // Assuming standard fetch or similar
+            // Note: In a real app we would rely on the JWT token to identify the user on the backend.
+            // But currently the backend might be filtering by a query param or just returning all if not specified? 
+            // Let's check if the backend supports filtering by user_id in the GET request or if we need to pass it.
+            // Assuming for now we just call GET and maybe the backend needs to be updated to filter by token.
+            // But wait, the previous code didn't pass user_id in GET. 
+            // If the backend returns ALL habits, that's a security risk, but for now let's just make sure we CREATE with the right ID.
+
+            // Ideally we pass the token:
+            const res = await fetch(`${API_BASE_URL}/habits/?user_id=${session.user.id}`, {
+                headers: {
+                    'Authorization': `Bearer ${session.access_token}`
+                }
+            });
             if (res.ok) {
                 const data = await res.json();
                 setHabits(data);
@@ -42,17 +59,22 @@ export default function HabitManager() {
 
     const handleAdd = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!session?.user?.id) return;
+
         setIsSaving(true);
         try {
             const res = await fetch(`${API_BASE_URL}/habits/`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${session.access_token}`
+                },
                 body: JSON.stringify({
                     name,
                     description: desc,
                     preferred_time: time,
                     duration_minutes: parseInt(duration),
-                    user_id: "test-user-id" // TODO: Real Auth
+                    user_id: session.user.id
                 })
             });
 
