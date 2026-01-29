@@ -50,6 +50,32 @@ def run_migrations():
                 conn.execute(text("ALTER TABLE briefing ADD COLUMN calendar_events TEXT DEFAULT NULL"))
                 conn.commit()
 
+            # Ensure Habit table exists (handled by SQLModel.create_all usually, but explicit check here doesn't hurt if we want manual control, 
+            # though usually create_all is enough for NEW tables. Let's trust create_all for new tables unless I see issues).
+            # Actually, let's verify main.py calls create_all.
+            
+            # If I need to manually create it:
+            try:
+                conn.execute(text("SELECT id FROM habit LIMIT 1"))
+            except Exception:
+                logger.info("Applying migration: Creating habit table")
+                conn.rollback()
+                # Create table manually to be safe if create_all isn't catching it or to avoid race conditions
+                conn.execute(text("""
+                    CREATE TABLE IF NOT EXISTS habit (
+                        id SERIAL PRIMARY KEY,
+                        user_id VARCHAR NOT NULL,
+                        name VARCHAR NOT NULL,
+                        description VARCHAR,
+                        preferred_time VARCHAR DEFAULT 'any',
+                        duration_minutes INTEGER DEFAULT 30,
+                        is_active BOOLEAN DEFAULT TRUE,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    );
+                    CREATE INDEX IF NOT EXISTS ix_habit_user_id ON habit (user_id);
+                """))
+                conn.commit()
+
             logger.info("Migrations completed successfully.")
             
         except Exception as e:

@@ -84,3 +84,13 @@ class UsedQuote(SQLModel, table=True):
     quote_id: str = Field(index=True) # Hash of author:quote
     quote_text_snippet: str # Stored just for debugging reference
     used_at: datetime = Field(default_factory=datetime.utcnow)
+
+class Habit(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: str = Field(index=True)
+    name: str  # e.g. "Morning Light"
+    description: Optional[str] = None  # e.g. "Go outside for 10 min"
+    preferred_time: str = Field(default="any")  # morning, afternoon, evening, any
+    duration_minutes: int = Field(default=30)
+    is_active: bool = Field(default=True)
+    created_at: datetime = Field(default_factory=datetime.utcnow)

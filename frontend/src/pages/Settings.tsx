@@ -87,9 +87,23 @@ export default function Settings() {
                         <InterestManager />
                     </motion.section>
 
+                    import HabitManager from '../components/HabitManager';
+
+                    // ... existing imports ...
+
+                    // ... inside main return ...
+
                     <motion.section variants={itemVariants}>
                         <div className="flex items-center gap-4 mb-12">
                             <span className="text-xs font-mono text-charcoal/40">02</span>
+                            <h2 className="text-sm font-sans uppercase tracking-[0.2em] flex-1 border-b border-charcoal/10 pb-1">Tägliche Gewohnheiten & Ziele</h2>
+                        </div>
+                        <HabitManager />
+                    </motion.section>
+
+                    <motion.section variants={itemVariants}>
+                        <div className="flex items-center gap-4 mb-12">
+                            <span className="text-xs font-mono text-charcoal/40">03</span>
                             <h2 className="text-sm font-sans uppercase tracking-[0.2em] flex-1 border-b border-charcoal/10 pb-1">System & Verbindungen</h2>
                         </div>
                         <SettingsPanel onDirtyChange={setIsDirty} />

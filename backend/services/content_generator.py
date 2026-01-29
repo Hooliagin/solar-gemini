@@ -138,6 +138,7 @@ def generate_morning_briefing_prompt(
     # Kern-Inhalte
     diary_transcript: str,
     todo_list_text: str,
+    habits_text: str,
     calendar_text: str,
     weather_text: str,
     
@@ -225,6 +226,9 @@ KONTEXT-DATEN
 [TO-DO LISTE / ERINNERUNGEN]
 {todo_list_text if todo_list_text else "Keine To-Dos eingetragen."}
 
+[DAUERHAFTE GEWOHNHEITEN & ZIELE]
+{habits_text}
+
 [RECHERCHE-ERGEBNISSE]
 {research_results_text if research_results_text else "Keine Recherche angefragt."}
 
@@ -284,20 +288,26 @@ ZITAT 2 - INTENTIONS-ZITAT (Vorausschau auf Heute/Kalender):
 └── PLATZIERUNG: Vor dem Tagesplan / Als Übergang.
 
 ═══════════════════════════════════════════════════════════════════════════════
-TO-DO INTEGRATION (PFLICHT - NICHT OPTIONAL!)
+HABIT & TO-DO INTEGRATION (PRIORITÄT)
 ═══════════════════════════════════════════════════════════════════════════════
-**METHODE - Die Gap-Analyse:**
-1. Liste alle festen Termine
-2. Identifiziere freie Zeitblöcke
-3. Ordne JEDES To-Do einem spezifischen Zeitslot zu
-4. Begründe WARUM dieser Slot passt
+**METHODE - Das Intelligente Scheduling:**
+Das Ziel ist es, die Gewohnheiten ([HABIT]) und To-Dos sinnvoll in den Tag zu integrieren.
+
+1.  **Analysiere die fixen Termine**: Wo sind Lücken?
+2.  **Analysiere die Habit-Präferenzen**:
+    - "Morning Light" muss Vormittags sein.
+    - "Read" kann Abends sein.
+3.  **SCHEDULE SIE**: Du musst für JEDEN aktiven Habit einen Slot finden, sofern möglich.
+4.  **Generiere Agenda Items**: Diese Habits MÜSSEN in der `final_agenda` im Metadata-Block erscheinen (als type: "suggestion").
 
 **BEISPIEL:**
-"Nach deinem Standup um zehn Uhr hast du bis vierzehn Uhr einen freien Block. Ich schlage vor: Nutze zehn Uhr dreißig bis zwölf Uhr dreißig für den Businessplan."
+"Dein Vormittag ist voll, aber um fünfzehn Uhr ist eine Lücke. Das wäre perfekt für dein Sport-Habit."
+(Und dann füge es in die Metadata Agenda ein!)
 
 ═══════════════════════════════════════════════════════════════════════════════
 NEWS-AUSWAHL (STRIKTE QUELLEN-TREUE!)
 ═══════════════════════════════════════════════════════════════════════════════
+
 **HEUTE IST: {date_short}**
 
 **REGEL 1:** Nutze AUSSCHLIESSLICH die Informationen aus [NEWS - KURATIERTE QUELLEN] und [NEWS - DYNAMISCHE SUCHE].
@@ -428,6 +438,21 @@ def generate_briefing_content(target_user_id: str):
         if not todo_list_text:
             todo_list_text = "No pending tasks."
         
+        # 3c. Fetch Daily Habits
+        print("DEBUG: Fetching Daily Habits...", flush=True)
+        from models import Habit
+        habits = session.exec(select(Habit).where(Habit.user_id == target_user_id, Habit.is_active == True)).all()
+        habits_text = ""
+        if habits:
+            habits_lines = []
+            for h in habits:
+                pref = f" (Preferred: {h.preferred_time})" if h.preferred_time != "any" else ""
+                habits_lines.append(f"- [HABIT] {h.name} ({h.duration_minutes} min){pref}: {h.description or ''}")
+            habits_text = "\n".join(habits_lines)
+        else:
+            habits_text = "No daily habits defined."
+        print(f"DEBUG: Found {len(habits)} habits.", flush=True)
+
         # Auto-complete Todos (Ephemeral Mode)
         # User requested no persistent storage. We mention them once, then mark as done.
         if todos:
@@ -437,7 +462,7 @@ def generate_briefing_content(target_user_id: str):
                 session.add(t)
             session.commit()
             
-        # 3c. Perform Pending Research (JIT)
+        # 3d. Perform Pending Research (JIT)
         print("DEBUG: Checking for Research Tasks...", flush=True)
         research_tasks = get_pending_research(target_user_id, session)
         research_results_text = ""
@@ -506,6 +531,7 @@ def generate_briefing_content(target_user_id: str):
         prompt = generate_morning_briefing_prompt(
             diary_transcript=diary_transcript,
             todo_list_text=todo_list_text,
+            habits_text=habits_text,
             calendar_text=calendar_text,
             weather_text=weather_text,
             news_curated=news_curated,
