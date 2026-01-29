@@ -163,12 +163,21 @@ def create_calendar_event(user_id: str, event_data: dict) -> bool:
         # Helper to ensure RFC3339 format (YYYY-MM-DDTHH:MM:SS)
         def normalize_iso(iso_str):
             if not iso_str: return None
+            
+            # If string is just HH:MM or HH:MM:SS, attach today's date
+            if len(iso_str) <= 8 and ':' in iso_str:
+                 from zoneinfo import ZoneInfo
+                 berlin = ZoneInfo("Europe/Berlin")
+                 today = datetime.datetime.now(berlin).date().isoformat()
+                 iso_str = f"{today}T{iso_str}"
+
             try:
                 dt = datetime.datetime.fromisoformat(iso_str)
-                # Ensure we have a string representation with seconds, but NO offset if we use timeZone
                 return dt.isoformat(timespec='seconds') 
             except ValueError:
-                return iso_str # Fallback to original if parsing fails
+                # If it still fails, try forcing today's date + input if it looks like time?
+                # But we handled that above.
+                return iso_str # Fallback
 
         start_str = normalize_iso(event_data['start'])
         end_str = normalize_iso(event_data['end'])
