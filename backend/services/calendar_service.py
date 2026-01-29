@@ -9,7 +9,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-SCOPES = ['https://www.googleapis.com/auth/calendar.readonly']
+SCOPES = ['https://www.googleapis.com/auth/calendar.events']
 
 def get_calendar_events(user_id: str) -> list[dict]:
     """
