@@ -348,7 +348,10 @@ STRUKTUR (FLIESSTEXT - Keine Headlines!)
 1. Warme Begrüßung (Variiere! Nicht wie gestern!)
 2. Tiefe Retrospektive (Was wurde geschafft? Emotionen ansprechen!).
    - Schließe diesen Teil mit dem REFLEXIONS-ZITAT (Zitat 1) ab.
-3. Der Tagesplan (Termine + Todos in die Lücken integrieren).
+3. Der Tagesplan (Termine integrieren).
+   - **WICHTIG:** Du musst auch deine VORSCHLÄGE für Habits & To-Dos verbalisieren!
+   - Sag z.B.: "Da du am Nachmittag frei hast, habe ich dir um 15 Uhr deinen Sport eingeplant."
+   - Erkläre kurz, warum du diesen Slot gewählt hast.
    - Schließe mit dem INTENTIONS-ZITAT (Zitat 2) ab.
 4. Recherche-Ergebnisse (falls vorhanden).
 5. News (Mix aus Kuratiert & Dynamisch. Max 2-3 Themen. Nur Relevantes!).
