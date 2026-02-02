@@ -99,5 +99,13 @@ def get_pending_todos(user_id: str, session: Session) -> list[UserTodo]:
     ).all()
 
 def get_pending_research(user_id: str, session: Session) -> list[ResearchTask]:
-    """Get pending research tasks."""
-    return session.exec(select(ResearchTask).where(ResearchTask.user_id == user_id, ResearchTask.status == "pending")).all()
+    """Get pending research tasks fro the last 24h (Strict ephemeral)."""
+    cutoff_date = datetime.utcnow() - timedelta(hours=24)
+    return session.exec(
+        select(ResearchTask)
+        .where(
+            ResearchTask.user_id == user_id, 
+            ResearchTask.status == "pending",
+            ResearchTask.created_at >= cutoff_date
+        )
+    ).all()
