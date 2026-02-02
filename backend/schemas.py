@@ -29,5 +29,5 @@ class QuoteItem(BaseModel):
 class BriefingResponse(BaseModel):
     script_content: str = Field(description="The COMPLETE spoken briefing text (script). Must be natural, conversational German. NO Markdown.")
     quotes: List[QuoteItem] = Field(description="The two quotes selected/used in the script")
-    final_agenda: List[AgendaItem] = Field(description="The final agenda including fixed events and inserted suggestions")
+    final_agenda: List[AgendaItem] = Field(description="The final agenda including ALL events mentioned in the script. If you mention it, it MUST be here.")
 
