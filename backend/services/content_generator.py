@@ -368,18 +368,14 @@ STRUKTUR (FLIESSTEXT - Keine Headlines!)
 5. News (Mix aus Kuratiert & Dynamisch. Max 2-3 Themen. Nur Relevantes!).
 6. Wetter & Abschluss (Motivation).
 
-**METADATA OUTPUT (REQUIRED AT THE VERY END):**
-Please add the following JSON block at the very end of your response, separated by "---METADATA---".
----METADATA---
-{{
-  "quotes": [
-     {{ "text": "Quote 1 Text...", "author": "Author 1" }}
-  ],
-  "final_agenda": [
-     {{ "start": "09:00", "end": "11:00", "name": "Deep Work (AI Suggestion)", "type": "suggestion" }},
-     {{ "start": "14:00", "end": "14:30", "name": "Meeting with Client", "type": "fixed" }}
-  ]
-}}
+**CONSISTENCY CHECK (KRITISCH):**
+Wenn du im Text sagst: "Mach Sport um 10 Uhr", DANN MUSS "Sport" auch im `final_agenda` JSON stehen.
+Wenn du sagst: "Kalte Dusche am Morgen", DANN MUSS "Kalte Dusche" im `final_agenda` JSON stehen (z.B. 07:00).
+Der User sieht nur das, was im JSON steht. Was nicht im JSON steht, existiert für ihn nicht.
+
+**STRUKTUR-ANWEISUNG:**
+Antworte DIREKT im vorgegebenen JSON-Format.
+Das "script_content" Feld enthält den gesamten gesprochenen Text.
 """
     return prompt
 
