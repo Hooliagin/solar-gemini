@@ -153,6 +153,7 @@ def generate_morning_briefing_prompt(
     # Optional
     research_results_text: str = "",
     user_name: str = "",
+    briefing_time: str = "07:00",
     user_news_categories: Optional[List[str]] = None,
     used_quote_ids: Optional[List[str]] = None,
     
@@ -268,6 +269,8 @@ Du musst die festen Termine ([HEUTIGE TERMINE]) mit den PFLICHT-ROUTINEN ([PFLIC
     - **FALLBACK**: Wenn absolut kein Platz ist (z.B. 12h Meetings), ERWÄHNE ES im Text ("Leider ist heute kein Platz für Sport..."). Aber ignoriere es niemals stillschweigend.
 
 **TIMESTAMP REQUIREMENT (WICHTIG):**
+- **START-ZEIT:** Der Tag des Users startet heute um **{briefing_time} Uhr**. (Dies ist der Zeitpunkt des Briefings).
+- Plane KEINE Habits oder Aktionen VOR {briefing_time} Uhr ein. Wenn "Kalte Dusche" ansteht, plane sie direkt NACH dem Briefing ein (z.B. {briefing_time}).
 - Nutze NIEMALS vage Begriffe wie "Morgens", "Morgen", "Abends" oder "Gleich" im JSON-Feld `start`.
 - Schätze IMMER eine konkrete Uhrzeit im Format HH:MM (z.B. "07:30" statt "Morgens").
 - Nur so kann der Kalender die Einträge korrekt sortieren.
@@ -693,6 +696,7 @@ def generate_briefing_content(target_user_id: str, briefing_type: str = "daily")
                 briefing_day_before=briefing_day_before,
                 research_results_text=research_results_text,
                 user_name=user_name,
+                briefing_time=user_settings.briefing_time,
                 user_news_categories=user_news_categories,
                 used_quote_ids=used_quote_ids,
                 language=user_settings.language
