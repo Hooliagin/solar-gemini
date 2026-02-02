@@ -19,7 +19,7 @@ class TodoExtractionResponse(BaseModel):
 class AgendaItem(BaseModel):
     start: str = Field(description="Start time in HH:MM format (24h) or 'Morning'/'Afternoon' if fuzzy")
     end: Optional[str] = Field(description="End time in HH:MM format")
-    name: str = Field(description="Name of the event")
+    name: str = Field(description="Short, concise event title (Max 2-5 words). Example: 'Sport', 'Deep Work', 'Lunch'.")
     type: str = Field(description="Type of event: 'fixed' (from calendar) or 'suggestion' (from AI/Habits)")
 
 class QuoteItem(BaseModel):

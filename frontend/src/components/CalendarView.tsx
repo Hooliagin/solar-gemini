@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Check, Edit2, Loader2, Upload } from 'lucide-react';
+import { Check, Edit2, Loader2, Upload, Sparkles } from 'lucide-react';
 
 interface CalendarEvent {
     start: string;
@@ -184,10 +184,22 @@ export default function CalendarView({ events: initialEvents, onUpdateErrors, on
                                             <h4 className={`font-sans text-charcoal group-hover:text-gold transition-colors truncate ${isSuggestion ? 'italic text-charcoal/80' : ''}`}>
                                                 {event.name}
                                             </h4>
-                                            <Edit2 size={12} className="opacity-0 group-hover/item:opacity-30 ml-2" />
+
+                                            {/* Suggestion Icon / Edit Icon */}
+                                            <div className="flex items-center gap-2">
+                                                {isSuggestion && (
+                                                    <div title="AI Suggestion" className="text-gold/60">
+                                                        <Sparkles size={12} />
+                                                    </div>
+                                                )}
+                                                <Edit2 size={12} className="opacity-0 group-hover/item:opacity-30 ml-2" />
+                                            </div>
                                         </div>
                                     )}
-                                    <p className="text-[10px] text-warm-grey uppercase tracking-wider mt-0.5">{event.calendar}</p>
+                                    {/* Hide the calendar text if it's just 'AI Suggestion' to save space, or show cleaner */}
+                                    {!isSuggestion && (
+                                        <p className="text-[10px] text-warm-grey uppercase tracking-wider mt-0.5">{event.calendar}</p>
+                                    )}
                                 </div>
                             </motion.div>
                         );
