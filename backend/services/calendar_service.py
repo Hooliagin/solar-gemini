@@ -105,7 +105,42 @@ def get_calendar_events(user_id: str, days: int = 1) -> list[dict]:
         
         # Sort by start time
         all_events.sort(key=lambda x: x['start'])
-        return all_events
+        
+        # STRICT PYTHON-SIDE FILTERING
+        # Google API 'timeMin' is inclusive, so it might return events ending exactly at 00:00 (like yesterday's all-day events).
+        # We must filter those out.
+        filtered_events = []
+        for e in all_events:
+            # Parse start/end to comparable datetimes
+            try:
+                e_start_str = e['start']
+                e_end_str = e.get('end')
+                
+                # Handle All-Day dates (YYYY-MM-DD - no T)
+                if 'T' not in e_start_str:
+                     e_start_dt = datetime.datetime.fromisoformat(e_start_str).replace(tzinfo=tz)
+                     # For end date of all-day, usually YYYY-MM-DD (exclusive)
+                     if e_end_str and 'T' not in e_end_str:
+                         e_end_dt = datetime.datetime.fromisoformat(e_end_str).replace(tzinfo=tz)
+                     else:
+                         e_end_dt = e_start_dt + datetime.timedelta(days=1)
+                else:
+                    # ISO Format
+                    e_start_dt = datetime.datetime.fromisoformat(e_start_str)
+                    e_end_dt = datetime.datetime.fromisoformat(e_end_str) if e_end_str else e_start_dt
+                
+                # Check Overlap: Event End must be > Start of Day (Strictly Greater)
+                # If Event End == Start of Day, it ended exactly when "Today" began (e.g. Yesterday All Day).
+                if e_end_dt > start_of_day:
+                    filtered_events.append(e)
+                else:
+                    logger.info(f"Filtered out past event: {e['name']} (Ended: {e_end_dt} <= {start_of_day})")
+
+            except Exception as parse_err:
+                logger.warning(f"Failed to parse event dates for filter: {parse_err}. Keeping event.")
+                filtered_events.append(e) # Keep if unsafe to drop
+        
+        return filtered_events
         
     except Exception as e:
         logger.error(f"Calendar API Error: {e}")
