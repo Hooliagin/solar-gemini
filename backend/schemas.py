@@ -17,8 +17,8 @@ class TodoExtractionResponse(BaseModel):
 # --- BRIEFING GENERATION SCHEMAS ---
 
 class AgendaItem(BaseModel):
-    start: str = Field(description="Start time in HH:MM format (24h) or 'Morning'/'Afternoon' if fuzzy")
-    end: Optional[str] = Field(description="End time in HH:MM format")
+    start: str = Field(description="Start time strictly in HH:MM format (24h). NEVER use words like 'Morning' or 'Evening'. Example: '07:00', '21:30'.")
+    end: Optional[str] = Field(description="End time strictly in HH:MM format.")
     name: str = Field(description="Short, concise event title (Max 2-5 words). Example: 'Sport', 'Deep Work', 'Lunch'.")
     type: str = Field(description="Type of event: 'fixed' (from calendar) or 'suggestion' (from AI/Habits)")
 

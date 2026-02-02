@@ -267,6 +267,11 @@ Du musst die festen Termine ([HEUTIGE TERMINE]) mit den PFLICHT-ROUTINEN ([PFLIC
     - Wenn "Sport" (180min) da steht, suche den größten freien Block.
     - **FALLBACK**: Wenn absolut kein Platz ist (z.B. 12h Meetings), ERWÄHNE ES im Text ("Leider ist heute kein Platz für Sport..."). Aber ignoriere es niemals stillschweigend.
 
+**TIMESTAMP REQUIREMENT (WICHTIG):**
+- Nutze NIEMALS vage Begriffe wie "Morgens", "Morgen", "Abends" oder "Gleich" im JSON-Feld `start`.
+- Schätze IMMER eine konkrete Uhrzeit im Format HH:MM (z.B. "07:30" statt "Morgens").
+- Nur so kann der Kalender die Einträge korrekt sortieren.
+
 **JSON-OUTPUT ANFORDERUNG:**
 Die `final_agenda` MUSS enthalten:
 1. Alle festen Termine (type: "fixed")
@@ -274,8 +279,8 @@ Die `final_agenda` MUSS enthalten:
 
 **BEISPIEL-LOGIK:**
 "User hat Meeting 09:00-11:00.
-Habit 'Morgenlicht' (15m) -> Schlage 08:30 vor.
-Habit 'Sport' (180m) -> Schlage 14:00-17:00 vor (da Block frei)."
+Habit 'Morgenlicht' (15m) -> Schlage 08:30 vor (NICHT 'Morgens').
+Habit 'Sport' (180m) -> Schlage 14:00-17:00 vor."
 
 ═══════════════════════════════════════════════════════════════════════════════
 ZITAT-AUSWAHL (KRITISCH - QUALITÄT WIRD BEWERTET!)
