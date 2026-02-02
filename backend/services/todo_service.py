@@ -87,8 +87,8 @@ def extract_todos_from_transcript(user_id: str, transcript: str, entry_id: int, 
         return 0
 
 def get_pending_todos(user_id: str, session: Session) -> list[UserTodo]:
-    """Get uncompleted todos from the last 72 hours (to avoid ghosts)."""
-    cutoff_date = datetime.utcnow() - timedelta(hours=72)
+    """Get uncompleted todos from the last 24 hours (Strict: New Day = New List)."""
+    cutoff_date = datetime.utcnow() - timedelta(hours=24)
     return session.exec(
         select(UserTodo)
         .where(
