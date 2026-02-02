@@ -697,79 +697,61 @@ def generate_briefing_content(target_user_id: str, briefing_type: str = "daily")
                 language=user_settings.language
             )
         
-        print("DEBUG: Generating Content with Gemini (v3.0 Prompt)...", flush=True)
+        from schemas import BriefingResponse
+        
+        print("DEBUG: Generating Content with Gemini (Structured Output)...", flush=True)
         response = client.models.generate_content(
             model="gemini-2.0-flash",
-            contents=prompt
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                 response_mime_type="application/json",
+                 response_schema=BriefingResponse
+            )
         )
         print("DEBUG: Gemini Response Received.", flush=True)
-        raw_text = response.text
         
-        # 6. Extract Metadata (Quotes) & Clean Script
-        script = raw_text
+        # Parse Strict Response
+        import json
         try:
-            if "---METADATA---" in raw_text:
-                parts = raw_text.split("---METADATA---")
-                script = parts[0].strip() # The audio script
-                metadata_str = parts[1].strip()
-                
-                # Parse JSON
-                metadata_str = metadata_str.replace("```json", "").replace("```", "").strip()
-                metadata = json.loads(metadata_str)
-                
-                # Save Used Quotes
-                if "quotes" in metadata:
-                    for q in metadata["quotes"]:
-                        q_text = q.get("text", "")
-                        q_author = q.get("author", "Unknown")
-                        qid = generate_quote_id(q_text, q_author)
-                        
-                        # Store in DB
-                        print(f"DEBUG: Tracking Quote: {qid} ({q_author})", flush=True)
-                        new_used_quote = UsedQuote(
-                            user_id=target_user_id,
-                            quote_id=qid,
-                            quote_text_snippet=q_text  # Store full text for frontend display
-                        )
-                        session.add(new_used_quote)
-                    session.commit()
+            data_dict = json.loads(response.text)
+            briefing_obj = BriefingResponse(**data_dict)
+            
+            # Extract Script
+            script = briefing_obj.script_content
+            
+            # Save Used Quotes
+            for q in briefing_obj.quotes:
+                qid = generate_quote_id(q.text, q.author)
+                print(f"DEBUG: Tracking Quote: {qid} ({q.author})", flush=True)
+                new_used_quote = UsedQuote(
+                    user_id=target_user_id,
+                    quote_id=qid,
+                    quote_text_snippet=q.text
+                )
+                session.add(new_used_quote)
+            session.commit()
 
-                # Extract Final Agenda (AI Suggestions + Fixed)
-                if "final_agenda" in metadata and isinstance(metadata["final_agenda"], list):
-                    ai_agenda = metadata["final_agenda"]
-                    print(f"DEBUG: Found AI Suggested Agenda with {len(ai_agenda)} items.", flush=True)
-                    
-                    # Normalize to internal format
-                    # Internal Format expected by Frontend/ImageService: { 'start': 'HH:MM' or ISO, 'name': '...', 'calendar': '...' }
-                    normalized_agenda = []
-                    for event in ai_agenda:
-                        start_time = event.get("start", event.get("time", ""))
-                        end_time = event.get("end", "")
-                        
-                        # Use AI's start/end if available, otherwise just pass it through
-                        
-                        start_time = event.get("start") or event.get("time") or "" 
-                        normalized_agenda.append({
-                            "start": start_time, 
-                            "end": end_time,
-                            "name": event.get("name", "Event"),
-                            "calendar": "AI Suggestion" if event.get("type") == "suggestion" else "Calendar",
-                            "type": event.get("type", "fixed")
-                        })
-                    
-                    # Sort by start time to ensure chronological order
-                    normalized_agenda.sort(key=lambda x: x['start'])
-                    
-                    # OVERRIDE the raw calendar events with this AI-enhanced version
-                    if normalized_agenda:
-                         calendar_events_list = normalized_agenda
-                         print("DEBUG: Replaced raw calendar with AI Agenda.", flush=True)
+            # Extract Final Agenda
+            normalized_agenda = []
+            for event in briefing_obj.final_agenda:
+                normalized_agenda.append({
+                    "start": event.start, 
+                    "end": event.end or "",
+                    "name": event.name,
+                    "calendar": "AI Suggestion" if event.type == "suggestion" else "Calendar",
+                    "type": event.type
+                })
+            
+            # Sort & Replace
+            normalized_agenda.sort(key=lambda x: x['start'])
+            if normalized_agenda:
+                 calendar_events_list = normalized_agenda
+                 print("DEBUG: Replaced raw calendar with AI Agenda (Verified Strict).", flush=True)
 
-            else:
-                logger.warning("No Metadata block found in LLM response.")
         except Exception as e:
-            logger.error(f"Failed to parse Quote Metadata: {e}")
-            script = raw_text.split("---METADATA---")[0].strip() 
+            logger.error(f"Failed to parse Structured Output: {e}")
+            # Fallback (Should not happen with high temp/valid schema, but good safety)
+            script = response.text    
         
         # 7. Generate Audio
         print("DEBUG: Generating Audio (TTS)...", flush=True)

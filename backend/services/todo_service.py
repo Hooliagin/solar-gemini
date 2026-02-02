@@ -19,6 +19,8 @@ def extract_todos_from_transcript(user_id: str, transcript: str, entry_id: int, 
     """
     try:
         client = genai.Client(api_key=settings.GOOGLE_API_KEY)
+        from schemas import TodoExtractionResponse
+
         # 1. Prompt Gemini to extract tasks AND research
         prompt = f"""
         Analyze the following user diary entry/transcript.
@@ -26,45 +28,38 @@ def extract_todos_from_transcript(user_id: str, transcript: str, entry_id: int, 
         1. Specific tasks/todos (Actionable items for the user).
         2. Research/Information requests (Things the user wants YOU/The AI to find out).
         
-        Examples: 
-        - "Remind me to call Mom tomorrow" -> Todo: "Call Mom", Due: Tomorrow
-        - "I wonder what the stock price of Apple is" -> Research: "Current Apple stock price"
-        - "Find out who won the game last night" -> Research: "Winner of game last night"
-        - "I need to buy milk" -> Todo: "Buy milk"
-        
         Transcript: "{transcript}"
-        
-        Output JSON ONLY:
-        {{
-            "todos": [
-                {{ "task": "...", "due_in_days": 0 or 1 etc (optional) }}
-            ],
-            "research": [
-                {{ "query": "..." }}
-            ]
-        }}
         """
         
         response = client.models.generate_content(
             model="gemini-2.5-flash",
             contents=prompt,
             config=types.GenerateContentConfig(
-                 response_mime_type="application/json"
+                 response_mime_type="application/json",
+                 response_schema=TodoExtractionResponse
             )
         )
         
-        # 2. Parse Response
-        data = json.loads(response.text)
-        todos = data.get("todos", [])
-        research = data.get("research", [])
+        # 2. Parse Response (Strictly Typed)
+        # The SDK returns a parsed object if response_schema is provided? 
+        # Actually in the current SDK version for Python, typical usage is response.parsed or strictly parsing text.
+        # Let's be safe and parse response.text
+        import json
+        data_dict = json.loads(response.text)
+        
+        # Validate with Pydantic for extra safety (though Gemini usually adheres)
+        result = TodoExtractionResponse(**data_dict)
+        
+        todos = result.todos
+        research = result.research
         
         extracted_count = 0
         
         # Save Todos
         for item in todos:
-            task_text = item.get("task")
+            task_text = item.task # Access by attribute
             if not task_text: continue
-            due_in_days = item.get("due_in_days")
+            due_in_days = item.due_in_days
             due_date = datetime.now() + timedelta(days=due_in_days) if due_in_days is not None else None
             
             session.add(UserTodo(user_id=user_id, task=task_text, due_date=due_date, source_entry_id=entry_id))
@@ -72,7 +67,7 @@ def extract_todos_from_transcript(user_id: str, transcript: str, entry_id: int, 
             
         # Save Research Tasks
         for item in research:
-            query = item.get("query")
+            query = item.query # Access by attribute
             if not query: continue
             
             session.add(ResearchTask(user_id=user_id, query=query, source_entry_id=entry_id))
