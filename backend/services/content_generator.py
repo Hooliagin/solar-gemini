@@ -110,7 +110,7 @@ Wiederholungen zerstören das Erlebnis und wirken roboterhaft.
     if briefing_yesterday:
         phrases = extract_key_phrases(briefing_yesterday)
         block += f"""
-**BRIEFING VON GESTERN (NICHT WIEDERHOLEN!):**
+**KONTEXT: GESTRIGES BRIEFING (NUR ZUR INFO - KEINE HANDLUNGSANWEISUNG! TERMINE DARIN SIND VORBEI!):**
 \"\"\"
 {briefing_yesterday[:2500]}{"..." if len(briefing_yesterday) > 2500 else ""}
 \"\"\"
@@ -211,7 +211,12 @@ TTS-OPTIMIERUNG (KRITISCH!)
 - **GRAMMATIK-CHECK**: Perfekte deutsche Grammatik. "hast geschlafen" NICHT "bist geschlafen".
 
 ═══════════════════════════════════════════════════════════════════════════════
+═══════════════════════════════════════════════════════════════════════════════
 {anti_repetition_block}
+
+WARNUNG (ANTI-HALLUZINATION):
+- Termine oder Events, die im "BRIEFING VON GESTERN" erwähnt wurden, sind VERGANGENHEIT. Plane sie NICHT erneut ein, es sei denn, sie stehen explizit im heutigen Kalender.
+- Das "BRIEFING VON GESTERN" dient NUR dazu, deinen Sprachstil zu variieren. Es ist KEINE Quelle für Aufgaben.
 ═══════════════════════════════════════════════════════════════════════════════
 
 {blacklist_block}

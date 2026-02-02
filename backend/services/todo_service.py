@@ -87,8 +87,16 @@ def extract_todos_from_transcript(user_id: str, transcript: str, entry_id: int, 
         return 0
 
 def get_pending_todos(user_id: str, session: Session) -> list[UserTodo]:
-    """Get uncompleted todos."""
-    return session.exec(select(UserTodo).where(UserTodo.user_id == user_id, UserTodo.is_completed == False)).all()
+    """Get uncompleted todos from the last 72 hours (to avoid ghosts)."""
+    cutoff_date = datetime.utcnow() - timedelta(hours=72)
+    return session.exec(
+        select(UserTodo)
+        .where(
+            UserTodo.user_id == user_id, 
+            UserTodo.is_completed == False,
+            UserTodo.created_at >= cutoff_date
+        )
+    ).all()
 
 def get_pending_research(user_id: str, session: Session) -> list[ResearchTask]:
     """Get pending research tasks."""
