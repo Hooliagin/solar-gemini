@@ -507,12 +507,35 @@ def generate_briefing_content(target_user_id: str, briefing_type: str = "daily")
         print(f"DEBUG: Found custom topics: {topic_list}", flush=True)
         
         # 3. Fetch yesterday's diary (Last entry from DB for THIS USER)
+        # 3. Fetch yesterday's diary (Last entry from DB for THIS USER)
         print("DEBUG: Fetching last diary entry...", flush=True)
         statement = select(Entry).where(Entry.user_id == target_user_id).order_by(Entry.id.desc())
         last_entry = session.exec(statement).first()
         
-        diary_transcript = last_entry.transcript if last_entry else "No diary entry for last night."
-        detected_language = last_entry.language if last_entry and last_entry.language else "de"  # Default to German
+        diary_transcript = None
+        detected_language = "de"
+
+        if last_entry:
+            # Check if entry is from YESTERDAY
+            # We compare entry.created_at.date() with (now - 1 day).date()
+            from datetime import date
+            today = datetime.now().date()
+            yesterday = today - timedelta(days=1)
+            entry_date = last_entry.created_at.date()
+
+            if entry_date == yesterday:
+                diary_transcript = last_entry.transcript
+                detected_language = last_entry.language or "de"
+                print(f"DEBUG: Found valid diary entry from yesterday ({entry_date}).", flush=True)
+            else:
+                print(f"DEBUG: Last entry is from {entry_date} (Yesterday was {yesterday}). Ignoring for briefing.", flush=True)
+                diary_transcript = None # Explicitly set to None
+        else:
+             print("DEBUG: No diary entries found at all.", flush=True)
+
+        if not diary_transcript:
+            diary_transcript = "DER USER HAT GESTERN KEINEN TAGEBUCH-EINTRAG GEMACHT. Erwähne das kurz und freundlich ('Du hast gestern keinen Eintrag verfasst...'), aber mache kein großes Ding draus."
+
         print(f"DEBUG: Detected language: {detected_language}", flush=True)
 
         # Get user's name for personalized greeting
@@ -720,6 +743,7 @@ def generate_briefing_content(target_user_id: str, briefing_type: str = "daily")
                         
                         # Use AI's start/end if available, otherwise just pass it through
                         
+                        start_time = event.get("start") or event.get("time") or "" 
                         normalized_agenda.append({
                             "start": start_time, 
                             "end": end_time,

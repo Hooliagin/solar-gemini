@@ -76,7 +76,7 @@ export default function Dashboard() {
                             <span className="text-xs uppercase tracking-[0.2em] text-warm-grey font-medium">{greeting}</span>
                         </div>
                         <h1 className="text-6xl md:text-8xl font-serif tracking-tighter leading-[0.9] mix-blend-difference text-charcoal">
-                            {userName || 'Gast'}.
+                            {userName || 'Gast'}
                         </h1>
                         <div className="mt-6 flex gap-6">
                             <button

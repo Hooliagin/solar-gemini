@@ -49,25 +49,49 @@ def generate_speech(text: str, output_path: str, language: str = "de", voice_ove
             "Style: Warm, persönlich, nahbar und locker (Conversational Podcast Style). "
             "Nicht abgelesen oder steif. Wie ein interessantes Gespräch. "
             "Nutze 'Du'-Ansprache. Variiere das Tempo für Spannung.\n"
+            "CRITICAL INSTRUCTION: Generate ONLY the spoken voice. Do NOT add background music, sound effects, or silence at the end. STOP immediately after the text.\n"
             "Accent: Klares, natürliches Hochdeutsch.\n\n"
             "### TRANSCRIPT\n"
             f"{text}"
         )
 
-        response = client.models.generate_content(
-            model="gemini-2.5-flash-preview-tts",
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                response_modalities=["AUDIO"],
-                speech_config=types.SpeechConfig(
-                    voice_config=types.VoiceConfig(
-                        prebuilt_voice_config=types.PrebuiltVoiceConfig(
-                            voice_name=gemini_voice,
-                        )
+        # Retry logic for TTS generation
+        import time
+        max_retries = 3
+        response = None
+        last_exception = None
+
+        for attempt in range(max_retries):
+            try:
+                response = client.models.generate_content(
+                    model="gemini-2.5-flash-preview-tts",
+                    contents=prompt,
+                    config=types.GenerateContentConfig(
+                        response_modalities=["AUDIO"],
+                        speech_config=types.SpeechConfig(
+                            voice_config=types.VoiceConfig(
+                                prebuilt_voice_config=types.PrebuiltVoiceConfig(
+                                    voice_name=gemini_voice,
+                                )
+                            )
+                        ),
                     )
-                ),
-            )
-        )
+                )
+                break # Success
+            except Exception as e:
+                last_exception = e
+                error_str = str(e)
+                # Check for 500 or 503 errors which are retriable
+                if ("500" in error_str or "INTERNAL" in error_str or "503" in error_str) and attempt < max_retries - 1:
+                    wait_time = 2 * (attempt + 1)
+                    logger.warning(f"TTS API Error ({error_str}) on attempt {attempt+1}/{max_retries}. Retrying in {wait_time}s...")
+                    time.sleep(wait_time)
+                else:
+                    # Non-retriable error or max retries reached
+                    raise e
+        
+        if response is None and last_exception:
+            raise last_exception
 
         # Extract Audio Data
         # Extract Audio Data
