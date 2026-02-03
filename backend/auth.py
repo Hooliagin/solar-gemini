@@ -15,8 +15,13 @@ SUPABASE_JWT_SECRET = settings.SUPABASE_JWT_SECRET
 # JWKS Client for ES256 (Global to reuse if possible, though caching depends on library)
 jwks_client = None
 if settings.SUPABASE_URL and settings.SUPABASE_KEY:
+    # Handle potential trailing slash
+    base_url = settings.SUPABASE_URL.rstrip('/')
     # Construct JWKS URL: https://project.supabase.co/auth/v1/jwks
-    jwks_url = f"{settings.SUPABASE_URL}/auth/v1/jwks"
+    jwks_url = f"{base_url}/auth/v1/jwks"
+    
+    logger.info(f"Initializing JWKS Client with URL: {jwks_url}")
+    
     try:
         # Supabase API Gateway requires 'apikey' header even for public endpoints in some configs
         jwks_client = PyJWKClient(jwks_url, headers={"apikey": settings.SUPABASE_KEY})
