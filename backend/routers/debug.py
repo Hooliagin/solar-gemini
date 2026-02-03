@@ -143,3 +143,26 @@ def trigger_check(time_override: str = None):
         session.close()
         
     return report
+
+@router.get("/env")
+def inspect_env():
+    """
+    Checks environment variables debugging (safely).
+    """
+    from config import settings
+    
+    url = settings.SUPABASE_URL
+    has_key = bool(settings.SUPABASE_KEY)
+    
+    base_url = url.rstrip('/') if url else None
+    derived_jwks_url = f"{base_url}/auth/v1/jwks" if base_url else None
+    
+    return {
+        "SUPABASE_URL_RAW": url,
+        "SUPABASE_KEY_SET": has_key,
+        "DERIVED_JWKS_URL": derived_jwks_url,
+        "AUTH_PY_LOGIC_CHECK": {
+            "base_url": base_url,
+            "valid_format": "https://<project>.supabase.co" in url if url else False
+        }
+    }
