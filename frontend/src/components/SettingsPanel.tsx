@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { API_BASE_URL } from '../config';
+import CalendarSelector from './CalendarSelector';
 
 // Voice options with abstract visual indicators instead of emojis
 const VOICES = [
@@ -51,6 +52,7 @@ export default function SettingsPanel({ onDirtyChange }: SettingsPanelProps) {
     });
     const [reflectionTime, setReflectionTime] = useState('19:00');
     const [reflectionReminderEnabled, setReflectionReminderEnabled] = useState(true);
+    const [selectedCalendars, setSelectedCalendars] = useState<string[]>([]);
 
     // Dirty Checking State
     const [initialSettings, setInitialSettings] = useState<any>(null);
@@ -65,7 +67,8 @@ export default function SettingsPanel({ onDirtyChange }: SettingsPanelProps) {
         telegram_enabled: telegramConnected,
         ...newsCategories,
         reflection_time: reflectionTime,
-        reflection_reminder_enabled: reflectionReminderEnabled
+        reflection_reminder_enabled: reflectionReminderEnabled,
+        selected_calendars: JSON.stringify(selectedCalendars)
     };
 
     // Check for changes
@@ -137,6 +140,10 @@ export default function SettingsPanel({ onDirtyChange }: SettingsPanelProps) {
                 setReflectionTime(data.reflection_time || '19:00');
                 setReflectionReminderEnabled(data.reflection_reminder_enabled ?? true);
 
+                try {
+                    setSelectedCalendars(data.selected_calendars ? JSON.parse(data.selected_calendars) : []);
+                } catch (e) { setSelectedCalendars([]); }
+
                 setInitialSettings({
                     name: data.name || '',
                     weather_enabled: data.weather_enabled ?? true,
@@ -150,7 +157,8 @@ export default function SettingsPanel({ onDirtyChange }: SettingsPanelProps) {
                     news_tech: data.news_tech ?? false,
                     news_sports: data.news_sports ?? false,
                     reflection_time: data.reflection_time || '19:00',
-                    reflection_reminder_enabled: data.reflection_reminder_enabled ?? true
+                    reflection_reminder_enabled: data.reflection_reminder_enabled ?? true,
+                    selected_calendars: data.selected_calendars || '[]'
                 });
             }
         } catch (error) {
@@ -256,7 +264,8 @@ export default function SettingsPanel({ onDirtyChange }: SettingsPanelProps) {
                     briefing_time: briefingTime,
                     reflection_time: reflectionTime,
                     reflection_reminder_enabled: reflectionReminderEnabled,
-                    ...newsCategories
+                    ...newsCategories,
+                    selected_calendars: JSON.stringify(selectedCalendars)
                 })
             });
             if (res.ok) {
@@ -402,9 +411,16 @@ export default function SettingsPanel({ onDirtyChange }: SettingsPanelProps) {
                     </div>
                     <div>
                         {calendarConnected ? (
-                            <button onClick={disconnectCalendar} className="text-xs uppercase tracking-widest text-red-500 hover:text-red-600 border-b border-red-200 pb-0.5">
-                                Trennen
-                            </button>
+                            <div>
+                                <button onClick={disconnectCalendar} className="text-xs uppercase tracking-widest text-red-500 hover:text-red-600 border-b border-red-200 pb-0.5">
+                                    Trennen
+                                </button>
+
+                                <CalendarSelector
+                                    selectedIds={selectedCalendars}
+                                    onChange={setSelectedCalendars}
+                                />
+                            </div>
                         ) : (
                             <button onClick={connectCalendar} className="btn-luxury-outline w-full md:w-auto">
                                 Konto verbinden

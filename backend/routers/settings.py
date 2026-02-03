@@ -7,6 +7,7 @@ from typing import Optional
 from auth import get_current_user_id
 import random
 import string
+from datetime import datetime
 
 router = APIRouter(prefix="/settings", tags=["settings"])
 
@@ -21,7 +22,6 @@ class UserSettingsUpdate(BaseModel):
     news_local: Optional[bool] = None
     news_economy: Optional[bool] = None
     news_tech: Optional[bool] = None
-    news_tech: Optional[bool] = None
     news_sports: Optional[bool] = None
     # Reflection Settings
     reflection_time: Optional[str] = None
@@ -29,6 +29,7 @@ class UserSettingsUpdate(BaseModel):
     # Telegram settings
     telegram_enabled: Optional[bool] = None
     telegram_chat_id: Optional[str] = None
+    selected_calendars: Optional[str] = None
 
 @router.get("/")
 def get_settings(session: Session = Depends(get_session), user_id: str = Depends(get_current_user_id)):
@@ -157,3 +158,30 @@ def merge_account(data: MergeRequest, session: Session = Depends(get_session), t
     session.commit()
     
     return {"status": "success", "merged_items": len(entries) + len(briefings)}
+
+@router.get("/calendars")
+def list_calendars(session: Session = Depends(get_session), user_id: str = Depends(get_current_user_id)):
+    """List available Google Calendars with selection status."""
+    from services.calendar_service import get_available_calendars
+    return get_available_calendars(user_id)
+
+class CalendarSelectionUpdate(BaseModel):
+    selected_ids: list[str]
+
+@router.post("/calendars")
+def update_calendar_selection(data: CalendarSelectionUpdate, session: Session = Depends(get_session), user_id: str = Depends(get_current_user_id)):
+    """Update selected Google Calendars."""
+    statement = select(UserSettings).where(UserSettings.user_id == user_id)
+    settings = session.exec(statement).first()
+    
+    if not settings:
+        raise HTTPException(status_code=404, detail="Settings not found")
+    
+    import json
+    settings.selected_calendars = json.dumps(data.selected_ids)
+    settings.updated_at = datetime.utcnow()
+    
+    session.add(settings)
+    session.commit()
+    
+    return {"status": "success", "selected_count": len(data.selected_ids)}

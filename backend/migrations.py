@@ -37,9 +37,16 @@ def run_migrations():
             except Exception:
                 logger.info("Applying migration: Adding updated_at column")
                 conn.rollback()
-                # Create as NULLable first, populate, then set NOT NULL? 
-                # Or just default to NOW()
+                # Create as NULLable first
                 conn.execute(text("ALTER TABLE usersettings ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"))
+                conn.commit()
+
+            try:
+                conn.execute(text("SELECT selected_calendars FROM usersettings LIMIT 1"))
+            except Exception:
+                logger.info("Applying migration: Adding selected_calendars column")
+                conn.rollback()
+                conn.execute(text("ALTER TABLE usersettings ADD COLUMN selected_calendars TEXT DEFAULT NULL"))
                 conn.commit()
                 
             try:

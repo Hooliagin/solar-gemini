@@ -10,7 +10,27 @@ from sqlmodel import select
 from models import UserSettings, Briefing, Entry
 from database import get_session
 from services.content_generator import generate_briefing_content
-from services.telegram_service import send_briefing_audio, send_text_message
+from services.notification_service import deliver_briefing_notification
+from services.telegram_service import send_text_message
+
+
+def get_users_due_for_briefing():
+    """Helper function for debug endpoint - returns users due for briefing at current time."""
+    import pytz
+    berlin_tz = pytz.timezone('Europe/Berlin')
+    now = datetime.now(berlin_tz)
+    current_time = now.strftime("%H:%M")
+    
+    session = next(get_session())
+    try:
+        statement = select(UserSettings).where(
+            UserSettings.telegram_enabled == True,
+            UserSettings.telegram_chat_id != None,
+            UserSettings.briefing_time == current_time
+        )
+        return session.exec(statement).all()
+    finally:
+        session.close()
 
 logger = logging.getLogger(__name__)
 
@@ -175,20 +195,9 @@ async def process_briefing(user):
             logger.error(f"Failed to generate briefing for {user.user_id}")
             return
             
-        # 2. Send to Telegram (if enabled)
+        # 2. Deliver Notification (Unifies Daily/Weekly + Image generation)
         if user.telegram_enabled and user.telegram_chat_id:
-            caption = f"🌅 Dein Morgen-Briefing für {datetime.now().strftime('%d.%m.%Y')}"
-            
-            await send_text_message(
-                chat_id=user.telegram_chat_id, 
-                text=f"🚀 **Guten Morgen, {user.name or 'Freund'}!**\nDein Briefing ist bereit."
-            )
-            
-            await send_briefing_audio(
-                chat_id=user.telegram_chat_id,
-                audio_path=briefing.audio_path,
-                caption=caption
-            )
+            await deliver_briefing_notification(user, briefing)
             logger.info(f"Briefing sent to Telegram for {user.user_id}")
             
     except Exception as e:

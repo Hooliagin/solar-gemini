@@ -3,8 +3,9 @@ import logging
 from fastapi.responses import FileResponse
 from sqlmodel import Session, select
 from database import get_session
-from models import Briefing
+from models import Briefing, UserSettings
 from auth import get_current_user_id
+from services.notification_service import deliver_briefing_notification
 import os
 
 router = APIRouter(prefix="/briefings", tags=["briefings"])
@@ -119,51 +120,14 @@ async def trigger_briefing_generation(
             # Send to Telegram (Manual Trigger runs in threadpool, so asyncio.run is safe)
             # Only send Telegram for DAILY for now, or adapt text?
             if briefing and briefing.audio_path:
-                from services.telegram_service import send_briefing_audio, send_text_message
-                from models import UserSettings
-                
                 # Re-fetch settings
+                from sqlmodel import select
                 settings_stmt = select(UserSettings).where(UserSettings.user_id == uid)
                 user_settings = session.exec(settings_stmt).first()
                 
                 if user_settings and user_settings.telegram_enabled and user_settings.telegram_chat_id:
                     import asyncio
-                    from datetime import datetime, timedelta
-                    
-                    caption = f"🌅 Dein Morgen-Briefing für {datetime.now().strftime('%d.%m.%Y')}"
-                    
-                    asyncio.run(send_text_message(
-                        chat_id=user_settings.telegram_chat_id, 
-                        text=f"🚀 **Briefing manuell generiert!**"
-                    ))
-
-                    # Generate Agenda Image
-                    agenda_image_path = None
-                    if briefing.calendar_events:
-                        try:
-                            import json
-                            events = json.loads(briefing.calendar_events)
-                            
-                            if b_type == "weekly":
-                                from services.image_service import generate_weekly_agenda_image
-                                start_str = datetime.now().strftime("%d.%m")
-                                end_str = (datetime.now() + timedelta(days=6)).strftime("%d.%m")
-                                week_str = f"Week of {start_str}" # Simple header
-                                agenda_image_path = generate_weekly_agenda_image(events, week_str)
-                            else:
-                                from services.image_service import generate_agenda_image
-                                date_str = datetime.now().strftime("%A, %d. %B")
-                                agenda_image_path = generate_agenda_image(events, date_str)
-                                
-                        except Exception as e:
-                            logger.error(f"Failed to generate agenda image: {e}")
-                    
-                    asyncio.run(send_briefing_audio(
-                        chat_id=user_settings.telegram_chat_id,
-                        audio_path=briefing.audio_path,
-                        caption=caption,
-                        image_path=agenda_image_path
-                    ))
+                    asyncio.run(deliver_briefing_notification(user_settings, briefing))
                     logger.info(f"Manual briefing sent to Telegram for {uid}")
 
             logger.info(f"Background generation finished for user {uid}")

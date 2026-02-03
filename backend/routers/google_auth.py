@@ -8,6 +8,8 @@ from models import UserSettings
 from config import settings
 from datetime import datetime
 import os
+import hmac
+import hashlib
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -17,6 +19,24 @@ SCOPES = [
     'https://www.googleapis.com/auth/calendar.readonly' # List calendars
 ]
 REDIRECT_URI = os.getenv("GOOGLE_REDIRECT_URI", "https://daily-manager-backend.onrender.com/auth/google/callback")
+
+# Secret for signing OAuth state tokens (use existing secret or fallback)
+OAUTH_STATE_SECRET = (settings.SUPABASE_JWT_SECRET or settings.CRON_API_KEY or "fallback-dev-secret").encode()
+
+def create_signed_state(user_id: str) -> str:
+    """Create an HMAC-signed state token to prevent CSRF attacks."""
+    signature = hmac.new(OAUTH_STATE_SECRET, user_id.encode(), hashlib.sha256).hexdigest()[:16]
+    return f"{signature}:{user_id}"
+
+def verify_signed_state(state: str) -> str:
+    """Verify and extract user_id from signed state token. Raises on invalid signature."""
+    if ":" not in state:
+        raise ValueError("Invalid state format")
+    signature, user_id = state.split(":", 1)
+    expected_signature = hmac.new(OAUTH_STATE_SECRET, user_id.encode(), hashlib.sha256).hexdigest()[:16]
+    if not hmac.compare_digest(signature, expected_signature):
+        raise ValueError("Invalid state signature - possible CSRF attack")
+    return user_id
 
 def get_flow():
     """Create OAuth flow with client credentials."""
@@ -51,26 +71,30 @@ def google_auth(user_id: Optional[str] = None):
         raise HTTPException(status_code=400, detail="user_id is required as query parameter")
     
     flow = get_flow()
-    # Pass user_id as state to identify user in callback
+    # Use HMAC-signed state token to prevent CSRF
+    signed_state = create_signed_state(user_id)
     authorization_url, state = flow.authorization_url(
         access_type='offline',
         include_granted_scopes='true',
         prompt='consent',  # Force consent to get refresh token
-        state=user_id 
+        state=signed_state 
     )
     return RedirectResponse(authorization_url)
 
 @router.get("/google/callback")
 def google_callback(state: str, code: str = None, error: str = None, session: Session = Depends(get_session)):
     """Handle OAuth callback from Google."""
-    # state contains the user_id we passed in /google
+    # Verify signed state to prevent CSRF attacks
     if error:
         return RedirectResponse(f"https://daily-manager-frontend.onrender.com/?calendar_error={error}")
     
     if not code:
         return RedirectResponse("https://daily-manager-frontend.onrender.com/?calendar_error=no_code")
     
-    user_id = state
+    try:
+        user_id = verify_signed_state(state)
+    except ValueError as e:
+        return RedirectResponse(f"https://daily-manager-frontend.onrender.com/?calendar_error=invalid_state")
     
     try:
         # Relax scope validation because Google returns all granted scopes (e.g. readonly + events)

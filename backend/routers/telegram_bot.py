@@ -98,18 +98,18 @@ async def start_command(update: Update, context):
         if shadow_user and shadow_user.user_id != target_user_id:
             logger.info(f"Merging Shadow User {shadow_user.user_id} into Target User {target_user_id}")
             
-            # Migrate Data
+            # Migrate Data - use parameterized queries to prevent SQL injection
             # Move Entries
-            session.exec(text(f"UPDATE entry SET user_id = '{target_user_id}' WHERE user_id = '{shadow_user.user_id}'"))
+            session.exec(text("UPDATE entry SET user_id = :new_id WHERE user_id = :old_id").bindparams(new_id=target_user_id, old_id=shadow_user.user_id))
             # Move Briefings
-            session.exec(text(f"UPDATE briefing SET user_id = '{target_user_id}' WHERE user_id = '{shadow_user.user_id}'"))
+            session.exec(text("UPDATE briefing SET user_id = :new_id WHERE user_id = :old_id").bindparams(new_id=target_user_id, old_id=shadow_user.user_id))
             # Move Todos
-            session.exec(text(f"UPDATE usertodo SET user_id = '{target_user_id}' WHERE user_id = '{shadow_user.user_id}'"))
+            session.exec(text("UPDATE usertodo SET user_id = :new_id WHERE user_id = :old_id").bindparams(new_id=target_user_id, old_id=shadow_user.user_id))
             # Move ResearchTasks
-            session.exec(text(f"UPDATE researchtask SET user_id = '{target_user_id}' WHERE user_id = '{shadow_user.user_id}'"))
+            session.exec(text("UPDATE researchtask SET user_id = :new_id WHERE user_id = :old_id").bindparams(new_id=target_user_id, old_id=shadow_user.user_id))
             
             # Move Interests (Handle duplicates? For now just overwrite)
-            session.exec(text(f"UPDATE interest SET user_id = '{target_user_id}' WHERE user_id = '{shadow_user.user_id}'"))
+            session.exec(text("UPDATE interest SET user_id = :new_id WHERE user_id = :old_id").bindparams(new_id=target_user_id, old_id=shadow_user.user_id))
             
             # Delete Shadow User Settings
             session.delete(shadow_user)
@@ -222,61 +222,6 @@ async def login_command(update: Update, context):
         parse_mode='Markdown'
     )
 
-async def handle_voice_message(update: Update, context):
-    """Handle voice messages - transcribe and save as diary entry."""
-    await update.message.reply_text("🎙️ Verarbeite Sprachnachricht...")
-    
-    try:
-        # Download voice file
-        voice = update.message.voice
-        file = await voice.get_file()
-        
-        # Save temporarily
-        os.makedirs(settings.AUDIO_DIR, exist_ok=True)
-        temp_path = os.path.join(settings.AUDIO_DIR, f"telegram_{voice.file_id}.ogg")
-        await file.download_to_drive(temp_path)
-        
-        # Transcribe
-        transcription_result = audio_service.transcribe_audio(temp_path)
-        transcript = transcription_result.get("text", "") if isinstance(transcription_result, dict) else transcription_result
-        language = transcription_result.get("language", "de") if isinstance(transcription_result, dict) else "de"
-        
-        session = next(get_session())
-        
-        # Verify user mapping
-        chat_id = str(update.effective_chat.id)
-        stmt = select(UserSettings).where(UserSettings.telegram_chat_id == chat_id)
-        user = session.exec(stmt).first()
-        
-        if not user:
-             logger.error(f"Telegram user {chat_id} not found/linked during voice upload.")
-             await update.message.reply_text(
-                 "❌ Fehler: Dein Account ist nicht verknüpft.\n"
-                 "Bitte verbinde dich zuerst über die Web-App."
-             )
-             session.close()
-             return
-
-        logger.info(f"Processing voice for Telegram User {chat_id} -> App User {user.user_id}")
-
-        entry = Entry(
-            audio_path=temp_path,
-            transcript=transcript,
-            language=language,
-            user_id=user.user_id
-        )
-        session.add(entry)
-        session.commit()
-        session.close()
-        
-        await update.message.reply_text(
-            f"✅ Tagebuch-Eintrag gespeichert!\n\n"
-            f"📝 \"{transcript[:100]}{'...' if len(transcript) > 100 else ''}\""
-        )
-        
-    except Exception as e:
-        logger.error(f"Error processing voice message: {e}")
-        await update.message.reply_text("❌ Fehler beim Verarbeiten der Sprachnachricht.")
 
 # --- Onboarding Funnel ---
 
@@ -323,12 +268,12 @@ async def start_onboarding(update: Update, context):
             
             if shadow_user and shadow_user.user_id != target_user_id:
                 logger.info(f"Merging Shadow User {shadow_user.user_id} into Web User {target_user_id}")
-                # Migrate Shadow Data
-                session.exec(text(f"UPDATE entry SET user_id = '{target_user_id}' WHERE user_id = '{shadow_user.user_id}'"))
-                session.exec(text(f"UPDATE briefing SET user_id = '{target_user_id}' WHERE user_id = '{shadow_user.user_id}'"))
-                session.exec(text(f"UPDATE usertodo SET user_id = '{target_user_id}' WHERE user_id = '{shadow_user.user_id}'"))
-                session.exec(text(f"UPDATE researchtask SET user_id = '{target_user_id}' WHERE user_id = '{shadow_user.user_id}'"))
-                session.exec(text(f"UPDATE interest SET user_id = '{target_user_id}' WHERE user_id = '{shadow_user.user_id}'"))
+                # Migrate Shadow Data - use parameterized queries to prevent SQL injection
+                session.exec(text("UPDATE entry SET user_id = :new_id WHERE user_id = :old_id").bindparams(new_id=target_user_id, old_id=shadow_user.user_id))
+                session.exec(text("UPDATE briefing SET user_id = :new_id WHERE user_id = :old_id").bindparams(new_id=target_user_id, old_id=shadow_user.user_id))
+                session.exec(text("UPDATE usertodo SET user_id = :new_id WHERE user_id = :old_id").bindparams(new_id=target_user_id, old_id=shadow_user.user_id))
+                session.exec(text("UPDATE researchtask SET user_id = :new_id WHERE user_id = :old_id").bindparams(new_id=target_user_id, old_id=shadow_user.user_id))
+                session.exec(text("UPDATE interest SET user_id = :new_id WHERE user_id = :old_id").bindparams(new_id=target_user_id, old_id=shadow_user.user_id))
                 session.delete(shadow_user)
                 session.flush()
 
@@ -753,10 +698,11 @@ async def handle_voice_message(update: Update, context):
         await update.message.reply_text("❌ Fehler beim Verarbeiten der Sprachnachricht.")
 
 def run_generation_task(chat_id: int):
-    """Background task to generate and send a briefing."""
+    """Background task to generate and send a briefing via Telegram /generate command."""
     import asyncio
     from services.content_generator import generate_briefing_content
-    from services.telegram_service import send_briefing_audio, send_text_message
+    from services.notification_service import deliver_briefing_notification
+    from services.telegram_service import send_text_message
     
     chat_id_str = str(chat_id)
     
@@ -771,26 +717,17 @@ def run_generation_task(chat_id: int):
             return
             
         user_id = user.user_id
-    finally:
-        session.close()
-    
-    try:
+        
         # Generate briefing
         logger.info(f"Generating briefing for user {user_id}")
         briefing = generate_briefing_content(user_id)
         
         if briefing and briefing.audio_path:
-            async def send():
-                await send_briefing_audio(
-                    chat_id=chat_id_str,
-                    audio_path=briefing.audio_path,
-                    caption=f"🌅 Dein persönliches Briefing"
-                )
-            
+            # Use unified notification service (includes agenda image!)
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
             try:
-                loop.run_until_complete(send())
+                loop.run_until_complete(deliver_briefing_notification(user, briefing))
             finally:
                 loop.close()
                 
@@ -809,6 +746,8 @@ def run_generation_task(chat_id: int):
                 
     except Exception as e:
         logger.error(f"Error generating briefing: {e}")
+    finally:
+        session.close()
 
 @router.post("/webhook")
 async def telegram_webhook(request: Request, background_tasks: BackgroundTasks):
@@ -866,7 +805,7 @@ async def telegram_webhook(request: Request, background_tasks: BackgroundTasks):
 @router.get("/status")
 def telegram_status(session: Session = Depends(get_session)):
     """Check if Telegram bot is connected."""
-    user_settings = session.query(UserSettings).first()
+    user_settings = session.exec(select(UserSettings)).first()
     
     if not user_settings or not user_settings.telegram_chat_id:
         return {"connected": False}

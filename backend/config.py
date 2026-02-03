@@ -20,10 +20,10 @@ class Settings:
     SUPABASE_URL = os.getenv("SUPABASE_URL")
     SUPABASE_KEY = os.getenv("SUPABASE_KEY")
     SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+    SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET")  # For JWT signature verification
     
     # Paths
     BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    AUDIO_DIR = os.path.join(BASE_DIR, "data", "audio")
     AUDIO_DIR = os.path.join(BASE_DIR, "data", "audio")
     
     # Database

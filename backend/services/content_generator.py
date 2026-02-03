@@ -473,16 +473,15 @@ def generate_briefing_content(target_user_id: str, briefing_type: str = "daily")
     Orchestrates the creation of the morning briefing for a SPECIFIC user.
     briefing_type: "daily" or "weekly"
     """
-    print(f"DEBUG: Starting {briefing_type} briefing generation for user {target_user_id}...", flush=True)
     logger.info(f"Starting {briefing_type} briefing generation for user {target_user_id}...")
     
     # Validation
     if not settings.GOOGLE_API_KEY:
-        print("DEBUG: Missing Google API Key", flush=True)
+        logger.error("Missing Google API Key")
         raise ValueError("Google Gemini API Key (GEMINI_API_KEY) is missing.")
 
     # Gemini client will be initialized later when needed
-    print("DEBUG: API Key validated.", flush=True)
+    logger.debug("API Key validated.")
     client = genai.Client(api_key=settings.GOOGLE_API_KEY)
 
     session = None
@@ -494,30 +493,29 @@ def generate_briefing_content(target_user_id: str, briefing_type: str = "daily")
         user_settings = session.exec(statement).first()
         
         if not user_settings:
-            print(f"DEBUG: No settings found for user {target_user_id}. Creating defaults.", flush=True)
+            logger.debug(f"No settings found for user {target_user_id}. Creating defaults.")
             user_settings = UserSettings(user_id=target_user_id)
             session.add(user_settings)
             session.commit()
             session.refresh(user_settings)
 
         # 1. Fetch Calendar
-        print("DEBUG: Fetching Calendar...", flush=True)
+        logger.debug("Fetching Calendar...")
         # TODO: Pass user tokens to calendar service
         calendar_events_list = get_calendar_events(target_user_id)
         calendar_text = format_events_text(calendar_events_list)
-        print(f"DEBUG: Calendar Fetched ({len(calendar_events_list)} events).", flush=True)
+        logger.debug(f"Calendar Fetched ({len(calendar_events_list)} events).")
         
         # 2. Fetch User Interests & News
-        print("DEBUG: Querying Interests...", flush=True)
+        logger.debug("Querying Interests...")
         from models import Interest
         statement = select(Interest).where(Interest.user_id == target_user_id)
         interests = session.exec(statement).all()
         topic_list = [i.topic for i in interests]
-        print(f"DEBUG: Found custom topics: {topic_list}", flush=True)
+        logger.debug(f"Found custom topics: {topic_list}")
         
         # 3. Fetch yesterday's diary (Last entry from DB for THIS USER)
-        # 3. Fetch yesterday's diary (Last entry from DB for THIS USER)
-        print("DEBUG: Fetching last diary entry...", flush=True)
+        logger.debug("Fetching last diary entry...")
         statement = select(Entry).where(Entry.user_id == target_user_id).order_by(Entry.id.desc())
         last_entry = session.exec(statement).first()
         
@@ -535,23 +533,23 @@ def generate_briefing_content(target_user_id: str, briefing_type: str = "daily")
             if entry_date == yesterday:
                 diary_transcript = last_entry.transcript
                 detected_language = last_entry.language or "de"
-                print(f"DEBUG: Found valid diary entry from yesterday ({entry_date}).", flush=True)
+                logger.debug(f"Found valid diary entry from yesterday ({entry_date}).")
             else:
-                print(f"DEBUG: Last entry is from {entry_date} (Yesterday was {yesterday}). Ignoring for briefing.", flush=True)
+                logger.debug(f"Last entry is from {entry_date} (Yesterday was {yesterday}). Ignoring for briefing.")
                 diary_transcript = None # Explicitly set to None
         else:
-             print("DEBUG: No diary entries found at all.", flush=True)
+             logger.debug("No diary entries found at all.")
 
         if not diary_transcript:
             diary_transcript = "DER USER HAT GESTERN KEINEN TAGEBUCH-EINTRAG GEMACHT. Erwähne das kurz und freundlich ('Du hast gestern keinen Eintrag verfasst...'), aber mache kein großes Ding draus."
 
-        print(f"DEBUG: Detected language: {detected_language}", flush=True)
+        logger.debug(f"Detected language: {detected_language}")
 
         # Get user's name for personalized greeting
         user_name = user_settings.name if user_settings.name else ""
         
         # 3b. Fetch Pending Todos
-        print("DEBUG: Fetching Pending Todos...", flush=True)
+        logger.debug("Fetching Pending Todos...")
         from services.todo_service import get_pending_todos, get_pending_research
         todos = get_pending_todos(target_user_id, session)
         todo_list_text = "\n".join([f"- {t.task} (Due: {t.due_date.strftime('%Y-%m-%d') if t.due_date else 'Anytime'})" for t in todos])
@@ -559,7 +557,7 @@ def generate_briefing_content(target_user_id: str, briefing_type: str = "daily")
             todo_list_text = "No pending tasks."
         
         # 3c. Fetch Daily Habits
-        print("DEBUG: Fetching Daily Habits...", flush=True)
+        logger.debug("Fetching Daily Habits...")
         from models import Habit
         habits = session.exec(select(Habit).where(Habit.user_id == target_user_id, Habit.is_active == True)).all()
         habits_text = ""
@@ -571,28 +569,28 @@ def generate_briefing_content(target_user_id: str, briefing_type: str = "daily")
             habits_text = "\n".join(habits_lines)
         else:
             habits_text = "No daily habits defined."
-        print(f"DEBUG: Found {len(habits)} habits.", flush=True)
+        logger.debug(f"Found {len(habits)} habits.")
 
         # Auto-complete Todos (Ephemeral Mode)
         # User requested no persistent storage. We mention them once, then mark as done.
         if todos:
-            print(f"DEBUG: Marking {len(todos)} todos as completed (Ephemeral Mode).", flush=True)
+            logger.debug(f"Marking {len(todos)} todos as completed (Ephemeral Mode).")
             for t in todos:
                 t.is_completed = True
                 session.add(t)
             session.commit()
             
         # 3d. Perform Pending Research (JIT)
-        print("DEBUG: Checking for Research Tasks...", flush=True)
+        logger.debug("Checking for Research Tasks...")
         research_tasks = get_pending_research(target_user_id, session)
         research_results_text = ""
         
         if research_tasks:
             from services.research_service import perform_research_grounding
-            print(f"DEBUG: Found {len(research_tasks)} research tasks. Executing...", flush=True)
+            logger.debug(f"Found {len(research_tasks)} research tasks. Executing...")
             
             for task in research_tasks:
-                print(f"DEBUG: Researching '{task.query}'...", flush=True)
+                logger.debug(f"Researching '{task.query}'...")
                 summary = perform_research_grounding(task.query)
                 
                 research_results_text += f"\n[REQUEST: {task.query}]\nRESULT: {summary}\n"
@@ -607,21 +605,21 @@ def generate_briefing_content(target_user_id: str, briefing_type: str = "daily")
             research_results_text = ""
         
         # 4. Fetch Weather (if enabled)
-        print("DEBUG: Checking Weather Settings...", flush=True)
+        logger.debug("Checking Weather Settings...")
         weather_text = ""
         if user_settings.weather_enabled:
-            print(f"DEBUG: Fetching Weather for {user_settings.weather_city}...", flush=True)
+            logger.debug(f"Fetching Weather for {user_settings.weather_city}...")
             weather_text = get_weather_briefing(user_settings.weather_city)
-            print(f"DEBUG: Weather Fetched ({len(weather_text)} chars).", flush=True)
+            logger.debug(f"Weather Fetched ({len(weather_text)} chars).")
 
         # ═══════════════════════════════════════════════════════════════
         # PREPARE V3 INPUTS
         # ═══════════════════════════════════════════════════════════════
         
         # 1. Fetch Split News
-        print("DEBUG: Fetching Split News...", flush=True)
+        logger.debug("Fetching Split News...")
         news_curated, news_dynamic = fetch_all_news(user_settings, topic_list)
-        print(f"DEBUG: News Fetched. Curated: {len(news_curated)} chars, Dynamic: {len(news_dynamic)} chars.", flush=True)
+        logger.debug(f"News Fetched. Curated: {len(news_curated)} chars, Dynamic: {len(news_dynamic)} chars.")
 
         # 2. Fetch History for Anti-Repetition
         prev_briefings = session.exec(
@@ -650,7 +648,7 @@ def generate_briefing_content(target_user_id: str, briefing_type: str = "daily")
         # 5. GENERATE PROMPT
         if briefing_type == "weekly":
              # --- WEEKLY LOGIC ---
-             print("DEBUG: Gathering data for WEEKLY briefing...", flush=True)
+             logger.debug("Gathering data for WEEKLY briefing...")
              
              # 1. Fetch Diary (Last 7 Days)
              cutoff_date = datetime.utcnow() - timedelta(days=7)
@@ -704,7 +702,7 @@ def generate_briefing_content(target_user_id: str, briefing_type: str = "daily")
         
         from schemas import BriefingResponse
         
-        print("DEBUG: Generating Content with Gemini (Structured Output)...", flush=True)
+        logger.debug("Generating Content with Gemini (Structured Output)...")
         response = client.models.generate_content(
             model="gemini-2.0-flash",
             contents=prompt,
@@ -713,7 +711,7 @@ def generate_briefing_content(target_user_id: str, briefing_type: str = "daily")
                  response_schema=BriefingResponse
             )
         )
-        print("DEBUG: Gemini Response Received.", flush=True)
+        logger.debug("Gemini Response Received.")
         
         # Parse Strict Response
         import json
@@ -727,7 +725,7 @@ def generate_briefing_content(target_user_id: str, briefing_type: str = "daily")
             # Save Used Quotes
             for q in briefing_obj.quotes:
                 qid = generate_quote_id(q.text, q.author)
-                print(f"DEBUG: Tracking Quote: {qid} ({q.author})", flush=True)
+                logger.debug(f"Tracking Quote: {qid} ({q.author})")
                 new_used_quote = UsedQuote(
                     user_id=target_user_id,
                     quote_id=qid,
@@ -751,7 +749,7 @@ def generate_briefing_content(target_user_id: str, briefing_type: str = "daily")
             normalized_agenda.sort(key=lambda x: x['start'])
             if normalized_agenda:
                  calendar_events_list = normalized_agenda
-                 print("DEBUG: Replaced raw calendar with AI Agenda (Verified Strict).", flush=True)
+                 logger.debug("Replaced raw calendar with AI Agenda (Verified Strict).")
 
         except Exception as e:
             logger.error(f"Failed to parse Structured Output: {e}")
@@ -759,7 +757,7 @@ def generate_briefing_content(target_user_id: str, briefing_type: str = "daily")
             script = response.text    
         
         # 7. Generate Audio
-        print("DEBUG: Generating Audio (TTS)...", flush=True)
+        logger.debug("Generating Audio (TTS)...")
         audio_filename = f"briefing_{target_user_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.wav"
         
         os.makedirs(settings.AUDIO_DIR, exist_ok=True)
@@ -767,10 +765,10 @@ def generate_briefing_content(target_user_id: str, briefing_type: str = "daily")
         
         user_voice = user_settings.voice_id if user_settings else None
         generate_speech(script, audio_path_abs, language=detected_language, voice_override=user_voice)
-        print(f"DEBUG: Audio saved to {audio_path_abs} (lang: {detected_language}, voice: {user_voice})", flush=True)
+        logger.debug(f"Audio saved to {audio_path_abs} (lang: {detected_language}, voice: {user_voice})")
         
         # 8. Upload to Supabase Storage
-        print("DEBUG: Uploading to Supabase...", flush=True)
+        logger.debug("Uploading to Supabase...")
         from services.storage_service import upload_file, delete_file
         
         storage_path = f"{target_user_id}/{audio_filename}"
@@ -779,7 +777,7 @@ def generate_briefing_content(target_user_id: str, briefing_type: str = "daily")
             upload_file(audio_path_abs, storage_path)
             if os.path.exists(audio_path_abs):
                 os.remove(audio_path_abs)
-                print("DEBUG: Local file generated and removed after upload.", flush=True)
+                logger.debug("Local file generated and removed after upload.")
         except Exception as e:
             logger.error(f"Upload failed: {e}. Keeping local file as fallback.")
             storage_path = None 
@@ -800,11 +798,10 @@ def generate_briefing_content(target_user_id: str, briefing_type: str = "daily")
         session.expunge(briefing) 
         
         logger.info(f"Briefing generated and stored: {storage_path}")
-        print("DEBUG: Briefing saved to DB.", flush=True)
         
         # 10. Auto-Cleanup
         try:
-            print("DEBUG: Running Auto-Cleanup...", flush=True)
+            logger.debug("Running Auto-Cleanup...")
             cutoff_date = datetime.utcnow() - timedelta(days=3)
             
             old_briefings = session.exec(
@@ -820,17 +817,16 @@ def generate_briefing_content(target_user_id: str, briefing_type: str = "daily")
                 session.delete(old_b)
             
             session.commit()
-            print(f"DEBUG: Cleanup finished. Removed {len(old_briefings)} old briefings.", flush=True)
+            logger.debug(f"Cleanup finished. Removed {len(old_briefings)} old briefings.")
             
         except Exception as e:
             logger.error(f"Auto-cleanup failed: {e}")
         
-        print("DEBUG: Done.", flush=True)
+        logger.debug("Briefing generation complete.")
         return briefing
         
     except Exception as e:
         logger.error(f"Error generating briefing: {e}")
-        print(f"DEBUG: ERROR GENERATING BRIEFING: {e}", flush=True)
         if session:
             session.rollback()
         raise e

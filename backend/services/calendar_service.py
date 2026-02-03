@@ -53,6 +53,27 @@ def get_calendar_events(user_id: str, days: int = 1) -> list[dict]:
         calendars_result = service.calendarList().list().execute()
         calendars = calendars_result.get('items', [])
         
+        # Parse user's selected calendars
+        import json
+        selected_ids = []
+        if user_settings.selected_calendars:
+            try:
+                selected_ids = json.loads(user_settings.selected_calendars)
+            except:
+                pass
+        
+        # If selection exists, filter! Otherwise use ALL.
+        # But commonly "primary" is default if nothing selected? 
+        # Requirement: "I want to have control... I have 3 but want 2".
+        # So if selected_ids is NOT empty, strict filter.
+        # If empty/None, default to ALL (or maybe just primary? Let's stick to ALL for backward compat, or ALL)
+        
+        target_calendars = []
+        if selected_ids:
+             target_calendars = [c for c in calendars if c['id'] in selected_ids]
+        else:
+             target_calendars = calendars
+        
         from zoneinfo import ZoneInfo
         
         # Force German Timezone for "Today" calculation
@@ -70,9 +91,12 @@ def get_calendar_events(user_id: str, days: int = 1) -> list[dict]:
         all_events = []
         
         # Fetch events from each calendar
-        for calendar in calendars:
+        for calendar in target_calendars:
             calendar_id = calendar['id']
             calendar_name = calendar.get('summary', 'Unknown')
+            
+            # Skip calendars if not selected (double check logic)
+            # We already filtered target_calendars, so just loop.
             
             try:
                 events_result = service.events().list(
@@ -88,8 +112,6 @@ def get_calendar_events(user_id: str, days: int = 1) -> list[dict]:
                     start = event['start'].get('dateTime', event['start'].get('date'))
                     # Extract End Time
                     end = event['end'].get('dateTime', event['end'].get('date'))
-                    
-                    # Normalize start to just ISO string without timezone offset if needed, or keep as is
                     
                     event_name = event.get('summary', 'No title')
                     all_events.append({
@@ -144,6 +166,72 @@ def get_calendar_events(user_id: str, days: int = 1) -> list[dict]:
         
     except Exception as e:
         logger.error(f"Calendar API Error: {e}")
+        return []
+    finally:
+        session.close()
+
+def get_available_calendars(user_id: str) -> list[dict]:
+    """
+    Fetches list of all calendars the user has access to.
+    Returns: [{'id': '...', 'name': '...', 'selected': bool}]
+    """
+    session = next(get_session())
+    user_settings = session.query(UserSettings).filter(UserSettings.user_id == user_id).first()
+    
+    if not user_settings or not user_settings.google_access_token:
+        return []
+
+    try:
+        creds = Credentials(
+            token=user_settings.google_access_token,
+            refresh_token=user_settings.google_refresh_token,
+            token_uri="https://oauth2.googleapis.com/token",
+            client_id=settings.GOOGLE_CLIENT_ID,
+            client_secret=settings.GOOGLE_CLIENT_SECRET,
+            scopes=SCOPES
+        )
+        
+        # Auto-Refresh check
+        if creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+            user_settings.google_access_token = creds.token
+            session.commit()
+
+        service = build('calendar', 'v3', credentials=creds)
+        
+        # Get List
+        result = service.calendarList().list().execute()
+        items = result.get('items', [])
+        
+        # Determine strict selection
+        import json
+        selected_ids = []
+        if user_settings.selected_calendars:
+            try:
+                selected_ids = json.loads(user_settings.selected_calendars)
+            except:
+                pass
+        
+        calendars = []
+        for item in items:
+            c_id = item['id']
+            # If nothing selected, maybe default primary is selected? 
+            # Or if list empty, treat all as selected? 
+            # Let's say: If list is empty, ALL are selected (default).
+            is_selected = (c_id in selected_ids) if selected_ids else True
+            
+            calendars.append({
+                'id': c_id,
+                'name': item.get('summary', c_id),
+                'primary': item.get('primary', False),
+                'selected': is_selected,
+                'color': item.get('backgroundColor', '#000000')
+            })
+            
+        return calendars
+
+    except Exception as e:
+        logger.error(f"Failed to list calendars: {e}")
         return []
     finally:
         session.close()
