@@ -36,7 +36,13 @@ async def get_current_user_id(credentials: HTTPAuthorizationCredentials = Depend
             )
         return user_id
     except PyJWTError as e:
-        logger.warning(f"JWT validation failed: {e}")
+        import jwt
+        try:
+            header = jwt.get_unverified_header(token)
+            logger.warning(f"JWT validation failed: {e} | Header: {header}")
+        except:
+            logger.warning(f"JWT validation failed: {e} | Could not parse header")
+            
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not validate credentials",
