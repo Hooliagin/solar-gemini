@@ -12,6 +12,7 @@ security = HTTPBearer()
 SUPABASE_JWT_SECRET = settings.SUPABASE_JWT_SECRET
 
 # JWKS Client for ES256 (Global to reuse if possible, though caching depends on library)
+# JWKS Client for ES256 (Global to reuse if possible, though caching depends on library)
 jwks_client = None
 if settings.SUPABASE_URL and settings.SUPABASE_KEY:
     # Construct JWKS URL: https://project.supabase.co/auth/v1/jwks
@@ -21,6 +22,11 @@ if settings.SUPABASE_URL and settings.SUPABASE_KEY:
         jwks_client = PyJWKClient(jwks_url, headers={"apikey": settings.SUPABASE_KEY})
     except Exception as e:
         logger.warning(f"Failed to initialize PyJWKClient: {e}")
+else:
+    if not settings.SUPABASE_URL:
+        logger.warning("AUTH: SUPABASE_URL not set. JWKS support disabled.")
+    if not settings.SUPABASE_KEY:
+        logger.warning("AUTH: SUPABASE_KEY not set. JWKS support disabled.")
 
 async def get_current_user_id(credentials: HTTPAuthorizationCredentials = Depends(security)) -> str:
     """
