@@ -27,7 +27,7 @@ def _fetch_jwks():
         return None
     
     base_url = settings.SUPABASE_URL.rstrip('/')
-    _jwks_url = f"{base_url}/auth/v1/jwks"
+    _jwks_url = f"{base_url}/auth/v1/.well-known/jwks.json"
     
     try:
         req = urllib.request.Request(_jwks_url)
