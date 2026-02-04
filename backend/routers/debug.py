@@ -150,19 +150,36 @@ def inspect_env():
     Checks environment variables debugging (safely).
     """
     from config import settings
+    import urllib.request
+    import urllib.error
+    import json
     
     url = settings.SUPABASE_URL
-    has_key = bool(settings.SUPABASE_KEY)
+    key = settings.SUPABASE_KEY
+    has_key = bool(key)
     
     base_url = url.rstrip('/') if url else None
-    derived_jwks_url = f"{base_url}/auth/v1/jwks" if base_url else None
+    derived_jwks_url = f"{base_url}/auth/v1/.well-known/jwks.json" if base_url else None
+    
+    # Try to fetch JWKS directly
+    jwks_test_result = None
+    if derived_jwks_url and key:
+        try:
+            req = urllib.request.Request(derived_jwks_url)
+            req.add_header('apikey', key)
+            req.add_header('Authorization', f'Bearer {key}')
+            with urllib.request.urlopen(req, timeout=10) as response:
+                data = json.loads(response.read().decode())
+                jwks_test_result = {"success": True, "keys_count": len(data.get('keys', []))}
+        except urllib.error.HTTPError as e:
+            jwks_test_result = {"success": False, "error": f"HTTP {e.code}: {e.reason}"}
+        except Exception as e:
+            jwks_test_result = {"success": False, "error": str(e)}
     
     return {
         "SUPABASE_URL_RAW": url,
         "SUPABASE_KEY_SET": has_key,
+        "SUPABASE_KEY_PREFIX": key[:20] + "..." if key else None,
         "DERIVED_JWKS_URL": derived_jwks_url,
-        "AUTH_PY_LOGIC_CHECK": {
-            "base_url": base_url,
-            "valid_format": "https://<project>.supabase.co" in url if url else False
-        }
+        "JWKS_FETCH_TEST": jwks_test_result
     }
