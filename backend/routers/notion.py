@@ -11,7 +11,7 @@ router = APIRouter(prefix="/notion", tags=["notion"], dependencies=[Depends(appr
 logger = logging.getLogger(__name__)
 notion_service = NotionService()
 
-@APIRouter.get("/authorize")
+@router.get("/authorize")
 async def authorize_notion():
     """ 
     Redirects user to Notion OAuth URL.
