@@ -715,9 +715,9 @@ SPRACHNACHRICHT:
 "{transcript}"
 
 KLASSIFIZIERE DIE NACHRICHT:
-1. "diary" = Persönliche Reflexion, Gedanken, Tagebucheintrag, wie es dem Nutzer geht
-2. "calendar" = Der Nutzer möchte einen Termin/Event erstellen (enthält Zeit/Datum und Aktivität)
-3. "todo" = Der Nutzer möchte sich etwas merken/eine Aufgabe erstellen (ohne konkretes Datum/Uhrzeit)
+1. "diary" = Persönliche Reflexion, Gedanken, Tagebucheintrag (Standard, wenn nichts anderes passt)
+2. "calendar" = Termin/Event mit konkreter Zeit/Datum (z.B. "morgen um 10 Zahnarzt")
+3. "todo" = Aufgabe, Erinnerung oder Notiz. WICHTIG: Wenn der Nutzer "Notion", "Notiz" oder "Erinnere mich" sagt, IST ES IMMER "todo".
 
 BEI "calendar": Extrahiere die Event-Details präzise.
 - Berechne das exakte Datum basierend auf "morgen", "nächsten Montag" etc.
