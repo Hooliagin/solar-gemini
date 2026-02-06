@@ -642,8 +642,12 @@ async def interests_state(update: Update, context):
     return ConversationHandler.END
 
 async def handle_voice_message(update: Update, context):
-    """Handle voice messages - transcribe and save as diary entry."""
-    await update.message.reply_text("🎙️ Verarbeite Sprachnachricht...")
+    """
+    Handle voice messages with smart intent classification.
+    Routes to: Diary Entry OR Calendar Event based on AI analysis.
+    Responds with TTS voice message for a premium assistant feel.
+    """
+    await update.message.reply_text("🎙️ Ich höre dir zu...")
     
     try:
         # Download voice file
@@ -677,24 +681,146 @@ async def handle_voice_message(update: Update, context):
              return
 
         logger.info(f"Processing voice for Telegram User {chat_id} -> App User {user.user_id}")
+        logger.info(f"Transcript: {transcript[:100]}...")
 
-        entry = Entry(
-            audio_path=temp_path,
-            transcript=transcript,
-            language=language,
-            user_id=user.user_id
-        )
-        session.add(entry)
-        session.commit()
-        session.close()
+        # --- INTENT CLASSIFICATION ---
+        from google import genai
+        from google.genai import types
+        import json
+        from datetime import datetime, timedelta
+        from zoneinfo import ZoneInfo
+        from services import calendar_service
+        from services import tts_service
         
-        await update.message.reply_text(
-            f"✅ Tagebuch-Eintrag gespeichert!\n\n"
-            f"📝\" {transcript[:100]}{'...' if len(transcript) > 100 else ''}\""
+        client = genai.Client(api_key=settings.GOOGLE_API_KEY)
+        
+        # Get current time in Berlin for context
+        berlin = ZoneInfo("Europe/Berlin")
+        now = datetime.now(berlin)
+        
+        classification_prompt = f"""Du bist ein intelligenter Assistent. Analysiere die folgende Sprachnachricht und klassifiziere sie.
+
+AKTUELLE ZEIT: {now.strftime('%A, %d.%m.%Y um %H:%M Uhr')}
+
+SPRACHNACHRICHT:
+"{transcript}"
+
+KLASSIFIZIERE DIE NACHRICHT:
+1. "diary" = Persönliche Reflexion, Gedanken, Tagebucheintrag, wie es dem Nutzer geht
+2. "calendar" = Der Nutzer möchte einen Termin/Event erstellen (enthält Zeit/Datum und Aktivität)
+3. "todo" = Der Nutzer möchte sich etwas merken/eine Aufgabe erstellen (ohne konkretes Datum/Uhrzeit)
+
+BEI "calendar": Extrahiere die Event-Details präzise.
+- Berechne das exakte Datum basierend auf "morgen", "nächsten Montag" etc.
+- Schätze eine sinnvolle Dauer wenn nicht angegeben (Standard: 60 Minuten)
+
+Antworte NUR mit validem JSON:
+{{
+  "intent": "diary" | "calendar" | "todo",
+  "calendar_event": {{
+    "summary": "Termin-Name",
+    "start": "YYYY-MM-DDTHH:MM:SS",
+    "end": "YYYY-MM-DDTHH:MM:SS",
+    "description": "Optional details"
+  }} | null,
+  "todo_task": "Aufgabe" | null,
+  "confidence": 0.0-1.0,
+  "assistant_response": "Natürliche Antwort des Assistenten an den Nutzer (max 2 Sätze, freundlich und bestätigend)"
+}}"""
+
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=classification_prompt,
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json"
+            )
         )
+        
+        result = json.loads(response.text)
+        intent = result.get("intent", "diary")
+        confidence = result.get("confidence", 0.5)
+        assistant_response = result.get("assistant_response", "Ich habe das für dich notiert.")
+        
+        logger.info(f"Intent Classification: {intent} (confidence: {confidence})")
+        
+        # --- ROUTE BASED ON INTENT ---
+        if intent == "calendar" and result.get("calendar_event"):
+            event_data = result["calendar_event"]
+            
+            # Check if calendar is connected
+            if not user.google_access_token:
+                await update.message.reply_text(
+                    "📅 Ich würde den Termin gern eintragen, aber dein Kalender ist noch nicht verbunden.\n"
+                    "Bitte verbinde Google Calendar in der Web-App."
+                )
+                session.close()
+                return
+            
+            # Create the event
+            success = calendar_service.create_calendar_event(user.user_id, event_data)
+            
+            if success:
+                logger.info(f"Calendar event created: {event_data['summary']}")
+                # Generate voice response
+                try:
+                    response_audio_path = os.path.join(settings.AUDIO_DIR, f"response_{voice.file_id}.wav")
+                    tts_service.generate_speech(
+                        assistant_response, 
+                        response_audio_path, 
+                        language=language,
+                        voice_override=user.voice_id
+                    )
+                    
+                    # Send voice response
+                    with open(response_audio_path, 'rb') as audio_file:
+                        await update.message.reply_voice(audio_file)
+                    
+                    # Cleanup
+                    os.remove(response_audio_path)
+                except Exception as tts_err:
+                    logger.error(f"TTS response failed: {tts_err}")
+                    # Fallback to text
+                    await update.message.reply_text(f"✅ {assistant_response}")
+            else:
+                await update.message.reply_text(
+                    "❌ Fehler beim Erstellen des Termins. Ist dein Kalender korrekt verbunden?"
+                )
+        
+        elif intent == "todo" and result.get("todo_task"):
+            # Save as UserTodo
+            from models import UserTodo
+            todo = UserTodo(
+                user_id=user.user_id,
+                task=result["todo_task"]
+            )
+            session.add(todo)
+            session.commit()
+            
+            # Respond
+            await update.message.reply_text(f"✅ {assistant_response}")
+        
+        else:
+            # Default: Save as diary entry
+            entry = Entry(
+                audio_path=temp_path,
+                transcript=transcript,
+                language=language,
+                user_id=user.user_id
+            )
+            session.add(entry)
+            session.commit()
+            
+            await update.message.reply_text(
+                f"✅ Tagebuch-Eintrag gespeichert!\n\n"
+                f"📝\"{transcript[:100]}{'...' if len(transcript) > 100 else ''}\""
+            )
+        
+        session.close()
         
     except Exception as e:
         logger.error(f"Error processing voice message: {e}")
+        import traceback
+        traceback.print_exc()
         await update.message.reply_text("❌ Fehler beim Verarbeiten der Sprachnachricht.")
 
 def run_generation_task(chat_id: int):

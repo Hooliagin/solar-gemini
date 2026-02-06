@@ -91,6 +91,15 @@ def run_migrations():
                 """))
                 conn.commit()
 
+            # Migration: Add is_admin column
+            try:
+                conn.execute(text("SELECT is_admin FROM usersettings LIMIT 1"))
+            except Exception:
+                logger.info("Applying migration: Adding is_admin column")
+                conn.rollback()
+                conn.execute(text("ALTER TABLE usersettings ADD COLUMN is_admin BOOLEAN DEFAULT FALSE"))
+                conn.commit()
+
             logger.info("Migrations completed successfully.")
             
         except Exception as e:

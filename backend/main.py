@@ -53,6 +53,8 @@ from routers import debug
 app.include_router(debug.router)
 from routers import habits
 app.include_router(habits.router)
+from routers import admin
+app.include_router(admin.router)
 # Parse origins and ensure they have a scheme (https://) if provided by Render
 origins_raw = os.getenv("ALLOWED_ORIGINS", "*").split(",")
 origins = []

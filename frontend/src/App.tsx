@@ -6,6 +6,7 @@ import Onboarding from './pages/Onboarding';
 import Dashboard from './pages/Dashboard';
 import WeeklyDashboard from './pages/WeeklyDashboard';
 import Settings from './pages/Settings';
+import AdminDashboard from './pages/AdminDashboard';
 // Imports removed
 
 // Protected Route Component
@@ -40,6 +41,9 @@ function App() {
 
           {/* Settings Page */}
           <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+
+          {/* Hidden Admin Portal - NOT linked in UI */}
+          <Route path="/admin-portal-access" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
         </Routes>
       </Router>
     </AuthProvider>
