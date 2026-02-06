@@ -51,9 +51,9 @@ class NotionService:
     async def create_todo(self, access_token: str, database_id: str, task_name: str) -> bool:
         """
         Creates a new page (Task) in the specified Notion Database.
+        Dynamically handles the 'title' property name.
         """
         if not database_id:
-            # If no DB ID is stored, we might need to search for one or fail
             logger.error("No Notion Database ID provided for task creation.")
             return False
 
@@ -63,30 +63,58 @@ class NotionService:
             "Notion-Version": "2022-06-28"
         }
         
-        # Simple page creation payload
-        payload = {
-            "parent": {"database_id": database_id},
-            "properties": {
-                "Name": { # Adjust "Name" if user's title property is named differently
-                    "title": [
-                        {
-                            "text": {
-                                "content": task_name
-                            }
-                        }
-                    ]
-                }
-            }
-        }
-
+        prop_name = "Name" # Default guess
+        
         async with httpx.AsyncClient() as client:
-            response = await client.post(f"{NOTION_API_BASE}/pages", json=payload, headers=headers)
+            # Helper to build payload
+            def build_payload(p_name):
+                return {
+                    "parent": {"database_id": database_id},
+                    "properties": {
+                        p_name: {
+                            "title": [{"text": {"content": task_name}}]
+                        }
+                    }
+                }
+
+            # 1. Try with default "Name"
+            response = await client.post(
+                f"{NOTION_API_BASE}/pages", 
+                json=build_payload(prop_name), 
+                headers=headers
+            )
             
+            # 2. If it fails due to property name, find the real one
+            if response.status_code == 400 and "property that exists" in response.text:
+                logger.warning(f"Default property '{prop_name}' failed. Fetching correct title property for DB {database_id}...")
+                
+                # Fetch DB details to find the 'title' property
+                db_resp = await client.get(f"{NOTION_API_BASE}/databases/{database_id}", headers=headers)
+                
+                if db_resp.status_code == 200:
+                    props = db_resp.json().get("properties", {})
+                    found_title_prop = None
+                    for key, val in props.items():
+                        if val.get("type") == "title":
+                            found_title_prop = key
+                            break
+                    
+                    if found_title_prop:
+                        prop_name = found_title_prop
+                        # Retry with correct name
+                        response = await client.post(
+                            f"{NOTION_API_BASE}/pages", 
+                            json=build_payload(prop_name), 
+                            headers=headers
+                        )
+                    else:
+                        logger.error("Could not determine 'title' property from DB schema.")
+
             if response.status_code != 200:
                 logger.error(f"Failed to create Notion Task: {response.text}")
                 return False
             
-            logger.info(f"Successfully created Notion task: {task_name}")
+            logger.info(f"Successfully created Notion task: {task_name} (Property: {prop_name})")
             return True
 
     async def search_for_database(self, access_token: str) -> Optional[str]:
