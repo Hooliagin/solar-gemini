@@ -1,4 +1,4 @@
-import React from 'react';
+
 import { ScrollText, CheckCircle, AlertCircle } from 'lucide-react';
 
 const TermsOfService = () => {

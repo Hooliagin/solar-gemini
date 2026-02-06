@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+
 import { ShieldAlert, LogOut } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useNavigate } from 'react-router-dom';

@@ -18,11 +18,11 @@ import ApprovalPending from './pages/ApprovalPending';
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { session, loading } = useAuth();
   const [isApproved, setIsApproved] = React.useState<boolean | null>(null);
-  const [checkingApproval, setCheckingApproval] = React.useState(false);
+
 
   React.useEffect(() => {
     if (session?.access_token && isApproved === null) {
-      setCheckingApproval(true);
+
       fetch(`${API_BASE_URL}/settings/`, {
         headers: { Authorization: `Bearer ${session.access_token}` }
       })
@@ -37,7 +37,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
           // e.g. Network error? Fallback to false or retry
           setIsApproved(false);
         })
-        .finally(() => setCheckingApproval(false));
+
     }
   }, [session]);
 
