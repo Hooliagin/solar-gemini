@@ -51,7 +51,7 @@ class NotionService:
     async def create_todo(self, access_token: str, database_id: str, task_name: str) -> bool:
         """
         Creates a new page (Task) in the specified Notion Database.
-        Dynamically handles the 'title' property name.
+        Dynamically handles the 'title' property name with DEBUG logging.
         """
         if not database_id:
             logger.error("No Notion Database ID provided for task creation.")
@@ -66,7 +66,6 @@ class NotionService:
         prop_name = "Name" # Default guess
         
         async with httpx.AsyncClient() as client:
-            # Helper to build payload
             def build_payload(p_name):
                 return {
                     "parent": {"database_id": database_id},
@@ -78,37 +77,51 @@ class NotionService:
                 }
 
             # 1. Try with default "Name"
-            response = await client.post(
-                f"{NOTION_API_BASE}/pages", 
-                json=build_payload(prop_name), 
-                headers=headers
-            )
+            try:
+                response = await client.post(
+                    f"{NOTION_API_BASE}/pages", 
+                    json=build_payload(prop_name), 
+                    headers=headers
+                )
+            except Exception as e:
+                logger.error(f"Initial Notion POST failed: {e}")
+                return False
             
             # 2. If it fails due to property name, find the real one
             if response.status_code == 400 and "property that exists" in response.text:
                 logger.warning(f"Default property '{prop_name}' failed. Fetching correct title property for DB {database_id}...")
                 
-                # Fetch DB details to find the 'title' property
-                db_resp = await client.get(f"{NOTION_API_BASE}/databases/{database_id}", headers=headers)
-                
-                if db_resp.status_code == 200:
-                    props = db_resp.json().get("properties", {})
-                    found_title_prop = None
-                    for key, val in props.items():
-                        if val.get("type") == "title":
-                            found_title_prop = key
-                            break
+                try:
+                    # Fetch DB details
+                    db_resp = await client.get(f"{NOTION_API_BASE}/databases/{database_id}", headers=headers)
+                    logger.info(f"DB Fetch Status: {db_resp.status_code}")
                     
-                    if found_title_prop:
-                        prop_name = found_title_prop
-                        # Retry with correct name
-                        response = await client.post(
-                            f"{NOTION_API_BASE}/pages", 
-                            json=build_payload(prop_name), 
-                            headers=headers
-                        )
+                    if db_resp.status_code == 200:
+                        props = db_resp.json().get("properties", {})
+                        logger.info(f"DB Properties Found: {list(props.keys())}")
+                        
+                        found_title_prop = None
+                        for key, val in props.items():
+                            if val.get("type") == "title":
+                                found_title_prop = key
+                                break
+                        
+                        if found_title_prop:
+                            logger.info(f"Identified Title Property: '{found_title_prop}'")
+                            prop_name = found_title_prop
+                            # Retry with correct name
+                            response = await client.post(
+                                f"{NOTION_API_BASE}/pages", 
+                                json=build_payload(prop_name), 
+                                headers=headers
+                            )
+                            logger.info(f"Retry POST Status: {response.status_code}")
+                        else:
+                            logger.error("Could not determine 'title' property from DB schema.")
                     else:
-                        logger.error("Could not determine 'title' property from DB schema.")
+                        logger.error(f"Failed to fetch DB schema (Status {db_resp.status_code}): {db_resp.text}")
+                except Exception as e:
+                    logger.error(f"Exception during Notion retry logic: {e}")
 
             if response.status_code != 200:
                 logger.error(f"Failed to create Notion Task: {response.text}")
