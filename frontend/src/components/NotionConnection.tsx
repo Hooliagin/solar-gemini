@@ -84,7 +84,12 @@ export default function NotionConnection() {
 
     const connect = async () => {
         try {
-            const res = await fetch(`${API_BASE_URL}/notion/authorize`);
+            const token = (await supabase.auth.getSession()).data.session?.access_token;
+            if (!token) return;
+
+            const res = await fetch(`${API_BASE_URL}/notion/authorize`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
             const data = await res.json();
             if (data.url) {
                 window.location.href = data.url;
