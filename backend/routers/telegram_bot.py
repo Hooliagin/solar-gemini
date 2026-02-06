@@ -773,7 +773,7 @@ Antworte NUR mit validem JSON:
             success = calendar_service.create_calendar_event(user.user_id, event_data)
             
             if success:
-                logger.info(f"Calendar event created: {event_data['summary']}")
+                logger.info(f"Calendar event created: {event_data.get('summary', event_data.get('name', 'Unknown'))}")
                 # Generate voice response
                 try:
                     response_audio_path = os.path.join(settings.AUDIO_DIR, f"response_{voice.file_id}.wav")
