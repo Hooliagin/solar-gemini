@@ -98,6 +98,31 @@ def run_migrations():
                 logger.info("Applying migration: Adding is_admin column")
                 conn.rollback()
                 conn.execute(text("ALTER TABLE usersettings ADD COLUMN is_admin BOOLEAN DEFAULT FALSE"))
+            
+            # Migration: Add Notion Integration columns
+            try:
+                conn.execute(text("SELECT notion_access_token FROM usersettings LIMIT 1"))
+            except Exception:
+                logger.info("Applying migration: Adding Notion columns")
+                conn.rollback()
+                conn.execute(text("ALTER TABLE usersettings ADD COLUMN notion_access_token VARCHAR"))
+                conn.execute(text("ALTER TABLE usersettings ADD COLUMN notion_bot_id VARCHAR"))
+                conn.execute(text("ALTER TABLE usersettings ADD COLUMN notion_database_id VARCHAR"))
+                conn.commit()
+
+            # Migration: Add is_approved column
+            try:
+                conn.execute(text("SELECT is_approved FROM usersettings LIMIT 1"))
+            except Exception:
+                logger.info("Applying migration: Adding is_approved column")
+                conn.rollback()
+                # Default TRUE for existing users so we don't lock them out
+                conn.execute(text("ALTER TABLE usersettings ADD COLUMN is_approved BOOLEAN DEFAULT TRUE"))
+                # But default for NEW users should be FALSE (handled in code/model default)
+                # We need to drop the default true constraint if we want new rows to be false by default in DB?
+                # Actually, SQLModel/Pydantic default handles the insertion value. 
+                # The DB default is mostly for backfilling existing rows. 
+                # Let's keep it simple: Add column with validation.
                 conn.commit()
 
             logger.info("Migrations completed successfully.")

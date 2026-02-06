@@ -7,6 +7,7 @@ import {
 import { supabase } from '../lib/supabase';
 import { API_BASE_URL } from '../config';
 import CalendarSelector from './CalendarSelector';
+import NotionConnection from './NotionConnection';
 
 // Voice options with abstract visual indicators instead of emojis
 const VOICES = [
@@ -426,6 +427,20 @@ export default function SettingsPanel({ onDirtyChange }: SettingsPanelProps) {
                                 Konto verbinden
                             </button>
                         )}
+                    </div>
+                </div>
+
+                {/* Notion Integration */}
+                <div className="card-luxury">
+                    <div className="flex items-start justify-between mb-8">
+                        <div>
+                            <div className="flex items-center gap-3 mb-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 text-charcoal"><path d="M4.5 4.5v15h15v-15h-15zm4.5 3h3v9h-3v-9zm6 0h1.5v9h-1.5v-9z" /></svg>
+                                <h3 className="text-xl font-serif">Notion</h3>
+                            </div>
+                            <p className="text-warm-grey text-sm font-serif italic">To-Dos und Notizen direkt in deinem Workspace speichern.</p>
+                        </div>
+                        <NotionConnection />
                     </div>
                 </div>
             </div>

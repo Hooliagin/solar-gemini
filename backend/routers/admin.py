@@ -44,12 +44,34 @@ async def list_users(
             "telegram_linked": bool(user.telegram_chat_id),
             "calendar_linked": bool(user.google_access_token),
             "is_admin": user.is_admin,
+            "is_approved": user.is_approved,
             "entry_count": len(entry_count),
             "briefing_count": len(briefing_count),
             "created_at": str(user.updated_at) if user.updated_at else None
         })
     
     return result
+
+
+@router.post("/users/{target_user_id}/approve")
+async def approve_user(
+    target_user_id: str,
+    _admin_id: str = Depends(admin_required),
+    session: Session = Depends(get_session)
+):
+    """Approve a pending user."""
+    stmt = select(UserSettings).where(UserSettings.user_id == target_user_id)
+    user = session.exec(stmt).first()
+    
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+        
+    user.is_approved = True
+    session.add(user)
+    session.commit()
+    
+    logger.info(f"ADMIN: Approved user {target_user_id}")
+    return {"status": "approved", "user_id": target_user_id}
 
 
 @router.delete("/users/{target_user_id}")

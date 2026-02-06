@@ -55,6 +55,8 @@ from routers import habits
 app.include_router(habits.router)
 from routers import admin
 app.include_router(admin.router)
+from routers import notion
+app.include_router(notion.router)
 # Parse origins and ensure they have a scheme (https://) if provided by Render
 origins_raw = os.getenv("ALLOWED_ORIGINS", "*").split(",")
 origins = []

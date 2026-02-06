@@ -66,6 +66,15 @@ class UserSettings(SQLModel, table=True):
     onboarding_step: Optional[str] = Field(default=None)
     # Admin flag (hidden admin portal access)
     is_admin: bool = Field(default=False)
+    
+    # User Approval (New users must be approved)
+    is_approved: bool = Field(default=False)
+    
+    # Notion Integration
+    notion_access_token: Optional[str] = Field(default=None)
+    notion_bot_id: Optional[str] = Field(default=None)
+    notion_database_id: Optional[str] = Field(default=None)
+
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 class UserTodo(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)

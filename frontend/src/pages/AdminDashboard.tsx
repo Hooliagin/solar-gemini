@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../config';
-import { ArrowLeft, Trash2, User, Calendar, MessageCircle, Shield, AlertTriangle } from 'lucide-react';
+import { supabase } from '../lib/supabase';
+import { ArrowLeft, Trash2, User, Calendar, MessageCircle, Shield, AlertTriangle, AlertCircle } from 'lucide-react';
 
 interface UserData {
     user_id: string;
@@ -10,6 +11,7 @@ interface UserData {
     telegram_linked: boolean;
     calendar_linked: boolean;
     is_admin: boolean;
+    is_approved: boolean; // Added
     entry_count: number;
     briefing_count: number;
     created_at: string | null;
@@ -53,24 +55,41 @@ export default function AdminDashboard() {
     };
 
     const handleDelete = async (userId: string) => {
+        if (!confirm('Are you sure you want to delete this user and ALL their data?')) return;
+
         try {
+            const token = (await supabase.auth.getSession()).data.session?.access_token;
             const res = await fetch(`${API_BASE_URL}/admin/users/${userId}`, {
                 method: 'DELETE',
-                headers: {
-                    Authorization: `Bearer ${session?.access_token}`,
-                },
+                headers: { Authorization: `Bearer ${token}` }
             });
 
-            if (!res.ok) {
-                const err = await res.json();
-                throw new Error(err.detail || 'Failed to delete user');
+            if (res.ok) {
+                setUsers(users.filter(u => u.user_id !== userId));
+            } else {
+                alert('Failed to delete user');
             }
+        } catch (error) {
+            console.error(error);
+        }
+    };
 
-            // Refresh list
-            setUsers(users.filter((u) => u.user_id !== userId));
-            setDeleteTarget(null);
-        } catch (e: any) {
-            alert(`Error: ${e.message}`);
+    const approveUser = async (userId: string) => {
+        try {
+            const token = (await supabase.auth.getSession()).data.session?.access_token;
+            const res = await fetch(`${API_BASE_URL}/admin/users/${userId}/approve`, {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${token}` }
+            });
+
+            if (res.ok) {
+                // Update local state
+                setUsers(users.map(u => u.user_id === userId ? { ...u, is_approved: true } : u));
+            } else {
+                alert('Failed to approve user');
+            }
+        } catch (error) {
+            console.error(error);
         }
     };
 
@@ -123,6 +142,7 @@ export default function AdminDashboard() {
                         <thead className="bg-charcoal/5 border-b border-charcoal/10">
                             <tr>
                                 <th className="text-left p-4 font-medium text-charcoal/80">User</th>
+                                <th className="text-center p-4 font-medium text-charcoal/80">Status</th>
                                 <th className="text-center p-4 font-medium text-charcoal/80">Telegram</th>
                                 <th className="text-center p-4 font-medium text-charcoal/80">Calendar</th>
                                 <th className="text-center p-4 font-medium text-charcoal/80">Entries</th>
@@ -139,13 +159,28 @@ export default function AdminDashboard() {
                                                 <User size={18} className="text-charcoal/60" />
                                             </div>
                                             <div>
-                                                <p className="font-medium text-charcoal">{user.name || 'Unnamed'}</p>
+                                                <div className="flex items-center gap-2">
+                                                    <p className="font-medium text-charcoal">{user.name || 'Unnamed'}</p>
+                                                    {user.is_admin && (
+                                                        <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-xs rounded-full">Admin</span>
+                                                    )}
+                                                </div>
                                                 <p className="text-xs text-charcoal/40 font-mono">{user.user_id.slice(0, 8)}...</p>
                                             </div>
-                                            {user.is_admin && (
-                                                <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-xs rounded-full">Admin</span>
-                                            )}
                                         </div>
+                                    </td>
+                                    <td className="p-4 text-center">
+                                        {!user.is_approved ? (
+                                            <button
+                                                onClick={() => approveUser(user.user_id)}
+                                                className="px-2 py-1 bg-amber-500 text-white text-xs rounded hover:bg-amber-600 transition flex items-center gap-1 mx-auto"
+                                            >
+                                                <AlertCircle size={12} />
+                                                Approve
+                                            </button>
+                                        ) : (
+                                            <span className="text-xs text-green-600 font-medium">Active</span>
+                                        )}
                                     </td>
                                     <td className="p-4 text-center">
                                         <MessageCircle

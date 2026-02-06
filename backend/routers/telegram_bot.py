@@ -679,6 +679,15 @@ async def handle_voice_message(update: Update, context):
              )
              session.close()
              return
+ 
+        if not user.is_approved:
+             logger.warning(f"Telegram user {chat_id} is not approved.")
+             await update.message.reply_text(
+                 "⏳ Dein Account wartet noch auf Freigabe durch den Administrator.\n"
+                 "Bitte warte, bis du freigeschaltet wurdest."
+             )
+             session.close()
+             return
 
         logger.info(f"Processing voice for Telegram User {chat_id} -> App User {user.user_id}")
         logger.info(f"Transcript: {transcript[:100]}...")
@@ -791,17 +800,50 @@ Antworte NUR mit validem JSON:
                 )
         
         elif intent == "todo" and result.get("todo_task"):
-            # Save as UserTodo
+            todo_text = result["todo_task"]
+            
+            # 1. Save locally as UserTodo (Always)
             from models import UserTodo
             todo = UserTodo(
                 user_id=user.user_id,
-                task=result["todo_task"]
+                task=todo_text
             )
             session.add(todo)
             session.commit()
             
+            # 2. Try to sync with Notion (if connected)
+            notion_success = False
+            if user.notion_access_token and user.notion_database_id:
+                try:
+                    from services.notion_service import notion_service
+                    notion_success = await notion_service.create_todo(
+                        user.notion_access_token, 
+                        user.notion_database_id, 
+                        todo_text
+                    )
+                except Exception as ex:
+                    logger.error(f"Notion sync failed: {ex}")
+            
             # Respond
-            await update.message.reply_text(f"✅ {assistant_response}")
+            response_text = assistant_response
+            if notion_success:
+                 response_text += " (Auch in Notion gespeichert 📓)"
+            
+            # Generate voice response
+            try:
+                response_audio_path = os.path.join(settings.AUDIO_DIR, f"response_{voice.file_id}.wav")
+                tts_service.generate_speech(
+                    response_text, 
+                    response_audio_path, 
+                    language=language,
+                    voice_override=user.voice_id
+                )
+                
+                with open(response_audio_path, 'rb') as audio_file:
+                    await update.message.reply_voice(audio_file)
+                os.remove(response_audio_path)
+            except Exception:
+                await update.message.reply_text(f"✅ {response_text}")
         
         else:
             # Default: Save as diary entry

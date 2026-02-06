@@ -44,7 +44,14 @@ def get_settings(session: Session = Depends(get_session), user_id: str = Depends
         session.commit()
         session.refresh(settings)
     
-    return settings
+    # Enhance response with Notion status (not stored in DB, computed)
+    # We return the SQLAlchemy object as dict + extras
+    settings_dict = settings.model_dump()
+    settings_dict["notion_connected"] = bool(settings.notion_access_token)
+    settings_dict["notion_workspace"] = "Linked Workspace" if settings.notion_access_token else None
+    settings_dict["is_approved"] = settings.is_approved
+    
+    return settings_dict
 
 @router.put("/")
 def update_settings(updates: UserSettingsUpdate, session: Session = Depends(get_session), user_id: str = Depends(get_current_user_id)):
