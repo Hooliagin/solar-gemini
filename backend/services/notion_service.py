@@ -90,7 +90,7 @@ class NotionService:
             
             # 2. If it fails due to property name, find the real one
             if response.status_code == 400 and "property that exists" in response.text:
-                logger.warning(f"Default property '{prop_name}' failed. Fetching correct title property for DB {database_id}...")
+                logger.error(f"Default property '{prop_name}' failed. Fetching correct title property for DB {database_id}...")
                 
                 try:
                     # Fetch DB details (Clean headers for GET)
@@ -99,13 +99,15 @@ class NotionService:
                         "Notion-Version": "2022-06-28"
                     }
                     
-                    logger.info("Fetching DB schema...")
+                    logger.error("DEBUG: Fetching DB schema...")
+                    logger.error(f"DEBUG: Using headers: {get_headers}")
+                    
                     db_resp = await client.get(f"{NOTION_API_BASE}/databases/{database_id}", headers=get_headers)
-                    logger.info(f"DB Fetch Status: {db_resp.status_code}")
+                    logger.error(f"DEBUG: DB Fetch Status: {db_resp.status_code}")
                     
                     if db_resp.status_code == 200:
                         props = db_resp.json().get("properties", {})
-                        logger.info(f"DB Properties Found: {list(props.keys())}")
+                        logger.error(f"DEBUG: DB Properties Found: {list(props.keys())}")
                         
                         found_title_prop = None
                         for key, val in props.items():
@@ -114,19 +116,20 @@ class NotionService:
                                 break
                         
                         if found_title_prop:
-                            logger.info(f"Identified Title Property: '{found_title_prop}'")
+                            logger.error(f"DEBUG: Identified Title Property: '{found_title_prop}'")
                             prop_name = found_title_prop
                             # Retry with correct name
+                            logger.error(f"DEBUG: Retrying POST with property '{prop_name}'...")
                             response = await client.post(
                                 f"{NOTION_API_BASE}/pages", 
                                 json=build_payload(prop_name), 
                                 headers=headers
                             )
-                            logger.info(f"Retry POST Status: {response.status_code}")
+                            logger.error(f"DEBUG: Retry POST Status: {response.status_code}")
                         else:
-                            logger.error("Could not determine 'title' property from DB schema.")
+                            logger.error("DEBUG: Could not determine 'title' property from DB schema.")
                     else:
-                        logger.error(f"Failed to fetch DB schema (Status {db_resp.status_code}): {db_resp.text}")
+                        logger.error(f"DEBUG: Failed to fetch DB schema (Status {db_resp.status_code}): {db_resp.text}")
                 except Exception as e:
                     logger.error(f"Exception during Notion retry logic: {e}")
 
