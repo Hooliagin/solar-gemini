@@ -718,7 +718,7 @@ Antworte NUR mit validem JSON:
 {{
   "intent": "diary" | "calendar" | "todo",
   "calendar_event": {{
-    "summary": "Termin-Name",
+    "name": "Termin-Name",
     "start": "YYYY-MM-DDTHH:MM:SS",
     "end": "YYYY-MM-DDTHH:MM:SS",
     "description": "Optional details"
@@ -746,6 +746,10 @@ Antworte NUR mit validem JSON:
         # --- ROUTE BASED ON INTENT ---
         if intent == "calendar" and result.get("calendar_event"):
             event_data = result["calendar_event"]
+            
+            # Map 'summary' to 'name' if LLM hallucinates the old schema
+            if "name" not in event_data and "summary" in event_data:
+                event_data["name"] = event_data["summary"]
             
             # Check if calendar is connected
             if not user.google_access_token:
