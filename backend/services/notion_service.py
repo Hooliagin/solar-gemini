@@ -78,6 +78,7 @@ class NotionService:
 
             # 1. Try with default "Name"
             try:
+                logger.info(f"Attempting Notion create with property '{prop_name}'")
                 response = await client.post(
                     f"{NOTION_API_BASE}/pages", 
                     json=build_payload(prop_name), 
@@ -92,8 +93,14 @@ class NotionService:
                 logger.warning(f"Default property '{prop_name}' failed. Fetching correct title property for DB {database_id}...")
                 
                 try:
-                    # Fetch DB details
-                    db_resp = await client.get(f"{NOTION_API_BASE}/databases/{database_id}", headers=headers)
+                    # Fetch DB details (Clean headers for GET)
+                    get_headers = {
+                        "Authorization": f"Bearer {access_token}",
+                        "Notion-Version": "2022-06-28"
+                    }
+                    
+                    logger.info("Fetching DB schema...")
+                    db_resp = await client.get(f"{NOTION_API_BASE}/databases/{database_id}", headers=get_headers)
                     logger.info(f"DB Fetch Status: {db_resp.status_code}")
                     
                     if db_resp.status_code == 200:
