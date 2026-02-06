@@ -813,16 +813,30 @@ Antworte NUR mit validem JSON:
             
             # 2. Try to sync with Notion (if connected)
             notion_success = False
-            if user.notion_access_token and user.notion_database_id:
-                try:
-                    from services.notion_service import notion_service
-                    notion_success = await notion_service.create_todo(
-                        user.notion_access_token, 
-                        user.notion_database_id, 
-                        todo_text
-                    )
-                except Exception as ex:
-                    logger.error(f"Notion sync failed: {ex}")
+            if user.notion_access_token:
+                from services.notion_service import notion_service
+                
+                # Auto-heal: If no DB set, try to find one
+                if not user.notion_database_id:
+                    try:
+                        first_db = await notion_service.search_for_database(user.notion_access_token)
+                        if first_db:
+                            user.notion_database_id = first_db
+                            session.add(user)
+                            session.commit()
+                            logger.info(f"Auto-discovered Notion DB: {first_db}")
+                    except Exception as e:
+                        logger.error(f"Auto-discovery failed: {e}")
+
+                if user.notion_database_id:
+                    try:
+                        notion_success = await notion_service.create_todo(
+                            user.notion_access_token, 
+                            user.notion_database_id, 
+                            todo_text
+                        )
+                    except Exception as ex:
+                        logger.error(f"Notion sync failed: {ex}")
             
             # Respond
             response_text = assistant_response

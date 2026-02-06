@@ -82,9 +82,9 @@ async def connect_notion(
     
     # Try to auto-discover a database if not set
     # (Optional: user can select later)
-    # first_db = await notion_service.search_for_database(user.notion_access_token)
-    # if first_db:
-    #    user.notion_database_id = first_db
+    first_db = await notion_service.search_for_database(user.notion_access_token)
+    if first_db:
+       user.notion_database_id = first_db
         
     session.add(user)
     session.commit()
