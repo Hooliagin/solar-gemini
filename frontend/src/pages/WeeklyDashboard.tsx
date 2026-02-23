@@ -5,7 +5,7 @@ import { Settings, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import Player from '../components/Player';
 import WeeklyCalendarView from '../components/WeeklyCalendarView';
-
+import { API_BASE_URL } from '../config';
 
 export default function WeeklyDashboard() {
     const { session } = useAuth();
@@ -19,6 +19,20 @@ export default function WeeklyDashboard() {
     }, [session]);
 
     const [latestBriefing, setLatestBriefing] = useState<any>(null);
+    const [usage, setUsage] = useState<{ weekly_used: number; weekly_limit: number } | null>(null);
+
+    useEffect(() => {
+        const fetchUsage = async () => {
+            if (!session?.access_token) return;
+            try {
+                const res = await fetch(`${API_BASE_URL}/briefings/usage`, {
+                    headers: { Authorization: `Bearer ${session.access_token}` }
+                });
+                if (res.ok) setUsage(await res.json());
+            } catch (e) { console.error(e); }
+        };
+        fetchUsage();
+    }, [session]);
 
     return (
         <div className="min-h-screen text-charcoal pb-32">
@@ -62,6 +76,11 @@ export default function WeeklyDashboard() {
                             <div className="flex items-center gap-4 mb-8">
                                 <span className="text-xs font-mono text-charcoal/40">01</span>
                                 <h2 className="text-sm font-sans uppercase tracking-[0.2em] border-b border-gold pb-1">Wochen-Briefing</h2>
+                                {usage && (
+                                    <span className="ml-auto text-[10px] uppercase tracking-widest text-warm-grey">
+                                        {usage.weekly_used}/{usage.weekly_limit} diesen Monat
+                                    </span>
+                                )}
                             </div>
                             <div className="card-luxury min-h-[300px] flex flex-col justify-between group hover:border-gold transition-colors duration-500">
                                 <div className="mb-8">

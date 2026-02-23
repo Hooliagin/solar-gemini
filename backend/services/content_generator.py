@@ -649,6 +649,10 @@ def generate_briefing_content(target_user_id: str, briefing_type: str = "daily")
         if user_settings.news_tech: user_news_categories.append("tech")
         if user_settings.news_economy: user_news_categories.append("business")
         
+        # Include custom topic interests in the context for the LLM
+        if topic_list:
+            user_news_categories.extend(topic_list)
+        
         # 5. GENERATE PROMPT
         if briefing_type == "weekly":
              # --- WEEKLY LOGIC ---

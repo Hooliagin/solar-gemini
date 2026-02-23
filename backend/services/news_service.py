@@ -104,9 +104,9 @@ def fetch_detailed_news_per_topic(topics: list[str]) -> str:
             today_str = datetime.now().strftime("%d.%m.%Y")
             
             prompt = (
-                f"Suche nach den neuesten Entwicklungen und News zu '{topic}' vom {today_str} (oder letzte 24h). "
+                f"Suche nach den neuesten Entwicklungen und News zu '{topic}' der letzten 3 Tage (bis {today_str}). "
                 f"Was ist NEU passiert? Wichtige Ereignisse oder Durchbrüche?\n\n"
-                f"STRIKTE REGEL: Ignoriere alles was älter als 24 Stunden ist.\n"
+                f"STRIKTE REGEL: Ignoriere alles was älter als 3 Tage ist.\n"
                 f"Erstelle eine Zusammenfassung mit 3-4 Sätzen im Briefing-Stil. "
                 f"Wenn keine aktuellen News vorliegen, antworte AUSSCHLIESSLICH mit 'Keine Updates'."
             )

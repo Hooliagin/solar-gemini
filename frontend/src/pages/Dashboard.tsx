@@ -15,6 +15,7 @@ export default function Dashboard() {
     const [userName, setUserName] = useState('');
     const [refreshTrigger, setRefreshTrigger] = useState(0);
     const [setupComplete, setSetupComplete] = useState(true);
+    const [usage, setUsage] = useState<{ daily_used: number; daily_limit: number; weekly_used: number; weekly_limit: number } | null>(null);
 
     // Check Setup Status (Name, Voice, City)
     useEffect(() => {
@@ -35,6 +36,20 @@ export default function Dashboard() {
             }
         };
         checkSetup();
+    }, [session]);
+
+    // Fetch usage
+    useEffect(() => {
+        const fetchUsage = async () => {
+            if (!session?.access_token) return;
+            try {
+                const res = await fetch(`${API_BASE_URL}/briefings/usage`, {
+                    headers: { Authorization: `Bearer ${session.access_token}` }
+                });
+                if (res.ok) setUsage(await res.json());
+            } catch (e) { console.error(e); }
+        };
+        fetchUsage();
     }, [session]);
 
     const getTimeOfDay = () => {
@@ -138,6 +153,11 @@ export default function Dashboard() {
                             <div className="flex items-center gap-4 mb-8">
                                 <span className="text-xs font-mono text-charcoal/40">01</span>
                                 <h2 className="text-sm font-sans uppercase tracking-[0.2em] border-b border-gold pb-1">Morgendliches Briefing</h2>
+                                {usage && (
+                                    <span className="ml-auto text-[10px] uppercase tracking-widest text-warm-grey">
+                                        {usage.daily_used}/{usage.daily_limit} diesen Monat
+                                    </span>
+                                )}
                             </div>
                             <div className="card-luxury min-h-[300px] flex flex-col justify-between group hover:border-gold transition-colors duration-500">
                                 <div className="mb-8">
@@ -158,8 +178,8 @@ export default function Dashboard() {
                             </div>
                             <div className="card-luxury min-h-[300px] flex flex-col justify-between group hover:border-gold transition-colors duration-500">
                                 <div className="mb-8">
-                                    <h3 className="text-4xl font-serif mb-4 group-hover:translate-x-2 transition-transform duration-700">Audio-<br />Tagebuch</h3>
-                                    <p className="text-warm-grey font-serif italic">Nehmen Sie Ihre Gedanken auf.</p>
+                                    <h3 className="text-4xl font-serif mb-4 group-hover:translate-x-2 transition-transform duration-700">Tagebuch</h3>
+                                    <p className="text-warm-grey font-serif italic">Nehmen Sie Ihre Gedanken auf — per Audio oder Text.</p>
                                 </div>
                                 <Recorder onUploadComplete={() => setRefreshTrigger(p => p + 1)} />
                             </div>

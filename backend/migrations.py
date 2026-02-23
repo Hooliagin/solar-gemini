@@ -125,6 +125,25 @@ def run_migrations():
                 # Let's keep it simple: Add column with validation.
                 conn.commit()
 
+            # Migration: Create BriefingUsage table
+            try:
+                conn.execute(text("SELECT id FROM briefingusage LIMIT 1"))
+            except Exception:
+                logger.info("Applying migration: Creating briefingusage table")
+                conn.rollback()
+                conn.execute(text("""
+                    CREATE TABLE IF NOT EXISTS briefingusage (
+                        id SERIAL PRIMARY KEY,
+                        user_id VARCHAR NOT NULL,
+                        month VARCHAR NOT NULL,
+                        daily_count INTEGER DEFAULT 0,
+                        weekly_count INTEGER DEFAULT 0
+                    );
+                    CREATE INDEX IF NOT EXISTS ix_briefingusage_user_id ON briefingusage (user_id);
+                    CREATE INDEX IF NOT EXISTS ix_briefingusage_month ON briefingusage (month);
+                """))
+                conn.commit()
+
             logger.info("Migrations completed successfully.")
             
         except Exception as e:

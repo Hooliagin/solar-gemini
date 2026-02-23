@@ -108,3 +108,10 @@ class Habit(SQLModel, table=True):
     duration_minutes: int = Field(default=30)
     is_active: bool = Field(default=True)
     created_at: datetime = Field(default_factory=datetime.utcnow)
+
+class BriefingUsage(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: str = Field(index=True)
+    month: str = Field(index=True)  # Format "YYYY-MM", e.g. "2026-02"
+    daily_count: int = Field(default=0)
+    weekly_count: int = Field(default=0)

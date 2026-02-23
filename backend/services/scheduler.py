@@ -121,11 +121,34 @@ def check_briefings(session, current_time: str):
             if existing:
                 logger.info(f"Skipping user {user.user_id} - Briefing already sent today.")
                 continue
+            
+            # Check monthly limit
+            from models import BriefingUsage
+            current_month = datetime.now().strftime("%Y-%m")
+            usage = session.exec(
+                select(BriefingUsage).where(
+                    BriefingUsage.user_id == user.user_id,
+                    BriefingUsage.month == current_month
+                )
+            ).first()
+            if usage and usage.daily_count >= 50:
+                logger.info(f"Skipping user {user.user_id} - Monthly daily limit reached ({usage.daily_count}/50).")
+                continue
                 
             # Generate Background Task
             try:
                 # We call the async function synchronously here
                 asyncio.run(process_briefing(user))
+                
+                # Increment usage after successful generation
+                if not usage:
+                    usage = BriefingUsage(user_id=user.user_id, month=current_month, daily_count=1)
+                    session.add(usage)
+                else:
+                    usage.daily_count += 1
+                    session.add(usage)
+                session.commit()
+                
             except Exception as e:
                 logger.error(f"Error triggering briefing for {user.user_id}: {e}")
 

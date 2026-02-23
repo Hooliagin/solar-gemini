@@ -723,6 +723,11 @@ BEI "calendar": Extrahiere die Event-Details präzise.
 - Berechne das exakte Datum basierend auf "morgen", "nächsten Montag" etc.
 - Schätze eine sinnvolle Dauer wenn nicht angegeben (Standard: 60 Minuten)
 
+BEI "todo": Achte auf Hinweise zur Ziel-Datenbank!
+- Wenn der Nutzer sagt "in Projekte", "ins Projekt", "Projekte-Datenbank" → target_database = "Projekte"
+- Wenn der Nutzer sagt "in Aufgaben", "in Tasks" → target_database = "Aufgaben"  
+- Wenn kein Ziel genannt wird → target_database = null (Standard-Datenbank wird verwendet)
+
 Antworte NUR mit validem JSON:
 {{
   "intent": "diary" | "calendar" | "todo",
@@ -733,6 +738,7 @@ Antworte NUR mit validem JSON:
     "description": "Optional details"
   }} | null,
   "todo_task": "Aufgabe" | null,
+  "target_database": "Name der Ziel-Datenbank" | null,
   "confidence": 0.0-1.0,
   "assistant_response": "Natürliche Antwort des Assistenten an den Nutzer (max 2 Sätze, freundlich und bestätigend)"
 }}"""
@@ -813,26 +819,47 @@ Antworte NUR mit validem JSON:
             
             # 2. Try to sync with Notion (if connected)
             notion_success = False
+            target_database_name = result.get("target_database")
+            
             if user.notion_access_token:
                 from services.notion_service import notion_service
                 
-                # Auto-heal: If no DB set, try to find one
-                if not user.notion_database_id:
+                # Determine which database to use
+                target_db_id = None
+                
+                # If user specified a target database, find it by name
+                if target_database_name:
                     try:
-                        first_db = await notion_service.search_for_database(user.notion_access_token)
-                        if first_db:
-                            user.notion_database_id = first_db
+                        target_db_id = await notion_service.search_database_by_name(
+                            user.notion_access_token, 
+                            target_database_name
+                        )
+                        if target_db_id:
+                            logger.info(f"Using target database '{target_database_name}': {target_db_id}")
+                    except Exception as e:
+                        logger.error(f"Database search failed: {e}")
+                
+                # Fall back to stored default if no target specified or not found
+                if not target_db_id:
+                    target_db_id = user.notion_database_id
+                
+                # Last resort: auto-discover first database
+                if not target_db_id:
+                    try:
+                        target_db_id = await notion_service.search_for_database(user.notion_access_token)
+                        if target_db_id:
+                            user.notion_database_id = target_db_id
                             session.add(user)
                             session.commit()
-                            logger.info(f"Auto-discovered Notion DB: {first_db}")
+                            logger.info(f"Auto-discovered Notion DB: {target_db_id}")
                     except Exception as e:
                         logger.error(f"Auto-discovery failed: {e}")
 
-                if user.notion_database_id:
+                if target_db_id:
                     try:
                         notion_success = await notion_service.create_todo(
                             user.notion_access_token, 
-                            user.notion_database_id, 
+                            target_db_id, 
                             todo_text
                         )
                     except Exception as ex:

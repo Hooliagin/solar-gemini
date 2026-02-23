@@ -169,4 +169,46 @@ class NotionService:
             
             return None
 
+    async def search_database_by_name(self, access_token: str, target_name: str) -> Optional[str]:
+        """
+        Searches for a database by name (fuzzy match).
+        Returns the database ID if found, None otherwise.
+        """
+        headers = {
+            "Authorization": f"Bearer {access_token}",
+            "Content-Type": "application/json",
+            "Notion-Version": "2022-06-28"
+        }
+        
+        payload = {
+            "filter": {
+                "value": "database",
+                "property": "object"
+            }
+        }
+        
+        async with httpx.AsyncClient() as client:
+            response = await client.post(f"{NOTION_API_BASE}/search", json=payload, headers=headers)
+            
+            if response.status_code == 200:
+                data = response.json()
+                results = data.get("results", [])
+                
+                target_lower = target_name.lower().strip()
+                
+                for db in results:
+                    # Get database title
+                    title_parts = db.get("title", [])
+                    if title_parts:
+                        db_name = "".join([t.get("plain_text", "") for t in title_parts])
+                        
+                        # Fuzzy match: check if target is contained in db name or vice versa
+                        if target_lower in db_name.lower() or db_name.lower() in target_lower:
+                            logger.info(f"Matched database '{db_name}' for target '{target_name}'")
+                            return db["id"]
+                
+                logger.warning(f"No database found matching '{target_name}'")
+        
+        return None
+
 notion_service = NotionService()

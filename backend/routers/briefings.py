@@ -3,12 +3,48 @@ import logging
 from fastapi.responses import FileResponse
 from sqlmodel import Session, select
 from database import get_session
-from models import Briefing, UserSettings
+from models import Briefing, UserSettings, BriefingUsage
 from auth import get_current_user_id
 from services.notification_service import deliver_briefing_notification
 import os
+from datetime import datetime
+
+DAILY_LIMIT = 50
+WEEKLY_LIMIT = 10
+
+def get_or_create_usage(session: Session, user_id: str) -> BriefingUsage:
+    """Get or create the BriefingUsage row for the current month."""
+    current_month = datetime.utcnow().strftime("%Y-%m")
+    usage = session.exec(
+        select(BriefingUsage).where(
+            BriefingUsage.user_id == user_id,
+            BriefingUsage.month == current_month
+        )
+    ).first()
+    if not usage:
+        usage = BriefingUsage(user_id=user_id, month=current_month)
+        session.add(usage)
+        session.commit()
+        session.refresh(usage)
+    return usage
 
 router = APIRouter(prefix="/briefings", tags=["briefings"])
+logger = logging.getLogger(__name__)
+
+@router.get("/usage")
+async def get_briefing_usage(
+    session: Session = Depends(get_session),
+    user_id: str = Depends(get_current_user_id)
+):
+    """Returns the current month's briefing usage for the user."""
+    usage = get_or_create_usage(session, user_id)
+    return {
+        "daily_used": usage.daily_count,
+        "daily_limit": DAILY_LIMIT,
+        "weekly_used": usage.weekly_count,
+        "weekly_limit": WEEKLY_LIMIT,
+        "month": usage.month
+    }
 
 @router.get("/latest")
 async def get_latest_briefing(
@@ -92,11 +128,11 @@ async def get_briefing_audio(
         
     return FileResponse(briefing.audio_path, media_type="audio/wav")
 
-logger = logging.getLogger(__name__)
+
 
 @router.post("/generate")
 async def trigger_briefing_generation(
-    type: str = "daily", # Query param or body
+    type: str = "daily",
     background_tasks: BackgroundTasks = None,
     session: Session = Depends(get_session),
     user_id: str = Depends(get_current_user_id)
@@ -104,26 +140,47 @@ async def trigger_briefing_generation(
     """
     Manually triggers the generation of a morning briefing (Async).
     Type: "daily" or "weekly"
+    Enforces monthly limits: 50 daily, 10 weekly.
     """
-    # Fix: background_tasks argument position
     if background_tasks is None:
-         # Should be injected by FastAPI if defined correctly, but order matters
          raise HTTPException(status_code=500, detail="BackgroundTasks not injected properly")
+
+    # --- LIMIT CHECK ---
+    usage = get_or_create_usage(session, user_id)
+    if type == "daily" and usage.daily_count >= DAILY_LIMIT:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Monatliches Limit erreicht: {DAILY_LIMIT} tägliche Briefings pro Monat."
+        )
+    if type == "weekly" and usage.weekly_count >= WEEKLY_LIMIT:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Monatliches Limit erreicht: {WEEKLY_LIMIT} wöchentliche Briefings pro Monat."
+        )
 
     from services.content_generator import generate_briefing_content
     
     def run_generation(uid: str, b_type: str):
+        from database import get_session as get_bg_session
+        bg_session = next(get_bg_session())
         try:
             logger.info(f"Background generation started for user {uid} (Type: {b_type})")
             briefing = generate_briefing_content(target_user_id=uid, briefing_type=b_type)
             
-            # Send to Telegram (Manual Trigger runs in threadpool, so asyncio.run is safe)
-            # Only send Telegram for DAILY for now, or adapt text?
+            if briefing:
+                # Increment usage counter
+                bg_usage = get_or_create_usage(bg_session, uid)
+                if b_type == "weekly":
+                    bg_usage.weekly_count += 1
+                else:
+                    bg_usage.daily_count += 1
+                bg_session.add(bg_usage)
+                bg_session.commit()
+                logger.info(f"Usage incremented for {uid}: {b_type}")
+
             if briefing and briefing.audio_path:
-                # Re-fetch settings
-                from sqlmodel import select
                 settings_stmt = select(UserSettings).where(UserSettings.user_id == uid)
-                user_settings = session.exec(settings_stmt).first()
+                user_settings = bg_session.exec(settings_stmt).first()
                 
                 if user_settings and user_settings.telegram_enabled and user_settings.telegram_chat_id:
                     import asyncio
@@ -137,8 +194,7 @@ async def trigger_briefing_generation(
             import traceback
             traceback.print_exc()
         finally:
-            if session:
-                session.close()
+            bg_session.close()
 
     try:
         logger.info(f"Queuing {type} briefing generation for user {user_id}")

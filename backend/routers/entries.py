@@ -110,3 +110,80 @@ def update_entry(entry_id: int, request: UpdateEntryRequest, session: Session = 
     session.add(entry)
     session.commit()
     return {"status": "success", "transcript": entry.transcript}
+
+
+class TextEntryRequest(SQLModel):
+    text: str
+
+@router.post("/text")
+def create_text_entry(request: TextEntryRequest, session: Session = Depends(get_session), user_id: str = Depends(get_current_user_id)):
+    """
+    Receives user text entry (no audio).
+    Logic: Same as audio upload — checks if an entry for TODAY exists.
+    - If YES: Appends new text to existing entry.
+    - If NO: Creates new entry.
+    """
+    try:
+        from datetime import datetime, time
+
+        new_text = request.text.strip()
+        if not new_text:
+            raise HTTPException(status_code=400, detail="Text darf nicht leer sein.")
+
+        # Check for existing entry TODAY
+        today_start = datetime.combine(datetime.utcnow().date(), time.min)
+        existing_entry = session.exec(
+            select(Entry)
+            .where(Entry.user_id == user_id)
+            .where(Entry.created_at >= today_start)
+            .order_by(Entry.created_at.desc())
+        ).first()
+
+        if existing_entry:
+            # APPEND logic
+            logger.info(f"Appending text to existing entry {existing_entry.id}")
+            timestamp = datetime.now().strftime("%H:%M")
+            existing_entry.transcript = (existing_entry.transcript or "") + f"\n\n[{timestamp}] {new_text}"
+
+            # Extract Todos from the NEW chunk
+            from services.todo_service import extract_todos_from_transcript
+            todo_count = extract_todos_from_transcript(user_id, new_text, existing_entry.id, session)
+
+            session.add(existing_entry)
+            session.commit()
+            session.refresh(existing_entry)
+
+            return {
+                "status": "updated",
+                "entry_id": existing_entry.id,
+                "transcript": existing_entry.transcript,
+                "todos_created": todo_count
+            }
+        else:
+            # CREATE logic
+            entry = Entry(
+                audio_path="text_entry",
+                transcript=new_text,
+                language="de",
+                user_id=user_id
+            )
+            session.add(entry)
+            session.commit()
+            session.refresh(entry)
+
+            # Extract Todos
+            from services.todo_service import extract_todos_from_transcript
+            todo_count = extract_todos_from_transcript(user_id, new_text, entry.id, session)
+
+            return {
+                "status": "created",
+                "entry_id": entry.id,
+                "transcript": new_text,
+                "todos_created": todo_count
+            }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error processing text entry: {e}")
+        raise HTTPException(status_code=500, detail=f"Server Error: {str(e)}")
