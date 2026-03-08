@@ -201,11 +201,10 @@ def check_reminders(session, current_time: str):
          logger.error(f"Error in check_reminders: {e}")
 
 
-
-
-async def process_briefing(user):
+async def process_briefing(user) -> bool:
     """
     Orchestrates the generation and sending of a briefing for a single user.
+    Returns True on success, False otherwise.
     """
     try:
         logger.info(f"Processing briefing for user {user.user_id}")
@@ -215,13 +214,19 @@ async def process_briefing(user):
         briefing = await asyncio.to_thread(generate_briefing_content, user.user_id)
         
         if not briefing:
-            logger.error(f"Failed to generate briefing for {user.user_id}")
-            return
+            logger.error(f"Failed to generate briefing content for {user.user_id}")
+            return False
             
         # 2. Deliver Notification (Unifies Daily/Weekly + Image generation)
         if user.telegram_enabled and user.telegram_chat_id:
             await deliver_briefing_notification(user, briefing)
             logger.info(f"Briefing sent to Telegram for {user.user_id}")
+            return True
+        
+        # If telegram is not enabled or chat_id is missing, we consider it not "sent"
+        logger.warning(f"Briefing not delivered for {user.user_id}: Telegram not enabled or chat_id missing.")
+        return False
             
     except Exception as e:
         logger.error(f"Error in process_briefing for {user.user_id}: {e}")
+        return False

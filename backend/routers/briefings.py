@@ -168,7 +168,7 @@ async def trigger_briefing_generation(
             briefing = generate_briefing_content(target_user_id=uid, briefing_type=b_type)
             
             if briefing:
-                # Increment usage counter
+                # Increment usage counter ONLY on success
                 bg_usage = get_or_create_usage(bg_session, uid)
                 if b_type == "weekly":
                     bg_usage.weekly_count += 1
@@ -176,7 +176,9 @@ async def trigger_briefing_generation(
                     bg_usage.daily_count += 1
                 bg_session.add(bg_usage)
                 bg_session.commit()
-                logger.info(f"Usage incremented for {uid}: {b_type}")
+                logger.info(f"Usage incremented for {uid}: {b_type} ({bg_usage.daily_count}/50)")
+            else:
+                logger.error(f"Manual briefing generation failed for {uid}, NOT incrementing usage.")
 
             if briefing and briefing.audio_path:
                 settings_stmt = select(UserSettings).where(UserSettings.user_id == uid)

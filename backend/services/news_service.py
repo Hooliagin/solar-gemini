@@ -61,14 +61,13 @@ def fetch_category_news(category_key: str, city: str = None) -> str:
         today_str = datetime.now().strftime("%d.%m.%Y")
         
         prompt = (
-            f"Suche nach den neuesten Entwicklungen zu: {topic}\n"
+            f"Suche nach den absolut neuesten Entwicklungen (letzte 24 Stunden) zu: {topic}\n"
             f"HEUTIGES DATUM: {today_str}.\n"
-            f"REGEL: Wähle NUR Nachrichten, die HEUTE oder GESTERN passiert sind (letzte 24-48h).\n"
-            f"VERBOTEN: Alles was vor dem {today_str} (minus 1 Tag) passiert ist.\n"
-            f"VERBOTEN: Polizeimeldungen, Unfälle oder Kleinigkeiten, es sei denn sie sind von nationaler Relevanz.\n"
-            f"Erstelle eine Zusammenfassung mit 3-4 Sätzen im Briefing-Stil. "
-            f"Nenne konkrete Ereignisse, Namen und Fakten. "
-            f"Wenn keine aktuellen News vorliegen, antworte AUSSCHLIESSLICH mit 'Keine aktuellen News'. Erfinde nichts und nimm nichts Altes."
+            f"FOKUS: Was ist HEUTE passiert? Wenn heute noch nichts vorliegt, nimm GESTERN.\n"
+            f"STRIKTE REGEL: Alles was älter als 36 Stunden ist, ist VERBOTEN.\n"
+            f"VERBOTEN: Polizeimeldungen, Unfälle oder Belanglosigkeiten.\n"
+            f"Erstelle eine Zusammenfassung mit 2-3 Sätzen im Briefing-Stil.\n"
+            f"Wenn keine brandaktuellen News vorliegen, antworte AUSSCHLIESSLICH mit 'Keine aktuellen News'."
         )
         
         response = client.models.generate_content(
@@ -104,11 +103,11 @@ def fetch_detailed_news_per_topic(topics: list[str]) -> str:
             today_str = datetime.now().strftime("%d.%m.%Y")
             
             prompt = (
-                f"Suche nach den neuesten Entwicklungen und News zu '{topic}' der letzten 3 Tage (bis {today_str}). "
-                f"Was ist NEU passiert? Wichtige Ereignisse oder Durchbrüche?\n\n"
-                f"STRIKTE REGEL: Ignoriere alles was älter als 3 Tage ist.\n"
-                f"Erstelle eine Zusammenfassung mit 3-4 Sätzen im Briefing-Stil. "
-                f"Wenn keine aktuellen News vorliegen, antworte AUSSCHLIESSLICH mit 'Keine Updates'."
+                f"Suche nach den neuesten Entwicklungen und News zu '{topic}' der letzten 24-36 Stunden (Stand {today_str}). "
+                f"Was ist HEUTE oder GESTERN NEU passiert?\n\n"
+                f"STRIKTE REGEL: Ignoriere alles was älter als GESTERN ist.\n"
+                f"Erstelle eine Zusammenfassung mit 2-3 Sätzen im Briefing-Stil.\n"
+                f"Wenn keine brandaktuellen News vorliegen, antworte AUSSCHLIESSLICH mit 'Keine Updates'."
             )
             
             response = client.models.generate_content(

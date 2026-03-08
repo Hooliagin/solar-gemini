@@ -9,7 +9,7 @@ services:
       pip install -r requirements.txt
     startCommand: |
       cd backend
-      gunicorn main:app -k uvicorn.workers.UvicornWorker -w 1 -b 0.0.0.0:10000 --timeout 120
+      gunicorn main:app -k uvicorn.workers.UvicornWorker -w 1 -b 0.0.0.0:10000 --timeout 0
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.0
@@ -28,6 +28,22 @@ services:
           type: web # Frontend is defined as type: web (runtime: static)
           name: daily-manager-frontend
           property: host
+      - key: AZURE_AI_RESOURCE_NAME
+        sync: false
+      - key: AZURE_PROJECT_NAME
+        sync: false
+      - key: AZURE_EXISTING_AGENT_NAME
+        sync: false
+      - key: AZURE_EXISTING_AGENT_VERSION
+        sync: false
+      - key: AZURE_EXISTING_AIPROJECT_ENDPOINT
+        sync: false
+      - key: AZURE_CLIENT_ID
+        sync: false
+      - key: AZURE_CLIENT_SECRET
+        sync: false
+      - key: AZURE_TENANT_ID
+        sync: false
 
   # Frontend Service (Static Site)
   - type: web

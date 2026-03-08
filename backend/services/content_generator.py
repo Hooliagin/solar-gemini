@@ -305,29 +305,15 @@ ZITAT-AUSWAHL (KRITISCH - QUALITÄT WIRD BEWERTET!)
 - Hesse: "Stufen" ← VERBOTEN
 - Generische Konfuzius, Gandhi, Einstein Kalendersprüche ← VERBOTEN
 
-**SO FINDEST DU GUTE ZITATE:**
+**SO FINDEST DU EIN GUTES ZITAT:**
 
-SCHRITT 1: Identifiziere die SPEZIFISCHE Emotion/Situation
-SCHRITT 2: Suche ein Zitat das diese SPEZIFISCHE Situation anspricht
-SCHRITT 3: Bevorzuge UNBEKANNTE Quellen (Seneca Briefe, Marc Aurel, Rilke, Brené Brown, Naval Ravikant)
+SCHRITT 1: Identifiziere die SPEZIFISCHE Emotion/Situation aus dem Tagebuch oder dem bevorstehenden Tag.
+SCHRITT 2: Suche ein Zitat das diese SPEZIFISCHE Situation anspricht.
+SCHRITT 3: Bevorzuge UNBEKANNTE Quellen (Seneca Briefe, Marc Aurel, Rilke, Brené Brown, Naval Ravikant).
 SCHRITT 4: VALIDIERE dein Zitat. Frage: "Würde dieses Zitat auf einer Instagram-Motivationsseite stehen?" JA → VERWERFEN.
 
-**ZWEI ZITATE ERFORDERLICH:**
-
-ZITAT 1 - REFLEXIONS-ZITAT (Rückblick auf Gestern/Tagebuch):
-├── Analysiere das TAGEBUCH → Identifiziere die dominante Emotion:
-│   • Erfolg/Leistung → Zitat über Bedeutung jenseits von Erfolg
-│   • Stress/Überforderung → Zitat über Perspektive, Loslassen
-│   • Unsicherheit/Hilflosigkeit → Zitat über Fragen stellen, Anfänge
-│   • Einsamkeit → Zitat über Verbindung, Menschlichkeit
-│   • Wachstum/Lernen → Zitat über die Reise, Neugier
-├── Wähle ein Zitat das diese Emotion DIREKT anspricht (ECHTE EMOTION!).
-└── PLATZIERUNG: Nach der Retrospektive.
-
-ZITAT 2 - INTENTIONS-ZITAT (Vorausschau auf Heute/Kalender):
-├── Analysiere den KALENDER → Bestimme den Tagestyp (Meeting, Deep Work, Admin, etc.)
-├── Wähle ein Zitat das zum Tagestyp PASST
-└── PLATZIERUNG: Vor dem Tagesplan / Als Übergang.
+**GENAU EIN ZITAT ERFORDERLICH:**
+Wähle das passende Zitat entweder als Reflexion für gestern oder als Intention für heute aus. Es muss eine ECHTE EMOTION ansprechen.
 
 ═══════════════════════════════════════════════════════════════════════════════
 NEWS-AUSWAHL (STRIKTE QUELLEN-TREUE!)
@@ -337,7 +323,7 @@ NEWS-AUSWAHL (STRIKTE QUELLEN-TREUE!)
 
 **REGEL 1:** Nutze AUSSCHLIESSLICH die Informationen aus [NEWS - KURATIERTE QUELLEN] und [NEWS - DYNAMISCHE SUCHE].
 **REGEL 2 (ANTI-HALLUZINATION):** Wenn dort steht "Keine News" oder wenn die Info leer ist: ERFINDE KEINE NEWS.
-**REGEL 3:** "Leite Themen aus dem Kontext ab" ist HIER VERBOTEN. Du darfst keine News erfinden, nur weil der User "KI" im Kalender hat.
+**REGEL 3 (PRIORITÄT):** Integriere die News AKTIV in das Briefing. Wenn [NEWS - DYNAMISCHE SUCHE] Informationen zu den Interessen des Users enthält, MÜSSEN diese im Script erwähnt werden. Es ist inakzeptabel, News-Quellen zu ignorieren, wenn sie vorhanden sind.
 
 Wenn KEINE News-Quellen vorhanden sind:
 -> Erwähne kurz, dass es heute ruhig ist in der Welt, und geh direkt zum Wetter über.
@@ -370,15 +356,14 @@ STRUKTUR (FLIESSTEXT - Keine Headlines!)
 ═══════════════════════════════════════════════════════════════════════════════
 1. Warme Begrüßung (Variiere! Nicht wie gestern!)
 2. Tiefe Retrospektive (Was wurde geschafft? Emotionen ansprechen!).
-   - Schließe diesen Teil mit dem REFLEXIONS-ZITAT (Zitat 1) ab.
-3. Der Tagesplan (Termine integrieren).
+3. ZITAT: Platziere das gewählte Zitat (Reflexion oder Intention) an einer passenden Stelle im Text.
+4. Der Tagesplan (Termine integrieren).
    - **WICHTIG:** Du musst auch deine VORSCHLÄGE für Habits & To-Dos verbalisieren!
    - Sag z.B.: "Da du am Nachmittag frei hast, habe ich dir um 15 Uhr deinen Sport eingeplant."
    - Erkläre kurz, warum du diesen Slot gewählt hast.
-   - Schließe mit dem INTENTIONS-ZITAT (Zitat 2) ab.
-4. Recherche-Ergebnisse (falls vorhanden).
-5. News (Mix aus Kuratiert & Dynamisch. Max 2-3 Themen. Nur Relevantes!).
-6. Wetter & Abschluss (Motivation).
+5. Recherche-Ergebnisse (falls vorhanden).
+6. News (Mix aus Kuratiert & Dynamisch. Max 2-3 Themen. Nur Relevantes! PRIO auf persönliche Interessen!).
+7. Wetter & Abschluss (Motivation).
 
 **CONSISTENCY CHECK (KRITISCH):**
 Wenn du im Text sagst: "Mach Sport um 10 Uhr", DANN MUSS "Sport" auch im `final_agenda` JSON stehen.
@@ -387,7 +372,7 @@ Der User sieht nur das, was im JSON steht. Was nicht im JSON steht, existiert f�
 
 **STRUKTUR-ANWEISUNG:**
 Antworte DIREKT im vorgegebenen JSON-Format.
-Das "script_content" Feld enthält den gesamten gesprochenen Text.
+Das "script_content" feld enthält den gesamten gesprochenen Text.
 """
     return prompt
 
@@ -730,8 +715,9 @@ def generate_briefing_content(target_user_id: str, briefing_type: str = "daily")
             # Extract Script
             script = briefing_obj.script_content
             
-            # Save Used Quotes
-            for q in briefing_obj.quotes:
+            # Save Used Quote (Single)
+            q = briefing_obj.quote
+            if q:
                 qid = generate_quote_id(q.text, q.author)
                 logger.debug(f"Tracking Quote: {qid} ({q.author})")
                 new_used_quote = UsedQuote(

@@ -57,6 +57,8 @@ from routers import admin
 app.include_router(admin.router)
 from routers import notion
 app.include_router(notion.router)
+from voice_proxy.app import voice_app
+app.mount("/voice", voice_app)
 # Parse origins and ensure they have a scheme (https://) if provided by Render
 origins_raw = os.getenv("ALLOWED_ORIGINS", "*").split(",")
 origins = []
