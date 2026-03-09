@@ -40,6 +40,25 @@ AVATAR_CHARACTER = os.getenv("AVATAR_CHARACTER", "lisa")
 AVATAR_STYLE = os.getenv("AVATAR_STYLE", "casual-sitting")
 API_VERSION = os.getenv("API_VERSION", "2025-05-01-preview")
 
+# Debug: log Azure env var status at import time (values masked)
+def _mask(val: str) -> str:
+    if not val:
+        return "<NOT SET>"
+    if len(val) <= 8:
+        return f"{val[:2]}***({len(val)} chars)"
+    return f"{val[:4]}...{val[-4:]}({len(val)} chars)"
+
+logger.info("=== Voice Proxy Azure Env Vars ===")
+logger.info("  AZURE_TENANT_ID       = %s", _mask(os.getenv("AZURE_TENANT_ID", "")))
+logger.info("  AZURE_CLIENT_ID       = %s", _mask(os.getenv("AZURE_CLIENT_ID", "")))
+logger.info("  AZURE_CLIENT_SECRET   = %s", _mask(os.getenv("AZURE_CLIENT_SECRET", "")))
+logger.info("  AZURE_AI_RESOURCE_NAME= %s", _mask(AZURE_AI_RESOURCE_NAME))
+logger.info("  AZURE_PROJECT_NAME    = %s", _mask(AZURE_PROJECT_NAME))
+logger.info("  AGENT_NAME            = %s", _mask(AZURE_EXISTING_AGENT_NAME))
+logger.info("  AGENT_VERSION         = %s", _mask(AZURE_EXISTING_AGENT_VERSION))
+logger.info("  AIPROJECT_ENDPOINT    = %s", _mask(AZURE_EXISTING_AIPROJECT_ENDPOINT))
+logger.info("==================================")
+
 # ---------------------------------------------------------------------------
 # Global state
 # ---------------------------------------------------------------------------
@@ -65,6 +84,21 @@ voice_app.add_middleware(
 # ---------------------------------------------------------------------------
 def _get_token(scope: str) -> str:
     """Obtain a Bearer token via DefaultAzureCredential."""
+    tenant = os.getenv("AZURE_TENANT_ID", "")
+    client = os.getenv("AZURE_CLIENT_ID", "")
+    secret = os.getenv("AZURE_CLIENT_SECRET", "")
+
+    if not tenant or not client or not secret:
+        missing = []
+        if not tenant: missing.append("AZURE_TENANT_ID")
+        if not client: missing.append("AZURE_CLIENT_ID")
+        if not secret: missing.append("AZURE_CLIENT_SECRET")
+        raise RuntimeError(f"Missing Azure env vars: {', '.join(missing)}")
+
+    # Validate tenant ID format (strip whitespace, check UUID-like)
+    tenant = tenant.strip()
+    logger.info("Tenant ID (masked): %s", _mask(tenant))
+
     credential = DefaultAzureCredential()
     token = credential.get_token(scope)
     return token.token
