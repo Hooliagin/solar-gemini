@@ -138,7 +138,8 @@ def check_briefings(session, current_time: str):
             # Generate Background Task
             try:
                 # We call the async function synchronously here
-                asyncio.run(process_briefing(user))
+                # Add a 5 minute timeout so a stale network call doesn't lock the APScheduler thread forever!
+                asyncio.run(asyncio.wait_for(process_briefing(user), timeout=300))
                 
                 # Increment usage after successful generation
                 if not usage:
@@ -186,13 +187,13 @@ def check_reminders(session, current_time: str):
             
             # Send Reminder
             try:
-                 asyncio.run(send_text_message(
+                 asyncio.run(asyncio.wait_for(send_text_message(
                      user.telegram_chat_id, 
                      f"🌙 **Guten Abend, {user.name or 'Freund'}!**\n\n"
                      "Du hast heute noch keinen Tagebuch-Eintrag gemacht.\n"
                      "Nimm dir doch kurz 2 Minuten für dich.\n\n"
                      "🎤 *Sende einfach eine Sprachnachricht.*"
-                 ))
+                 ), timeout=30))
                  logger.info(f"Sent reminder to {user.user_id}")
             except Exception as e:
                 logger.error(f"Error sending reminder to {user.user_id}: {e}")
