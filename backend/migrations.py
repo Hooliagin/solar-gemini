@@ -144,6 +144,15 @@ def run_migrations():
                 """))
                 conn.commit()
 
+            # Migration: Add google_oauth_verifier column (PKCE support)
+            try:
+                conn.execute(text("SELECT google_oauth_verifier FROM usersettings LIMIT 1"))
+            except Exception:
+                logger.info("Applying migration: Adding google_oauth_verifier column")
+                conn.rollback()
+                conn.execute(text("ALTER TABLE usersettings ADD COLUMN google_oauth_verifier VARCHAR"))
+                conn.commit()
+
             logger.info("Migrations completed successfully.")
             
         except Exception as e:

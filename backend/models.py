@@ -47,6 +47,8 @@ class UserSettings(SQLModel, table=True):
     google_access_token: Optional[str] = Field(default=None)
     google_refresh_token: Optional[str] = Field(default=None)
     google_token_expiry: Optional[datetime] = Field(default=None)
+    # PKCE code_verifier persisted between /auth/google and /auth/google/callback
+    google_oauth_verifier: Optional[str] = Field(default=None)
     # Selected Calendar IDs (JSON list or comma-separated)
     selected_calendars: Optional[str] = Field(default=None)
     # News category toggles (predefined)

@@ -62,14 +62,14 @@ from sqlmodel import select
 from typing import Optional
 
 @router.get("/google")
-def google_auth(user_id: Optional[str] = None):
+def google_auth(user_id: Optional[str] = None, session: Session = Depends(get_session)):
     """Initiate Google OAuth flow - redirects user to Google login.
-    
+
     user_id can be passed as query param for direct browser redirects.
     """
     if not user_id:
         raise HTTPException(status_code=400, detail="user_id is required as query parameter")
-    
+
     flow = get_flow()
     # Use HMAC-signed state token to prevent CSRF
     signed_state = create_signed_state(user_id)
@@ -77,8 +77,22 @@ def google_auth(user_id: Optional[str] = None):
         access_type='offline',
         include_granted_scopes='true',
         prompt='consent',  # Force consent to get refresh token
-        state=signed_state 
+        state=signed_state
     )
+
+    # Persist the PKCE code_verifier so the callback (different process/instance)
+    # can complete the token exchange. Google returns "Missing code verifier" otherwise.
+    code_verifier = getattr(flow, "code_verifier", None)
+    if code_verifier:
+        stmt = select(UserSettings).where(UserSettings.user_id == user_id)
+        user_settings = session.exec(stmt).first()
+        if not user_settings:
+            user_settings = UserSettings(user_id=user_id)
+            session.add(user_settings)
+        user_settings.google_oauth_verifier = code_verifier
+        session.add(user_settings)
+        session.commit()
+
     return RedirectResponse(authorization_url)
 
 @router.get("/google/callback")
@@ -99,25 +113,29 @@ def google_callback(state: str, code: str = None, error: str = None, session: Se
     try:
         # Relax scope validation because Google returns all granted scopes (e.g. readonly + events)
         os.environ['OAUTHLIB_RELAX_TOKEN_SCOPE'] = '1'
-        
+
         flow = get_flow()
-        flow.fetch_token(code=code)
-        credentials = flow.credentials
-        
-        # Get or create user settings for this SPECIFIC user
+
+        # Restore the PKCE code_verifier stored at the start of the flow.
         statement = select(UserSettings).where(UserSettings.user_id == user_id)
         user_settings = session.exec(statement).first()
-        
+        if user_settings and user_settings.google_oauth_verifier:
+            flow.code_verifier = user_settings.google_oauth_verifier
+
+        flow.fetch_token(code=code)
+        credentials = flow.credentials
+
         if not user_settings:
             user_settings = UserSettings(user_id=user_id)
             session.add(user_settings)
-        
-        # Store tokens
+
+        # Store tokens and clear the now-consumed verifier
         user_settings.google_access_token = credentials.token
         user_settings.google_refresh_token = credentials.refresh_token
         user_settings.google_token_expiry = credentials.expiry
+        user_settings.google_oauth_verifier = None
         user_settings.updated_at = datetime.utcnow()
-        
+
         session.add(user_settings)
         session.commit()
         
