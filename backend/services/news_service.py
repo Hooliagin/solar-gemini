@@ -40,26 +40,26 @@ PREDEFINED_CATEGORIES = {
 
 def fetch_category_news(category_key: str, city: str = None) -> str:
     """
-    Fetches news for a predefined category.
+    Fetches news for a predefined category (short ticker-style summary).
     """
     if category_key not in PREDEFINED_CATEGORIES:
         return ""
-    
+
     category = PREDEFINED_CATEGORIES[category_key]
     topic = category['prompt']
-    
+
     # Replace city placeholder for local news
     if category_key == 'news_local' and city:
         topic = topic.format(city=city)
     elif category_key == 'news_local':
         topic = topic.format(city="Deutschland")
-    
+
     try:
         grounding_tool = types.Tool(google_search=types.GoogleSearch())
         config = types.GenerateContentConfig(tools=[grounding_tool])
-        
+
         today_str = datetime.now().strftime("%d.%m.%Y")
-        
+
         prompt = (
             f"Suche nach den absolut neuesten Entwicklungen (letzte 24 Stunden) zu: {topic}\n"
             f"HEUTIGES DATUM: {today_str}.\n"
@@ -69,63 +69,90 @@ def fetch_category_news(category_key: str, city: str = None) -> str:
             f"Erstelle eine Zusammenfassung mit 2-3 Sätzen im Briefing-Stil.\n"
             f"Wenn keine brandaktuellen News vorliegen, antworte AUSSCHLIESSLICH mit 'Keine aktuellen News'."
         )
-        
+
         response = client.models.generate_content(
             model="gemini-2.0-flash",
             contents=prompt,
             config=config
         )
-        
+
         if response.text:
             return f"**{category['name']}:**\n{response.text.strip()}\n"
         else:
             return f"**{category['name']}:**\nKeine Updates verfügbar.\n"
-            
+
     except Exception as e:
         logger.error(f"Category news fetch failed for '{category_key}': {e}")
         return f"**{category['name']}:**\nFehler beim Abrufen.\n"
 
 
+def fetch_interest_section(topic: str) -> str:
+    """
+    Tiefgehender Zeitungs-Artikel zu einem persönlichen Interesse.
+    Liefert Schlagzeile, 1-2 konkrete Entwicklungen mit Zahlen/Namen,
+    Hintergrund und Relevanz - wie eine kuratierte Zeitungs-Sektion.
+    """
+    if not topic or not topic.strip():
+        return ""
+
+    grounding_tool = types.Tool(google_search=types.GoogleSearch())
+    config = types.GenerateContentConfig(tools=[grounding_tool])
+
+    today_str = datetime.now().strftime("%d.%m.%Y")
+
+    prompt = (
+        f"Du bist Ressort-Redakteur einer hochwertigen Tageszeitung. "
+        f"Das Ressort heißt '{topic}'. Heutiges Datum: {today_str}.\n\n"
+        f"RECHERCHE-AUFTRAG:\n"
+        f"Finde die 1-2 WICHTIGSTEN, konkretesten Entwicklungen der letzten 24-48 Stunden zu '{topic}'. "
+        f"Suche nach Eigennamen, Zahlen, Zitaten, konkreten Ereignissen - nicht nach allgemeinen Trends.\n\n"
+        f"HARTE REGELN:\n"
+        f"- Alles älter als 48 Stunden: VERBOTEN.\n"
+        f"- Keine generischen 'Trend'-Floskeln ohne konkreten Anlass.\n"
+        f"- Jede Behauptung muss auf eine konkrete Quelle/Ereignis zurückführbar sein.\n"
+        f"- Keine Polizeimeldungen, Klatsch oder Banalitäten.\n\n"
+        f"AUSGABE-FORMAT (strikt einhalten, als reiner Text ohne Markdown):\n"
+        f"SCHLAGZEILE: <eine prägnante Zeile, was HEUTE/GESTERN passiert ist>\n"
+        f"KERN: <3-4 Sätze mit den konkreten Fakten: wer, was, wann, wo, wieviel. "
+        f"Nenne Namen, Zahlen, Orte, Zitate. Kein Geschwafel.>\n"
+        f"HINTERGRUND: <1-2 Sätze Einordnung: warum passiert das gerade, was ist der Kontext, "
+        f"was ist neu gegenüber vorher.>\n"
+        f"RELEVANZ: <1 Satz: warum lohnt es sich für jemanden mit Interesse an '{topic}', "
+        f"das heute zu wissen - konkrete Implikation, kein Allgemeinplatz.>\n\n"
+        f"Wenn KEINE konkreten News der letzten 48h existieren: antworte AUSSCHLIESSLICH mit 'KEINE_NEWS'."
+    )
+
+    try:
+        response = client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=prompt,
+            config=config
+        )
+
+        text = (response.text or "").strip()
+        if not text or "KEINE_NEWS" in text.upper()[:40]:
+            return f"**{topic}:**\nHeute keine relevanten neuen Entwicklungen.\n"
+
+        return f"**Ressort: {topic}**\n{text}\n"
+
+    except Exception as e:
+        logger.error(f"Interest section fetch failed for '{topic}': {e}")
+        return f"**{topic}:**\nFehler beim Abrufen.\n"
+
+
 def fetch_detailed_news_per_topic(topics: list[str]) -> str:
     """
-    Performs separate news searches for EACH custom user topic using Google Search Grounding.
+    Erstellt für JEDES persönliche Interesse eine eigene Zeitungs-Sektion
+    mit Schlagzeile, Kern-Fakten, Hintergrund und Relevanz.
     """
     if not topics or len(topics) == 0:
         return ""
-    
+
     results = []
-    
-    grounding_tool = types.Tool(google_search=types.GoogleSearch())
-    config = types.GenerateContentConfig(tools=[grounding_tool])
-    
     for topic in topics:
-        try:
-            today_str = datetime.now().strftime("%d.%m.%Y")
-            
-            prompt = (
-                f"Suche nach den neuesten Entwicklungen und News zu '{topic}' der letzten 24-36 Stunden (Stand {today_str}). "
-                f"Was ist HEUTE oder GESTERN NEU passiert?\n\n"
-                f"STRIKTE REGEL: Ignoriere alles was älter als GESTERN ist.\n"
-                f"Erstelle eine Zusammenfassung mit 2-3 Sätzen im Briefing-Stil.\n"
-                f"Wenn keine brandaktuellen News vorliegen, antworte AUSSCHLIESSLICH mit 'Keine Updates'."
-            )
-            
-            response = client.models.generate_content(
-                model="gemini-2.0-flash",
-                contents=prompt,
-                config=config
-            )
-            
-            if response.text:
-                results.append(f"**{topic}:**\n{response.text.strip()}\n")
-            else:
-                results.append(f"**{topic}:**\nKeine Updates verfügbar.\n")
-                
-        except Exception as e:
-            logger.error(f"News fetch failed for topic '{topic}': {e}")
-            results.append(f"**{topic}:**\nFehler beim Abrufen der News.\n")
-    
-    return "\n".join(results)
+        results.append(fetch_interest_section(topic))
+
+    return "\n".join(filter(None, results))
 
 
 def fetch_all_news(user_settings, custom_topics: list[str] = None) -> str:

@@ -196,8 +196,9 @@ def generate_morning_briefing_prompt(
         )
     news_context = "\n\n".join(news_context_parts)
 
-    # Dynamisches News-Limit: alle persönlichen Interessen + bis zu 2 generische Themen
-    news_topic_cap = max(3, len(custom_interests) + 2)
+    # News-Limit: ALLE persönlichen Interessen werden ausführlich gebracht,
+    # generische Kategorien kommen nur noch als kurzer Ticker obendrauf.
+    news_topic_cap = len(custom_interests) + 2
     
     # Blacklisted Quotes Block
     blacklist_block = ""
@@ -338,16 +339,41 @@ NEWS-AUSWAHL (STRIKTE QUELLEN-TREUE!)
 
 **HEUTE IST: {date_short}**
 
-**REGEL 1:** Nutze AUSSCHLIESSLICH die Informationen aus [NEWS - KURATIERTE QUELLEN] und [NEWS - DYNAMISCHE SUCHE].
-**REGEL 2 (ANTI-HALLUZINATION):** Wenn dort steht "Keine News" oder wenn die Info leer ist: ERFINDE KEINE NEWS.
-**REGEL 3 (PRIORITÄT STUFE 1 - PFLICHT):** JEDES persönliche Interesse aus [NEWS-KONTEXT] Stufe 1, zu dem es News gibt, MUSS im Script erwähnt werden. Kein Überspringen, keine Auslassung. Wenn zu einem Interesse "Keine Updates" steht, darfst du es weglassen - sonst nicht.
-**REGEL 4 (PRIORITÄT STUFE 2 - OPTIONAL):** Allgemeine Kategorien (Stufe 2) kommen NACH den persönlichen Interessen dran, maximal 2 davon.
-**REGEL 5 (ANTI-WIEDERHOLUNG):** Prüfe das gestrige Briefing. Erwähne KEINE News-Story, die dort bereits genannt wurde, es sei denn es gibt nachweislich neue Entwicklungen (BREAKING). Variiere auch den Einstieg in den News-Block.
+**LEITBILD - MORGENDLICHE ZEITUNGS-LEKTÜRE:**
+Der User will sich fühlen, als würde er seine persönliche Zeitung lesen: Er überfliegt die Ressorts,
+die ihn interessieren, und bekommt dort echte Substanz - nicht nur Headlines, sondern Kern-Fakten,
+Hintergrund und warum es ihn betrifft. Die persönlichen Interessen sind die HAUPT-RESSORTS.
+Die allgemeinen Kategorien sind nur der kurze Ticker am Rand.
 
-Wenn KEINE News-Quellen vorhanden sind:
--> Erwähne kurz, dass es heute ruhig ist in der Welt, und geh direkt zum Wetter über.
+**REGEL 1 (QUELLEN-TREUE):** Nutze AUSSCHLIESSLICH die Informationen aus [NEWS - KURATIERTE QUELLEN]
+und [NEWS - DYNAMISCHE SUCHE]. Erfinde NIEMALS Fakten, Zahlen, Namen oder Ereignisse dazu.
+**REGEL 2 (ANTI-HALLUZINATION):** Steht dort "Keine News" / "KEINE_NEWS" / "Heute keine relevanten Entwicklungen":
+darfst du das Thema stillschweigend oder mit einem Satz ("Zu deinem Thema X ist heute nichts Neues passiert.") überspringen.
+**REGEL 3 (PERSÖNLICHE RESSORTS - PFLICHT & TIEFE):**
+Jedes persönliche Interesse aus [NEWS-KONTEXT] Stufe 1, zu dem es in [NEWS - DYNAMISCHE SUCHE]
+eine Sektion mit SCHLAGZEILE/KERN/HINTERGRUND/RELEVANZ gibt, bekommt im gesprochenen Text eine
+eigene, ausgearbeitete Sektion von 4-6 Sätzen:
+  (a) Einstiegs-Satz, der wie eine Ressort-Überleitung klingt ("In deinem Thema X tut sich Folgendes...").
+  (b) Die konkrete Entwicklung mit Namen, Zahlen, Ort, Zeitpunkt aus dem KERN-Block.
+  (c) 1-2 Sätze Hintergrund/Einordnung aus dem HINTERGRUND-Block.
+  (d) Ein Satz, warum genau DAS für den User relevant ist (RELEVANZ-Block).
+NIEMALS persönliche Interessen in einem einzigen Halbsatz abhandeln. Wenn zu einem Interesse
+mehrere Infos vorliegen, erzähle sie als zusammenhängende kleine Story - nicht als Liste.
+**REGEL 4 (ALLGEMEINER TICKER - KURZ):**
+Allgemeine Kategorien (Stufe 2, z.B. Politik/Wirtschaft/Sport) kommen NACH den persönlichen Ressorts,
+zusammengefasst in MAXIMAL 2-3 Sätzen als kurzer "Was sonst noch passiert ist"-Ticker. Keine Tiefe.
+**REGEL 5 (ANTI-WIEDERHOLUNG):** Prüfe das gestrige Briefing. Wiederhole keine News-Story, es sei denn
+es gibt nachweislich NEUE Entwicklungen - dann sag explizit "Update dazu: ...". Variiere den Einstieg
+in den News-Block jeden Tag.
+**REGEL 6 (KEIN FÜLLSTOFF):** Wenn zu einem persönlichen Interesse wirklich nichts Neues da ist,
+dann FÜLLE nicht mit Allgemeinplätzen auf. Lieber einen ehrlichen Satz ("Zu deinem Thema X ist heute
+Funkstille") als erfundenes Blabla.
 
-LIMIT: Maximal {news_topic_cap} News-Themen insgesamt (Stufe 1 hat Vorrang).
+Wenn zu KEINEM Thema News vorliegen:
+-> Ein Satz, dass heute Funkstille ist in deinen Themen, dann direkt zum Wetter.
+
+LIMIT: Persönliche Ressorts haben KEIN Limit - alle Stufe-1-Themen mit Inhalt kommen dran.
+Allgemeine Kategorien: maximal 2-3 Sätze gesamt als Ticker.
 ═══════════════════════════════════════════════════════════════════════════════
 KALENDER-EMPFEHLUNGEN (AKTIV, NICHT PASSIV!)
 ═══════════════════════════════════════════════════════════════════════════════
@@ -381,7 +407,12 @@ STRUKTUR (FLIESSTEXT - Keine Headlines!)
    - Sag z.B.: "Da du am Nachmittag frei hast, habe ich dir um 15 Uhr deinen Sport eingeplant."
    - Erkläre kurz, warum du diesen Slot gewählt hast.
 5. Recherche-Ergebnisse (falls vorhanden).
-6. News (Mix aus Kuratiert & Dynamisch. Max 2-3 Themen. Nur Relevantes! PRIO auf persönliche Interessen!).
+6. News als "Deine Morgenzeitung":
+   - Eröffne mit einer kurzen Überleitung ("Jetzt zu deiner Morgenzeitung..." o.ä., variiere täglich).
+   - DANN: Für JEDES persönliche Ressort mit Inhalt eine ausgearbeitete Mini-Sektion von 4-6 Sätzen
+     (Einstieg, konkrete Fakten, Hintergrund, Relevanz für den User).
+   - ZUM SCHLUSS: Maximal 2-3 Sätze "Was sonst noch passiert" aus den allgemeinen Kategorien.
+   - Keine Headlines im Fließtext, aber hörbare Ressort-Struktur durch Überleitungen.
 7. Wetter & Abschluss (Motivation).
 
 **CONSISTENCY CHECK (KRITISCH):**
