@@ -584,13 +584,22 @@ async def interests_state(update: Update, context):
             
             elif text_cleaned.startswith('+'):
                 # Add mode
+                MAX_INTERESTS = 5
                 new_topics = [t.strip() for t in text_cleaned[1:].split(',') if t.strip()]
+                skipped = []
                 for topic in new_topics:
-                    if topic not in current_topics:
-                        session.add(Interest(topic=topic, user_id=user.user_id))
-                        current_topics.add(topic)
+                    if topic in current_topics:
+                        continue
+                    if len(current_topics) >= MAX_INTERESTS:
+                        skipped.append(topic)
+                        continue
+                    session.add(Interest(topic=topic, user_id=user.user_id))
+                    current_topics.add(topic)
                 session.commit()
-                await update.message.reply_text(f"✅ Hinzugefügt. Aktuell: {', '.join(current_topics)}")
+                msg = f"✅ Hinzugefügt. Aktuell: {', '.join(current_topics)}"
+                if skipped:
+                    msg += f"\n⚠️ Limit von {MAX_INTERESTS} erreicht. Nicht hinzugefügt: {', '.join(skipped)}"
+                await update.message.reply_text(msg)
                 return INTERESTS # Stay in loop
                 
             elif text_cleaned.startswith('-'):
@@ -607,16 +616,22 @@ async def interests_state(update: Update, context):
 
             else:
                 # Overwrite mode (default behavior)
-                topics = [t.strip() for t in text.split(',') if t.strip()]
-                
+                MAX_INTERESTS = 5
+                topics = [t.strip() for t in text.split(',') if t.strip()][:MAX_INTERESTS]
+
                 # Delete all old
                 for i in existing_interests:
                     session.delete(i)
-                
+
                 # Add new
                 for topic in topics:
                     session.add(Interest(topic=topic, user_id=user.user_id))
                 session.commit()
+
+                if len([t for t in text.split(',') if t.strip()]) > MAX_INTERESTS:
+                    await update.message.reply_text(
+                        f"ℹ️ Nur die ersten {MAX_INTERESTS} Themen wurden übernommen (Limit)."
+                    )
                 # Continue below to finish
             
             # Mark onboarding as done
