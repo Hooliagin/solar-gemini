@@ -117,6 +117,8 @@ Wiederholungen zerstören das Erlebnis und wirken roboterhaft.
 
 **Identifizierte Phrasen die du VERMEIDEN musst:**
 {chr(10).join(f'- "{p}"' for p in phrases[:12])}
+
+**NEWS-WIEDERHOLUNG (STRIKT):** Die News-Stories aus dem gestrigen Briefing oben sind bereits erzählt. Wähle HEUTE andere Schlagzeilen oder berichte explizit über NEUE Entwicklungen ("Im Verlauf des Tages hat sich folgendes getan..."). Keine identischen Headlines zweimal.
 """
 
     if briefing_day_before:
@@ -155,6 +157,7 @@ def generate_morning_briefing_prompt(
     user_name: str = "",
     briefing_time: str = "07:00",
     user_news_categories: Optional[List[str]] = None,
+    custom_interests: Optional[List[str]] = None,
     used_quote_ids: Optional[List[str]] = None,
     
     # Sprache
@@ -176,11 +179,25 @@ def generate_morning_briefing_prompt(
         briefing_day_before
     )
     
-    # News-Kategorien für kontextuelle News-Suche
-    news_context = ""
-    if user_news_categories:
-        categories_str = ", ".join(user_news_categories)
-        news_context = f"Der User interessiert sich für: {categories_str}"
+    # News-Kategorien mit Prioritätsstufen (persönliche Interessen > Standard-Kategorien)
+    custom_interests = custom_interests or []
+    default_categories = [c for c in (user_news_categories or []) if c not in custom_interests]
+
+    news_context_parts = []
+    if custom_interests:
+        news_context_parts.append(
+            "STUFE 1 - PERSÖNLICHE INTERESSEN (PFLICHT zu erwähnen, sofern News vorhanden):\n"
+            + ", ".join(custom_interests)
+        )
+    if default_categories:
+        news_context_parts.append(
+            "STUFE 2 - ALLGEMEINE KATEGORIEN (nur wenn Zeit/Platz bleibt):\n"
+            + ", ".join(default_categories)
+        )
+    news_context = "\n\n".join(news_context_parts)
+
+    # Dynamisches News-Limit: alle persönlichen Interessen + bis zu 2 generische Themen
+    news_topic_cap = max(3, len(custom_interests) + 2)
     
     # Blacklisted Quotes Block
     blacklist_block = ""
@@ -323,12 +340,14 @@ NEWS-AUSWAHL (STRIKTE QUELLEN-TREUE!)
 
 **REGEL 1:** Nutze AUSSCHLIESSLICH die Informationen aus [NEWS - KURATIERTE QUELLEN] und [NEWS - DYNAMISCHE SUCHE].
 **REGEL 2 (ANTI-HALLUZINATION):** Wenn dort steht "Keine News" oder wenn die Info leer ist: ERFINDE KEINE NEWS.
-**REGEL 3 (PRIORITÄT):** Integriere die News AKTIV in das Briefing. Wenn [NEWS - DYNAMISCHE SUCHE] Informationen zu den Interessen des Users enthält, MÜSSEN diese im Script erwähnt werden. Es ist inakzeptabel, News-Quellen zu ignorieren, wenn sie vorhanden sind.
+**REGEL 3 (PRIORITÄT STUFE 1 - PFLICHT):** JEDES persönliche Interesse aus [NEWS-KONTEXT] Stufe 1, zu dem es News gibt, MUSS im Script erwähnt werden. Kein Überspringen, keine Auslassung. Wenn zu einem Interesse "Keine Updates" steht, darfst du es weglassen - sonst nicht.
+**REGEL 4 (PRIORITÄT STUFE 2 - OPTIONAL):** Allgemeine Kategorien (Stufe 2) kommen NACH den persönlichen Interessen dran, maximal 2 davon.
+**REGEL 5 (ANTI-WIEDERHOLUNG):** Prüfe das gestrige Briefing. Erwähne KEINE News-Story, die dort bereits genannt wurde, es sei denn es gibt nachweislich neue Entwicklungen (BREAKING). Variiere auch den Einstieg in den News-Block.
 
 Wenn KEINE News-Quellen vorhanden sind:
 -> Erwähne kurz, dass es heute ruhig ist in der Welt, und geh direkt zum Wetter über.
 
-Maximal 3 Themen aus den GEGEBENEN Quellen.
+LIMIT: Maximal {news_topic_cap} News-Themen insgesamt (Stufe 1 hat Vorrang).
 ═══════════════════════════════════════════════════════════════════════════════
 KALENDER-EMPFEHLUNGEN (AKTIV, NICHT PASSIV!)
 ═══════════════════════════════════════════════════════════════════════════════
@@ -628,15 +647,16 @@ def generate_briefing_content(target_user_id: str, briefing_type: str = "daily")
         ).all()
         used_quote_ids = [q.quote_id for q in used_quotes_db]
         
-        # 4. Map User Settings to Categories
+        # 4. Map User Settings to Categories (Standard-Kategorien getrennt von persönlichen Interessen!)
         user_news_categories = []
-        if user_settings.news_politics: user_news_categories.append("general_de")
-        if user_settings.news_tech: user_news_categories.append("tech")
-        if user_settings.news_economy: user_news_categories.append("business")
-        
-        # Include custom topic interests in the context for the LLM
-        if topic_list:
-            user_news_categories.extend(topic_list)
+        if user_settings.news_politics: user_news_categories.append("Politik")
+        if user_settings.news_tech: user_news_categories.append("Technologie")
+        if user_settings.news_economy: user_news_categories.append("Wirtschaft")
+        if user_settings.news_local: user_news_categories.append("Lokale News")
+        if user_settings.news_sports: user_news_categories.append("Sport")
+
+        # Persönliche Interessen bleiben separat, damit der Prompt sie priorisieren kann
+        custom_interests = topic_list or []
         
         # 5. GENERATE PROMPT
         if briefing_type == "weekly":
@@ -689,6 +709,7 @@ def generate_briefing_content(target_user_id: str, briefing_type: str = "daily")
                 user_name=user_name,
                 briefing_time=user_settings.briefing_time,
                 user_news_categories=user_news_categories,
+                custom_interests=custom_interests,
                 used_quote_ids=used_quote_ids,
                 language=user_settings.language
             )
