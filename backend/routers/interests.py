@@ -7,14 +7,24 @@ from auth import get_current_user_id
 
 router = APIRouter(prefix="/interests", tags=["interests"])
 
+MAX_INTERESTS = 5
+
 @router.post("/", response_model=Interest)
 def create_interest(
-    interest: Interest, 
+    interest: Interest,
     session: Session = Depends(get_session),
     user_id: str = Depends(get_current_user_id)
 ):
     # Enforce user_id from token
     interest.user_id = user_id
+
+    existing_count = len(session.exec(select(Interest).where(Interest.user_id == user_id)).all())
+    if existing_count >= MAX_INTERESTS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Maximal {MAX_INTERESTS} Interessen erlaubt. Bitte entferne zuerst ein bestehendes Thema."
+        )
+
     session.add(interest)
     session.commit()
     session.refresh(interest)

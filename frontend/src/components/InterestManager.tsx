@@ -9,6 +9,7 @@ interface Interest {
 }
 
 const SUGGESTIONS = ['AI', 'Football', 'Stocks', 'Crypto', 'Gaming', 'Startups', 'Climate'];
+const MAX_INTERESTS = 5;
 
 export default function InterestManager() {
     const [interests, setInterests] = useState<Interest[]>([]);
@@ -35,8 +36,8 @@ export default function InterestManager() {
 
     const addInterest = async (topic: string) => {
         if (!topic.trim()) return;
-        if (interests.length >= 10) {
-            alert("Maximum 10 interests allowed.");
+        if (interests.length >= MAX_INTERESTS) {
+            alert(`Maximal ${MAX_INTERESTS} Interessen erlaubt. Bitte entferne zuerst ein bestehendes Thema.`);
             return;
         }
 
@@ -91,7 +92,7 @@ export default function InterestManager() {
             <div className="flex items-center gap-4 mb-8 opacity-60">
                 <TrendingUp strokeWidth={1} className="w-5 h-5" />
                 <div className="uppercase text-xs tracking-widest">
-                    Ihre Interessen <span className="text-warm-grey">({interests.length}/10)</span>
+                    Ihre Interessen <span className="text-warm-grey">({interests.length}/{MAX_INTERESTS})</span>
                 </div>
             </div>
 
