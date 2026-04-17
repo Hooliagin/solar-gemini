@@ -33,10 +33,11 @@ def get_calendar_events(user_id: str, days: int = 1) -> list[dict]:
             token_uri="https://oauth2.googleapis.com/token",
             client_id=settings.GOOGLE_CLIENT_ID,
             client_secret=settings.GOOGLE_CLIENT_SECRET,
-            scopes=SCOPES
+            scopes=SCOPES,
+            expiry=user_settings.google_token_expiry
         )
-        
-        if creds.expired and creds.refresh_token:
+
+        if not creds.valid and creds.refresh_token:
             try:
                 creds.refresh(Request())
                 user_settings.google_access_token = creds.token
@@ -46,9 +47,9 @@ def get_calendar_events(user_id: str, days: int = 1) -> list[dict]:
             except Exception as e:
                 logger.error(f"Token refresh failed: {e}")
                 return []
-        
+
         service = build('calendar', 'v3', credentials=creds)
-        
+
         # Get all calendars
         calendars_result = service.calendarList().list().execute()
         calendars = calendars_result.get('items', [])
@@ -188,17 +189,19 @@ def get_available_calendars(user_id: str) -> list[dict]:
             token_uri="https://oauth2.googleapis.com/token",
             client_id=settings.GOOGLE_CLIENT_ID,
             client_secret=settings.GOOGLE_CLIENT_SECRET,
-            scopes=SCOPES
+            scopes=SCOPES,
+            expiry=user_settings.google_token_expiry
         )
-        
+
         # Auto-Refresh check
-        if creds.expired and creds.refresh_token:
+        if not creds.valid and creds.refresh_token:
             creds.refresh(Request())
             user_settings.google_access_token = creds.token
+            user_settings.google_token_expiry = creds.expiry
             session.commit()
 
         service = build('calendar', 'v3', credentials=creds)
-        
+
         # Get List
         result = service.calendarList().list().execute()
         items = result.get('items', [])
@@ -277,15 +280,17 @@ def create_calendar_event(user_id: str, event_data: dict) -> bool:
             token_uri="https://oauth2.googleapis.com/token",
             client_id=settings.GOOGLE_CLIENT_ID,
             client_secret=settings.GOOGLE_CLIENT_SECRET,
-            scopes=SCOPES
+            scopes=SCOPES,
+            expiry=user_settings.google_token_expiry
         )
-        
+
         # Auto-refresh if needed logic (same as fetch)
-        if creds.expired and creds.refresh_token:
+        if not creds.valid and creds.refresh_token:
             creds.refresh(Request())
             user_settings.google_access_token = creds.token
+            user_settings.google_token_expiry = creds.expiry
             session.commit()
-            
+
         service = build('calendar', 'v3', credentials=creds)
         
         # Helper to ensure RFC3339 format (YYYY-MM-DDTHH:MM:SS)
